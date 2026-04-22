@@ -1,0 +1,249 @@
+-- ============================================================
+-- RaceControl Pro – SQLite Schema
+-- Version: 0.1.0
+-- ============================================================
+
+PRAGMA journal_mode = WAL;       -- simultane Lese-/Schreibzugriffe (50+ WS-Clients)
+PRAGMA foreign_keys = ON;        -- FK-Constraints erzwingen
+PRAGMA encoding = 'UTF-8';
+
+-- ============================================================
+-- 1. REGLEMENT-ENGINE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS Reglements (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT    NOT NULL UNIQUE,           -- z.B. "ADAC JKS 2026"
+    scoring_type    TEXT    NOT NULL                   -- "sum_all" | "best_of" | "sum_minus_worst"
+                    CHECK (scoring_type IN ('sum_all', 'best_of', 'sum_minus_worst')),
+    points_formula  TEXT,                              -- JSON-Formel oder Name der Punktetabelle (optional)
+    runs_per_class  INTEGER NOT NULL DEFAULT 2,        -- Anzahl Wertungsläufe (ohne Training)
+    has_training    INTEGER NOT NULL DEFAULT 1         -- 1 = Trainingslauf vorgesehen
+                    CHECK (has_training IN (0, 1)),
+    created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS PenaltyDefinitions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    reglement_id    INTEGER NOT NULL REFERENCES Reglements(id) ON DELETE CASCADE,
+    label           TEXT    NOT NULL,                  -- z.B. "Pylone", "Torfehler"
+    seconds         REAL    NOT NULL CHECK (seconds >= 0),
+    shortcut_key    TEXT,                              -- Einzeltaste für Zeitnahme-UI (z.B. 'P')
+    sort_order      INTEGER NOT NULL DEFAULT 0,        -- Reihenfolge in der UI
+    UNIQUE (reglement_id, shortcut_key)               -- keine doppelten Tasten pro Reglement
+);
+
+-- ============================================================
+-- 2. VERANSTALTUNGEN & KLASSEN
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS Events (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT    NOT NULL,                  -- z.B. "ADAC Kart-Slalom Kassel 2026-06-01"
+    date            TEXT    NOT NULL,                  -- ISO-8601: "2026-06-01"
+    location        TEXT,
+    reglement_id    INTEGER REFERENCES Reglements(id) ON DELETE SET NULL,
+    status          TEXT    NOT NULL DEFAULT 'planned'
+                    CHECK (status IN ('planned', 'active', 'finished', 'official')),
+    created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS Classes (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id        INTEGER NOT NULL REFERENCES Events(id) ON DELETE CASCADE,
+    reglement_id    INTEGER REFERENCES Reglements(id) ON DELETE SET NULL,
+    name            TEXT    NOT NULL,                  -- z.B. "Schüler A", "Junioren"
+    short_name      TEXT,                              -- Kürzel für Ausdrucke, z.B. "SA"
+    min_birth_year  INTEGER,                           -- Untergrenze Geburtsjahr (inklusiv)
+    max_birth_year  INTEGER,                           -- Obergrenze Geburtsjahr (inklusiv)
+    run_status      TEXT    NOT NULL DEFAULT 'planned'
+                    CHECK (run_status IN ('planned', 'running', 'preliminary', 'official')),
+    start_order     INTEGER NOT NULL DEFAULT 0,        -- Reihenfolge im Tagesablauf
+    UNIQUE (event_id, name)
+);
+
+-- ============================================================
+-- 3. BENUTZER & ROLLEN
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS Users (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    username        TEXT    NOT NULL UNIQUE,
+    password_hash   TEXT    NOT NULL,                  -- bcrypt-Hash
+    role            TEXT    NOT NULL
+                    CHECK (role IN ('admin', 'schiedsrichter', 'nennung', 'zeitnahme', 'viewer')),
+    display_name    TEXT,                              -- z.B. "Hans Müller (SRI)"
+    is_active       INTEGER NOT NULL DEFAULT 1
+                    CHECK (is_active IN (0, 1)),
+    created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+);
+
+-- Standard-Admin (Passwort beim ersten Start setzen)
+INSERT OR IGNORE INTO Users (username, password_hash, role, display_name)
+VALUES ('admin', '__CHANGE_ON_FIRST_LOGIN__', 'admin', 'Administrator');
+
+-- ============================================================
+-- 4. TEILNEHMER
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS Participants (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id        INTEGER NOT NULL REFERENCES Events(id) ON DELETE CASCADE,
+    class_id        INTEGER REFERENCES Classes(id) ON DELETE SET NULL,
+    start_number    INTEGER NOT NULL,
+    first_name      TEXT    NOT NULL,
+    last_name       TEXT    NOT NULL,
+    birth_year      INTEGER,                           -- für automatisches Klassen-Mapping
+    club            TEXT,                              -- Ortsclub / Team
+    license_number  TEXT,                              -- ADAC-Lizenznummer (optional)
+    status          TEXT    NOT NULL DEFAULT 'registered'
+                    CHECK (status IN ('registered', 'checked_in', 'technical_ok', 'disqualified')),
+    UNIQUE (event_id, start_number)                   -- Startnummer eindeutig pro Veranstaltung
+);
+
+-- ============================================================
+-- 5. ERGEBNISSE & STRAFEN
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS RaceResults (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id        INTEGER NOT NULL REFERENCES Events(id) ON DELETE CASCADE,
+    participant_id  INTEGER NOT NULL REFERENCES Participants(id) ON DELETE CASCADE,
+    class_id        INTEGER NOT NULL REFERENCES Classes(id) ON DELETE CASCADE,
+    run_number      INTEGER NOT NULL CHECK (run_number >= 0),  -- 0=Training, 1=Lauf1, 2=Lauf2
+    raw_time        REAL,                              -- gestoppte Zeit in Sekunden; NULL bei DNS/DNF
+    status          TEXT    NOT NULL DEFAULT 'valid'
+                    CHECK (status IN ('valid', 'dns', 'dnf', 'dsq')),
+    is_official     INTEGER NOT NULL DEFAULT 0
+                    CHECK (is_official IN (0, 1)),
+    entered_by      INTEGER REFERENCES Users(id) ON DELETE SET NULL,
+    created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now')),
+    UNIQUE (participant_id, class_id, run_number)     -- ein Ergebnis pro Fahrer/Lauf
+);
+
+-- total_penalties wird NICHT gespeichert — immer berechnet:
+-- SELECT SUM(pd.seconds * rp.count)
+-- FROM RunPenalties rp
+-- JOIN PenaltyDefinitions pd ON pd.id = rp.penalty_definition_id
+-- WHERE rp.result_id = <id>
+
+CREATE TABLE IF NOT EXISTS RunPenalties (
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    result_id               INTEGER NOT NULL REFERENCES RaceResults(id) ON DELETE CASCADE,
+    penalty_definition_id   INTEGER NOT NULL REFERENCES PenaltyDefinitions(id) ON DELETE RESTRICT,
+    count                   INTEGER NOT NULL DEFAULT 1 CHECK (count > 0),
+    entered_by              INTEGER REFERENCES Users(id) ON DELETE SET NULL,
+    created_at              TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+);
+
+-- ============================================================
+-- 6. AUDIT-LOG
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS AuditLog (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    result_id       INTEGER REFERENCES RaceResults(id) ON DELETE SET NULL,
+    user_id         INTEGER REFERENCES Users(id) ON DELETE SET NULL,
+    field_changed   TEXT    NOT NULL,                  -- "raw_time" | "status" | "penalty" | "is_official"
+    old_value       TEXT,                              -- JSON-serialisierter Wert vor der Änderung
+    new_value       TEXT,                              -- JSON-serialisierter Wert nach der Änderung
+    reason          TEXT    NOT NULL,                  -- Pflichtfeld: Begründung der Änderung
+    timestamp       TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+);
+
+-- AuditLog wird NIE gelöscht (kein CASCADE DELETE von außen)
+-- Gelöschte Ergebnisse → result_id wird NULL (SET NULL), Eintrag bleibt erhalten
+
+-- ============================================================
+-- 7. INDIZES
+-- ============================================================
+
+-- Schnelle Ergebnisabfragen pro Klasse / Veranstaltung
+CREATE INDEX IF NOT EXISTS idx_results_event     ON RaceResults (event_id);
+CREATE INDEX IF NOT EXISTS idx_results_class     ON RaceResults (class_id);
+CREATE INDEX IF NOT EXISTS idx_results_participant ON RaceResults (participant_id);
+
+-- Schnelle Strafenabfragen pro Ergebnis
+CREATE INDEX IF NOT EXISTS idx_penalties_result  ON RunPenalties (result_id);
+
+-- Audit-Log schnell nach Ergebnis und Zeit durchsuchen
+CREATE INDEX IF NOT EXISTS idx_audit_result      ON AuditLog (result_id);
+CREATE INDEX IF NOT EXISTS idx_audit_timestamp   ON AuditLog (timestamp);
+
+-- Teilnehmersuche nach Name / Startnummer
+CREATE INDEX IF NOT EXISTS idx_participants_event      ON Participants (event_id);
+CREATE INDEX IF NOT EXISTS idx_participants_start_number ON Participants (event_id, start_number);
+
+-- ============================================================
+-- 8. VIEWS (berechnete Ergebnisse)
+-- ============================================================
+
+-- Vollständiges Ergebnis pro Lauf inkl. berechneter Strafzeit
+CREATE VIEW IF NOT EXISTS v_run_results AS
+SELECT
+    r.id                AS result_id,
+    r.event_id,
+    r.class_id,
+    c.name              AS class_name,
+    r.run_number,
+    p.start_number,
+    p.first_name,
+    p.last_name,
+    p.club,
+    r.raw_time,
+    r.status,
+    r.is_official,
+    COALESCE((
+        SELECT SUM(pd.seconds * rp.count)
+        FROM   RunPenalties rp
+        JOIN   PenaltyDefinitions pd ON pd.id = rp.penalty_definition_id
+        WHERE  rp.result_id = r.id
+    ), 0.0)             AS total_penalties,
+    CASE
+        WHEN r.status != 'valid' OR r.raw_time IS NULL THEN NULL
+        ELSE r.raw_time + COALESCE((
+            SELECT SUM(pd.seconds * rp.count)
+            FROM   RunPenalties rp
+            JOIN   PenaltyDefinitions pd ON pd.id = rp.penalty_definition_id
+            WHERE  rp.result_id = r.id
+        ), 0.0)
+    END                 AS total_time
+FROM       RaceResults r
+JOIN       Participants p ON p.id = r.participant_id
+JOIN       Classes      c ON c.id = r.class_id;
+
+-- Gesamtwertung pro Klasse (scoring_type "sum_all")
+CREATE VIEW IF NOT EXISTS v_class_standings_sum_all AS
+SELECT
+    r.event_id,
+    r.class_id,
+    c.name              AS class_name,
+    p.start_number,
+    p.first_name,
+    p.last_name,
+    p.club,
+    COUNT(CASE WHEN r.status = 'valid' AND r.run_number > 0 THEN 1 END) AS valid_runs,
+    SUM(CASE WHEN r.status = 'valid' AND r.run_number > 0
+             THEN r.raw_time + COALESCE((
+                 SELECT SUM(pd.seconds * rp.count)
+                 FROM   RunPenalties rp
+                 JOIN   PenaltyDefinitions pd ON pd.id = rp.penalty_definition_id
+                 WHERE  rp.result_id = r.id
+             ), 0.0)
+             ELSE NULL END)  AS total_time,
+    RANK() OVER (
+        PARTITION BY r.class_id
+        ORDER BY SUM(CASE WHEN r.status = 'valid' AND r.run_number > 0
+                          THEN r.raw_time + COALESCE((
+                              SELECT SUM(pd.seconds * rp.count)
+                              FROM   RunPenalties rp
+                              JOIN   PenaltyDefinitions pd ON pd.id = rp.penalty_definition_id
+                              WHERE  rp.result_id = r.id
+                          ), 0.0)
+                          ELSE 9999 END) NULLS LAST
+    )                   AS rank
+FROM       RaceResults r
+JOIN       Participants p ON p.id = r.participant_id
+JOIN       Classes      c ON c.id = r.class_id
+WHERE      r.run_number > 0                            -- Training ausschließen
+GROUP BY   r.event_id, r.class_id, r.participant_id;
