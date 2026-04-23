@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS Events (
     reglement_id    INTEGER REFERENCES Reglements(id) ON DELETE SET NULL,
     status          TEXT    NOT NULL DEFAULT 'planned'
                     CHECK (status IN ('planned', 'active', 'finished', 'official')),
+    description     TEXT,                              -- Infoseite: Freitext/HTML
     created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
 );
 
@@ -56,9 +57,12 @@ CREATE TABLE IF NOT EXISTS Classes (
     short_name      TEXT,                              -- Kürzel für Ausdrucke, z.B. "SA"
     min_birth_year  INTEGER,                           -- Untergrenze Geburtsjahr (inklusiv)
     max_birth_year  INTEGER,                           -- Obergrenze Geburtsjahr (inklusiv)
-    run_status      TEXT    NOT NULL DEFAULT 'planned'
-                    CHECK (run_status IN ('planned', 'running', 'preliminary', 'official')),
-    start_order     INTEGER NOT NULL DEFAULT 0,        -- Reihenfolge im Tagesablauf
+    run_status              TEXT    NOT NULL DEFAULT 'planned'
+                            CHECK (run_status IN ('planned', 'running', 'paused', 'preliminary', 'official')),
+    start_order             INTEGER NOT NULL DEFAULT 0, -- Reihenfolge im Tagesablauf
+    registration_closed_at  TEXT,                       -- Zeitpunkt Nennungsschluss (ISO-8601)
+    start_time              TEXT,                       -- geplante/tatsächliche Startzeit "HH:MM"
+    end_time                TEXT,                       -- Zeitpunkt Klassenende → löst Einspruchfrist aus
     UNIQUE (event_id, name)
 );
 
@@ -83,21 +87,52 @@ INSERT OR IGNORE INTO Users (username, password_hash, role, display_name)
 VALUES ('admin', '__CHANGE_ON_FIRST_LOGIN__', 'admin', 'Administrator');
 
 -- ============================================================
--- 4. TEILNEHMER
+-- 4. SPONSOREN
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS Sponsors (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT    NOT NULL,
+    logo_url    TEXT,                              -- URL zum Sponsor-Logo
+    website_url TEXT,                              -- Klick-Ziel
+    sort_order  INTEGER NOT NULL DEFAULT 0,
+    is_active   INTEGER NOT NULL DEFAULT 1
+                CHECK (is_active IN (0, 1)),
+    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+);
+
+-- ============================================================
+-- 5. VEREINS-STAMMDATEN
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS Clubs (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT    NOT NULL UNIQUE,           -- z.B. "MSC Braach e.V. im ADAC"
+    short_name      TEXT,                              -- Kürzel, z.B. "MSC Braach"
+    city            TEXT,                              -- Ort (optional)
+    created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+);
+
+-- ============================================================
+-- 5. TEILNEHMER
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS Participants (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     event_id        INTEGER NOT NULL REFERENCES Events(id) ON DELETE CASCADE,
     class_id        INTEGER REFERENCES Classes(id) ON DELETE SET NULL,
-    start_number    INTEGER NOT NULL,
+    club_id         INTEGER REFERENCES Clubs(id) ON DELETE SET NULL,  -- NULL = "n.N."
+    start_number    INTEGER,                            -- NULL bis zur Auslosung
     first_name      TEXT    NOT NULL,
     last_name       TEXT    NOT NULL,
     birth_year      INTEGER,                           -- für automatisches Klassen-Mapping
-    club            TEXT,                              -- Ortsclub / Team
     license_number  TEXT,                              -- ADAC-Lizenznummer (optional)
     status          TEXT    NOT NULL DEFAULT 'registered'
                     CHECK (status IN ('registered', 'checked_in', 'technical_ok', 'disqualified')),
+    fee_paid        INTEGER NOT NULL DEFAULT 0
+                    CHECK (fee_paid IN (0, 1)),        -- Nenngeld bezahlt
+    helmet_ok       INTEGER NOT NULL DEFAULT 0
+                    CHECK (helmet_ok IN (0, 1)),       -- Helmkontrolle bestanden
     UNIQUE (event_id, start_number)                   -- Startnummer eindeutig pro Veranstaltung
 );
 
@@ -155,7 +190,42 @@ CREATE TABLE IF NOT EXISTS AuditLog (
 -- Gelöschte Ergebnisse → result_id wird NULL (SET NULL), Eintrag bleibt erhalten
 
 -- ============================================================
--- 7. INDIZES
+-- 7. MANNSCHAFTSWERTUNG
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS Teams (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id        INTEGER NOT NULL REFERENCES Events(id) ON DELETE CASCADE,
+    name            TEXT    NOT NULL,                  -- z.B. "MSC Braach I"
+    club            TEXT,
+    UNIQUE (event_id, name)
+);
+
+-- Bis zu 4 Mitglieder pro Mannschaft; beste 3 kommen in die Wertung
+CREATE TABLE IF NOT EXISTS TeamMembers (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    team_id         INTEGER NOT NULL REFERENCES Teams(id) ON DELETE CASCADE,
+    participant_id  INTEGER NOT NULL REFERENCES Participants(id) ON DELETE CASCADE,
+    UNIQUE (team_id, participant_id)
+);
+
+-- ============================================================
+-- 8. SYSTEMEINSTELLUNGEN
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS Settings (
+    key     TEXT PRIMARY KEY,
+    value   TEXT NOT NULL DEFAULT ''
+);
+
+-- Standardwerte (INSERT OR IGNORE: bestehende Werte bleiben erhalten)
+INSERT OR IGNORE INTO Settings (key, value) VALUES ('organizer_name',    'MSC Braach e.V. im ADAC');
+INSERT OR IGNORE INTO Settings (key, value) VALUES ('organizer_address', '');
+INSERT OR IGNORE INTO Settings (key, value) VALUES ('insurance_notice',  'Alle Teilnehmer sind über den ADAC-Motorsport im Rahmen der ADAC-Sportversicherung versichert. Diese Versicherung gilt nur für Unfälle, die in unmittelbarem Zusammenhang mit der Veranstaltung entstehen.');
+INSERT OR IGNORE INTO Settings (key, value) VALUES ('parent_consent_text', 'Ich bin mit der Teilnahme meines Kindes an dieser Veranstaltung einverstanden und bestätige die Richtigkeit aller Angaben.');
+
+-- ============================================================
+-- 9. INDIZES
 -- ============================================================
 
 -- Schnelle Ergebnisabfragen pro Klasse / Veranstaltung
@@ -171,8 +241,12 @@ CREATE INDEX IF NOT EXISTS idx_audit_result      ON AuditLog (result_id);
 CREATE INDEX IF NOT EXISTS idx_audit_timestamp   ON AuditLog (timestamp);
 
 -- Teilnehmersuche nach Name / Startnummer
-CREATE INDEX IF NOT EXISTS idx_participants_event      ON Participants (event_id);
+CREATE INDEX IF NOT EXISTS idx_participants_event        ON Participants (event_id);
 CREATE INDEX IF NOT EXISTS idx_participants_start_number ON Participants (event_id, start_number);
+
+-- Mannschaftswertung
+CREATE INDEX IF NOT EXISTS idx_team_members_team        ON TeamMembers (team_id);
+CREATE INDEX IF NOT EXISTS idx_team_members_participant ON TeamMembers (participant_id);
 
 -- ============================================================
 -- 8. VIEWS (berechnete Ergebnisse)
@@ -189,7 +263,7 @@ SELECT
     p.start_number,
     p.first_name,
     p.last_name,
-    p.club,
+    COALESCE(cl.short_name, cl.name, 'n.N.') AS club,
     r.raw_time,
     r.status,
     r.is_official,
@@ -209,8 +283,9 @@ SELECT
         ), 0.0)
     END                 AS total_time
 FROM       RaceResults r
-JOIN       Participants p ON p.id = r.participant_id
-JOIN       Classes      c ON c.id = r.class_id;
+JOIN       Participants p  ON p.id  = r.participant_id
+JOIN       Classes      c  ON c.id  = r.class_id
+LEFT JOIN  Clubs        cl ON cl.id = p.club_id;
 
 -- Gesamtwertung pro Klasse (scoring_type "sum_all")
 CREATE VIEW IF NOT EXISTS v_class_standings_sum_all AS
@@ -221,7 +296,7 @@ SELECT
     p.start_number,
     p.first_name,
     p.last_name,
-    p.club,
+    COALESCE(cl.short_name, cl.name, 'n.N.') AS club,
     COUNT(CASE WHEN r.status = 'valid' AND r.run_number > 0 THEN 1 END) AS valid_runs,
     SUM(CASE WHEN r.status = 'valid' AND r.run_number > 0
              THEN r.raw_time + COALESCE((
@@ -243,7 +318,39 @@ SELECT
                           ELSE 9999 END) NULLS LAST
     )                   AS rank
 FROM       RaceResults r
-JOIN       Participants p ON p.id = r.participant_id
-JOIN       Classes      c ON c.id = r.class_id
+JOIN       Participants p  ON p.id  = r.participant_id
+JOIN       Classes      c  ON c.id  = r.class_id
+LEFT JOIN  Clubs        cl ON cl.id = p.club_id
 WHERE      r.run_number > 0                            -- Training ausschließen
 GROUP BY   r.event_id, r.class_id, r.participant_id;
+
+-- Tagesschnellste/r: schnellste Einzellaufzeit je Veranstaltung + Reglement-Gruppe
+-- Gibt pro Fahrer die beste Einzellaufzeit zurück (nicht Gesamtsumme).
+-- Gefiltert nach event_id + reglement_id in der Applikationsschicht.
+CREATE VIEW IF NOT EXISTS v_fastest_of_day AS
+SELECT
+    r.event_id,
+    c.reglement_id,
+    reg.name            AS reglement_name,
+    p.id                AS participant_id,
+    p.start_number,
+    p.first_name,
+    p.last_name,
+    COALESCE(cl.short_name, cl.name, 'n.N.') AS club,
+    c.id                AS class_id,
+    c.name              AS class_name,
+    r.run_number,
+    r.raw_time + COALESCE((
+        SELECT SUM(pd.seconds * rp.count)
+        FROM   RunPenalties rp
+        JOIN   PenaltyDefinitions pd ON pd.id = rp.penalty_definition_id
+        WHERE  rp.result_id = r.id
+    ), 0.0)             AS run_time
+FROM       RaceResults r
+JOIN       Participants p   ON p.id   = r.participant_id
+JOIN       Classes      c   ON c.id   = r.class_id
+JOIN       Reglements   reg ON reg.id  = c.reglement_id
+LEFT JOIN  Clubs        cl  ON cl.id   = p.club_id
+WHERE      r.run_number > 0
+  AND      r.status = 'valid'
+  AND      r.raw_time IS NOT NULL;

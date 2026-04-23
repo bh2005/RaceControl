@@ -3,6 +3,51 @@ from pydantic import BaseModel, Field
 from typing import Literal, Optional
 
 
+# ── Sponsors ─────────────────────────────────────────────────────────────────
+
+class SponsorCreate(BaseModel):
+    name: str
+    logo_url: Optional[str] = None
+    website_url: Optional[str] = None
+    sort_order: int = 0
+    is_active: bool = True
+
+
+class SponsorUpdate(BaseModel):
+    name: Optional[str] = None
+    logo_url: Optional[str] = None
+    website_url: Optional[str] = None
+    sort_order: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class SponsorResponse(SponsorCreate):
+    id: int
+    created_at: str
+    model_config = {"from_attributes": True}
+
+
+# ── Clubs ─────────────────────────────────────────────────────────────────────
+
+class ClubCreate(BaseModel):
+    name: str
+    short_name: Optional[str] = None
+    city: Optional[str] = None
+
+
+class ClubUpdate(BaseModel):
+    name: Optional[str] = None
+    short_name: Optional[str] = None
+    city: Optional[str] = None
+
+
+class ClubResponse(ClubCreate):
+    id: int
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
 # ── Reglements ──────────────────────────────────────────────────────────────
 
 class ReglementCreate(BaseModel):
@@ -44,6 +89,7 @@ class EventCreate(BaseModel):
     location: Optional[str] = None
     reglement_id: Optional[int] = None
     status: Literal["planned", "active", "finished", "official"] = "planned"
+    description: Optional[str] = None
 
 
 class EventUpdate(BaseModel):
@@ -52,6 +98,7 @@ class EventUpdate(BaseModel):
     location: Optional[str] = None
     reglement_id: Optional[int] = None
     status: Optional[Literal["planned", "active", "finished", "official"]] = None
+    description: Optional[str] = None
 
 
 class EventResponse(EventCreate):
@@ -70,8 +117,11 @@ class ClassCreate(BaseModel):
     short_name: Optional[str] = None
     min_birth_year: Optional[int] = None
     max_birth_year: Optional[int] = None
-    run_status: Literal["planned", "running", "preliminary", "official"] = "planned"
+    run_status: Literal["planned", "running", "paused", "preliminary", "official"] = "planned"
     start_order: int = 0
+    registration_closed_at: Optional[str] = None
+    start_time: Optional[str] = None   # "HH:MM"
+    end_time: Optional[str] = None     # ISO timestamp, triggers protest period
 
 
 class ClassUpdate(BaseModel):
@@ -79,9 +129,12 @@ class ClassUpdate(BaseModel):
     short_name: Optional[str] = None
     min_birth_year: Optional[int] = None
     max_birth_year: Optional[int] = None
-    run_status: Optional[Literal["planned", "running", "preliminary", "official"]] = None
+    run_status: Optional[Literal["planned", "running", "paused", "preliminary", "official"]] = None
     start_order: Optional[int] = None
     reglement_id: Optional[int] = None
+    registration_closed_at: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
 
 
 class ClassResponse(ClassCreate):
@@ -95,28 +148,44 @@ class ClassResponse(ClassCreate):
 class ParticipantCreate(BaseModel):
     event_id: int
     class_id: Optional[int] = None
-    start_number: int
+    club_id: Optional[int] = None   # NULL = "n.N."
+    start_number: Optional[int] = None  # NULL bis zur Auslosung
     first_name: str
     last_name: str
     birth_year: Optional[int] = None
-    club: Optional[str] = None
     license_number: Optional[str] = None
     status: Literal["registered", "checked_in", "technical_ok", "disqualified"] = "registered"
+    fee_paid: bool = False
+    helmet_ok: bool = False
 
 
 class ParticipantUpdate(BaseModel):
     class_id: Optional[int] = None
+    club_id: Optional[int] = None
     start_number: Optional[int] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     birth_year: Optional[int] = None
-    club: Optional[str] = None
     license_number: Optional[str] = None
     status: Optional[Literal["registered", "checked_in", "technical_ok", "disqualified"]] = None
+    fee_paid: Optional[bool] = None
+    helmet_ok: Optional[bool] = None
 
 
-class ParticipantResponse(ParticipantCreate):
+class ParticipantResponse(BaseModel):
     id: int
+    event_id: int
+    class_id: Optional[int]
+    club_id: Optional[int]
+    start_number: Optional[int]
+    first_name: str
+    last_name: str
+    birth_year: Optional[int]
+    license_number: Optional[str]
+    status: str
+    fee_paid: bool = False
+    helmet_ok: bool = False
+    club_name: Optional[str] = None   # aus JOIN, nicht in DB-Spalte
 
     model_config = {"from_attributes": True}
 
@@ -188,6 +257,54 @@ class UserResponse(BaseModel):
     created_at: str
 
     model_config = {"from_attributes": True}
+
+
+# ── Teams / Mannschaftswertung ───────────────────────────────────────────────
+
+class TeamCreate(BaseModel):
+    event_id: int
+    name: str
+    club: Optional[str] = None
+
+
+class TeamResponse(TeamCreate):
+    id: int
+    model_config = {"from_attributes": True}
+
+
+class TeamMemberCreate(BaseModel):
+    participant_id: int
+
+
+class TeamMemberResponse(BaseModel):
+    id: int
+    team_id: int
+    participant_id: int
+    model_config = {"from_attributes": True}
+
+
+class TeamStandingRow(BaseModel):
+    team_id: int
+    team_name: str
+    club: Optional[str]
+    member_count: int          # Anzahl Mitglieder gesamt (max. 4)
+    scoring_members: int       # Mitglieder die in die Wertung kommen (max. 3)
+    total_points: int          # Summe der Punkte der besten 3
+    members: list[dict]        # Einzelne Mitglieder mit Rang + Punkten
+
+
+# ── Tagesschnellste ──────────────────────────────────────────────────────────
+
+class FastestOfDayRow(BaseModel):
+    rank: int
+    participant_id: int
+    start_number: int
+    first_name: str
+    last_name: str
+    club: Optional[str]
+    class_name: str
+    run_number: int
+    run_time: float
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────

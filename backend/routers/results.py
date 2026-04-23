@@ -1,8 +1,9 @@
 from __future__ import annotations
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from typing import Annotated, Optional
 import sqlite3
 
+from broadcast import manager
 from database import get_db
 from deps import require_roles, get_current_user, CurrentUser
 from schemas import (
@@ -42,6 +43,7 @@ def list_results(
 def create_result(
     event_id: int,
     body: RaceResultCreate,
+    background_tasks: BackgroundTasks,
     db: Annotated[sqlite3.Connection, Depends(get_db)],
     user: ZeitnahmeOrAbove,
 ):
@@ -55,6 +57,10 @@ def create_result(
              body.raw_time, body.status, user["id"]),
         )
         db.commit()
+        background_tasks.add_task(
+            manager.broadcast,
+            {"type": "results", "event_id": event_id, "class_id": body.class_id},
+        )
         return dict(db.execute("SELECT * FROM RaceResults WHERE id = ?", (cur.lastrowid,)).fetchone())
     except Exception:
         raise HTTPException(409, "Ergebnis für diesen Fahrer/Lauf bereits vorhanden")
@@ -116,6 +122,7 @@ def add_penalty(
     event_id: int,
     result_id: int,
     body: RunPenaltyCreate,
+    background_tasks: BackgroundTasks,
     db: Annotated[sqlite3.Connection, Depends(get_db)],
     user: ZeitnahmeOrAbove,
 ):
@@ -125,6 +132,11 @@ def add_penalty(
         (result_id, body.penalty_definition_id, body.count, user["id"]),
     )
     db.commit()
+    row = db.execute("SELECT class_id FROM RaceResults WHERE id = ?", (result_id,)).fetchone()
+    background_tasks.add_task(
+        manager.broadcast,
+        {"type": "results", "event_id": event_id, "class_id": row["class_id"] if row else None},
+    )
     return dict(db.execute("SELECT * FROM RunPenalties WHERE id = ?", (cur.lastrowid,)).fetchone())
 
 

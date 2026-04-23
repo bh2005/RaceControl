@@ -1,8 +1,9 @@
 from __future__ import annotations
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from typing import Annotated, Optional
 import sqlite3
 
+from broadcast import manager
 from database import get_db
 from deps import require_roles
 from schemas import EventCreate, EventUpdate, EventResponse, ClassCreate, ClassUpdate, ClassResponse
@@ -99,6 +100,7 @@ def update_class(
     event_id: int,
     class_id: int,
     body: ClassUpdate,
+    background_tasks: BackgroundTasks,
     db: Annotated[sqlite3.Connection, Depends(get_db)],
     _: AdminOrSchiri,
 ):
@@ -111,4 +113,8 @@ def update_class(
         (*updates.values(), class_id, event_id),
     )
     db.commit()
+    background_tasks.add_task(
+        manager.broadcast,
+        {"type": "classes", "event_id": event_id, "class_id": class_id},
+    )
     return dict(db.execute("SELECT * FROM Classes WHERE id = ?", (class_id,)).fetchone())

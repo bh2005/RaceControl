@@ -1,53 +1,82 @@
 # Projekt-Agenda: "RaceControl Pro"
-**Konzept:** Modulare Veranstaltungssoftware für Kart-Slalom (JKS & KS2000)
-**Zielgruppe:** ADAC Hessen-Thüringen (ca. 10 Klassen / 300 Starter)
-**Status:** Konsolidiertes Gesamtkonzept (Inkl. Datenbank-Architektur)
+**Konzept:** Modulare Veranstaltungssoftware für Kart-Slalom (JKS & KS2000)  
+**Zielgruppe:** ADAC Hessen-Thüringen (ca. 10 Klassen / 300 Starter)  
+**Stand:** April 2026
+
+---
+
+## Status-Legende
+- ✅ Fertig
+- ⚠️ Teilweise / Grundversion vorhanden
+- ❌ Noch offen
 
 ---
 
 ## 1. System-Architektur & Infrastruktur
-- [ ] **Server-Setup:** Lokaler Python/FastAPI Server auf Basis von SQLite (Offline-First).
-- [ ] **Netzwerk:** Konfiguration eines lokalen WLAN-Access-Points ohne Internetzwang.
-- [ ] **Tech-Stack:** * Backend: Python (FastAPI).
-    * Frontend: Vue.js/React mit Tailwind CSS (Responsive).
-    * Kommunikation: WebSockets für Echtzeit-Updates.
+- ✅ **Server-Setup:** Python/FastAPI + SQLite (WAL-Modus, Offline-First)
+- ⚠️ **Netzwerk:** CORS für lokales WLAN konfiguriert; Setup-Anleitung in README.md – kein dedizierter AP-Konfigurator
+- ✅ **Tech-Stack:** Backend FastAPI, Frontend Vue 3 + Tailwind CSS, Axios
+- ❌ **WebSockets:** Aktuell Polling (15 s auf der Landingpage) – kein echter WebSocket-Push
 
 ## 2. Benutzer- & Rollenverwaltung
-- [ ] **Admin:** Vollzugriff auf System, Datenbank-Backups und Reglement-Editor.
-- [ ] **Schiedsrichter:** Korrekturberechtigung (Audit-Log), Veto-Recht und offizielle Ergebnis-Freigabe.
-- [ ] **Nennung:** Check-in, Stammdatenpflege und technischer Abnahme-Status.
-- [ ] **Zeitnahme:** Tastatur-optimierte Schnelleingabe für Zeiten und Strafen.
-- [ ] **Gast/Viewer:** Schreibgeschütztes, hoch-responsives Livetiming für mobile Endgeräte.
+- ✅ **Admin:** Vollzugriff, Veranstaltungen, Klassen, Vereine, Benutzer, Sponsoren, System
+- ✅ **Schiedsrichter:** Korrekturberechtigung, Audit-Log, Klassensteuerung, Einspruchfrist
+- ✅ **Nennung:** Check-in, Abnahme (Nenngeld + Helm), Nennungsschluss, Drucken
+- ✅ **Zeitnahme:** Tastaturoptimierte Eingabe, Strafen, DNS/DNF/DSQ, Undo, Vorziehen
+- ✅ **Gast/Viewer:** Landingpage, Livetiming (kein Login erforderlich)
 
 ## 3. Dynamische Reglement-Engine
-- [ ] **Serien-Verwaltung:** Profile für JKS, KS2000 und freie Clubmeisterschaften.
-- [ ] **Regel-Konfigurator:** Dynamische Definition von Strafwerten (z.B. Pylone +2s vs. +3s).
-- [ ] **Wertungslogik:** Einstellbare Modi (Summe der Läufe, Streichergebnisse, Meisterschaftspunkte-Formeln).
-- [ ] **UI-Adaption:** Zeitnahme-Interface passt seine Buttons automatisch an das gewählte Reglement an.
+- ✅ **Serien-Verwaltung:** Reglements-Tabelle (JKS, KS2000, freie Meisterschaften)
+- ✅ **Regel-Konfigurator:** PenaltyDefinitions pro Reglement (Label, Sekunden, Tastenkürzel)
+- ✅ **Wertungslogik:** sum_all, best_of, sum_minus_worst
+- ✅ **UI-Adaption:** Zeitnahme lädt Strafbuttons automatisch aus dem Reglement der gewählten Klasse
 
 ## 4. Workflow & Zeitnahme (Core)
-- [ ] **Speed-Entry Interface:** Fokus auf Ziffernblock-Bedienung (Eingabe ohne Maus).
-- [ ] **Klassen-Management:** Status-Tracker für 10 Klassen (Geplant -> Läuft -> Vorläufig -> Offiziell).
-- [ ] **Sicherheits-Features:** * Automatisches Audit-Log für jede manuelle Korrektur.
-    * Undo-Funktion für die Zeitnahme bei Fehltriggerung.
+- ✅ **Speed-Entry Interface:** Zifferneingabe, Enter-Bestätigung, Tastaturkürzel für Strafen
+- ✅ **Klassen-Management:** geplant → läuft → unterbrochen → vorläufig → offiziell
+- ✅ **Klasse pausieren/fortsetzen:** Unterbrechung und Wiederaufnahme (Schiri + Admin)
+- ✅ **Vorziehen:** Fahrer in der Warteschlange an Position 1 setzen (manuelle Queue-Steuerung)
+- ✅ **Audit-Log:** Revisionssichere Protokollierung aller Korrekturen
+- ✅ **Undo:** Letzten Zeiteintrag rückgängig machen
 
 ## 5. Responsive Frontend & Livetiming
-- [ ] **Desktop-Ansicht:** Fokus auf Datendichte für Zeitnahme und Admin (hoher Kontrast).
-- [ ] **Tablet-Ansicht:** Touch-optimierte Oberflächen für Schiedsrichter und Vorstart (große Targets).
-- [ ] **Mobile-First Livetiming:** Card-basiertes Layout für Zuschauer (optimiert für Smartphones).
-- [ ] **PWA-Support:** Offline-Indikator bei WLAN-Abbruch.
+- ✅ **Desktop-Ansicht:** Datendichte für Zeitnahme und Admin
+- ✅ **Tablet-Ansicht:** Touch-optimiert für Nennbüro und Schiedsrichter
+- ✅ **Mobile-First Livetiming:** Dunkles Card-Layout, Sponsorenbereich, Klassenstatus
+- ❌ **PWA-Support:** Service Worker, Offline-Indikator – noch nicht implementiert
 
-## 6. PDF-Reporting & Export (ADAC-Standard)
-- [ ] **Ergebnislisten:** Automatischer Export nach ADAC Hessen-Thüringen Standard.
-- [ ] **Automatisierung:** Zeitstempel-Logik für Einspruchsfristen ("Aushang um: ...").
-- [ ] **Listen-Seriendruck:** Ein-Klick-Druck für Starterlisten, Sprecherlisten und Urkunden.
+## 6. Reporting & Export
+- ⚠️ **Nennliste drucken:** HTML-Druck mit Unterschriftsfeld, Versicherungshinweis und Einverständniserklärung – fertig
+- ❌ **Ergebnisliste PDF:** Export im ADAC Hessen-Thüringen Standardformat – offen
+- ❌ **Sprecherliste:** Ausdruck mit Startnummer, Name, Verein, Klasse für den Hallensprecher – offen
+- ❌ **Urkunden:** Seriendruckvorlage für Platziertenurkunden – offen
+- ⚠️ **Einspruchsfrist-Zeitstempel:** 30-Minuten-Timer vorhanden; „Aushang um: …"-Text für den Ausdruck fehlt noch
 
 ## 7. Datenbank-Design & Datenmodell
-- [ ] **Reglement-Tabellen:** Struktur für `Reglements` und `PenaltyDefinitions` (dynamische Strafen).
-- [ ] **Teilnehmer-Management:** `Participants` Tabelle mit automatischem Klassen-Mapping via Geburtsjahr.
-- [ ] **Ergebnis-Architektur:** `RaceResults` mit Trennung von Rohzeit und Strafsekunden.
-- [ ] **Audit-Logging:** `AuditLog` Tabelle zur revisionssicheren Protokollierung aller Schiedsrichter-Eingriffe.
+- ✅ **Reglement-Tabellen:** `Reglements`, `PenaltyDefinitions`
+- ✅ **Teilnehmer-Management:** `Participants` mit Jahrgangsmapping, nullable Startnummer
+- ✅ **Ergebnis-Architektur:** `RaceResults` + `RunPenalties` (Rohzeit und Strafen getrennt)
+- ✅ **Audit-Logging:** `AuditLog` mit Pflichtbegründung
+- ✅ **Sponsoren:** `Sponsors` mit Logo-URL, Sortierung, Aktiv-Flag
+- ✅ **Systemeinstellungen:** `Settings` (Key-Value für Druckvorlagen-Texte)
+- ✅ **Mannschaftswertung:** `Teams`, `TeamMembers` (bis 4 Mitglieder, beste 3 gewertet)
+- ✅ **Automatische Migrationen:** Bestehende DBs werden verlustfrei auf den aktuellen Stand gebracht
 
 ## 8. Qualitätssicherung & Test
-- [ ] **Stresstest:** Simulation von 300 Datensätzen und simultanen Zugriffen (50+ Gast-Clients).
-- [ ] **Datensicherheit:** Implementierung automatischer Zwischenspeicherung bei jedem "Enter".
+- ❌ **Stresstest:** Simulation mit 300 Datensätzen und 50+ simultanen Clients – noch nicht durchgeführt
+- ✅ **Datensicherheit:** Sofortige Persistenz bei jeder Eingabe (kein Datenverlust bei WLAN-Abbruch)
+- ❌ **Automatisierte Tests:** Unit-/Integrationstests für Backend und Frontend – noch nicht vorhanden
+
+---
+
+## Offene Punkte – Zusammenfassung
+
+| Priorität | Thema | Aufwand |
+|-----------|-------|---------|
+| 🔴 Hoch | PDF-Export Ergebnisliste (ADAC-Format) | mittel |
+| 🔴 Hoch | Sprecherliste drucken | klein |
+| 🟡 Mittel | WebSockets (Echtzeit-Push statt Polling) | groß |
+| 🟡 Mittel | Einspruchsfrist-Aushang-Text auf Ausdruck | klein |
+| 🟢 Nice-to-have | PWA / Offline-Indikator | mittel |
+| 🟢 Nice-to-have | Urkunden-Seriendruck | mittel |
+| 🟢 Nice-to-have | Automatisierte Tests | groß |

@@ -36,11 +36,28 @@ def _suggest_class(db: sqlite3.Connection, event_id: int, birth_year: Optional[i
     return row["id"] if row else None
 
 
+def _row_with_club(db: sqlite3.Connection, participant_id: int) -> dict:
+    row = db.execute(
+        """SELECT p.*, COALESCE(c.short_name, c.name) AS club_name
+           FROM Participants p
+           LEFT JOIN Clubs c ON c.id = p.club_id
+           WHERE p.id = ?""",
+        (participant_id,),
+    ).fetchone()
+    return dict(row) if row else {}
+
+
 @router.get("/", response_model=list[ParticipantResponse])
 def list_participants(event_id: int, db: Annotated[sqlite3.Connection, Depends(get_db)]):
-    return [dict(r) for r in db.execute(
-        "SELECT * FROM Participants WHERE event_id = ? ORDER BY start_number", (event_id,)
-    ).fetchall()]
+    rows = db.execute(
+        """SELECT p.*, COALESCE(c.short_name, c.name) AS club_name
+           FROM Participants p
+           LEFT JOIN Clubs c ON c.id = p.club_id
+           WHERE p.event_id = ?
+           ORDER BY p.start_number""",
+        (event_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]
 
 
 @router.post("/", response_model=ParticipantResponse, status_code=201)
@@ -56,16 +73,20 @@ def create_participant(
     try:
         cur = db.execute(
             """INSERT INTO Participants
-               (event_id, class_id, start_number, first_name, last_name,
-                birth_year, club, license_number, status)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
-            (event_id, body.class_id, body.start_number, body.first_name, body.last_name,
-             body.birth_year, body.club, body.license_number, body.status),
+               (event_id, class_id, club_id, start_number, first_name, last_name,
+                birth_year, license_number, status, fee_paid, helmet_ok)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+            (event_id, body.class_id, body.club_id, body.start_number,
+             body.first_name, body.last_name,
+             body.birth_year, body.license_number, body.status,
+             int(body.fee_paid), int(body.helmet_ok)),
         )
         db.commit()
-        return dict(db.execute("SELECT * FROM Participants WHERE id = ?", (cur.lastrowid,)).fetchone())
+        return _row_with_club(db, cur.lastrowid)
     except Exception:
-        raise HTTPException(409, f"Startnummer {body.start_number} bereits vergeben")
+        detail = (f"Startnummer {body.start_number} bereits vergeben"
+                  if body.start_number else "Fehler beim Speichern")
+        raise HTTPException(409, detail)
 
 
 @router.patch("/{participant_id}", response_model=ParticipantResponse)
@@ -85,7 +106,7 @@ def update_participant(
         (*updates.values(), participant_id, event_id),
     )
     db.commit()
-    return dict(db.execute("SELECT * FROM Participants WHERE id = ?", (participant_id,)).fetchone())
+    return _row_with_club(db, participant_id)
 
 
 @router.get("/suggest-class/{birth_year}")
