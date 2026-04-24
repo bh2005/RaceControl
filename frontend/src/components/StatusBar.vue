@@ -15,7 +15,10 @@
       <span><kbd class="bg-gray-700 rounded px-1">1–9</kbd> Strafe</span>
       <span><kbd class="bg-gray-700 rounded px-1">Ctrl+Z</kbd> Undo</span>
     </div>
-    <div class="text-gray-400">RaceControl Pro v0.1.0</div>
+    <div class="flex items-center gap-3 text-gray-400">
+      <RouterLink to="/lizenz" class="hover:text-gray-200 transition text-xs">GPL-2.0</RouterLink>
+      <span>RaceControl Pro v0.1.0</span>
+    </div>
   </footer>
 </template>
 

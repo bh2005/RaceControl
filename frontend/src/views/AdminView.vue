@@ -438,6 +438,69 @@
 
       </div>
 
+      <!-- ═══ TEST ═══ -->
+      <div v-if="activeTab === 'test'" class="space-y-4 max-w-2xl">
+
+        <!-- API Health Check -->
+        <div class="card p-4">
+          <h3 class="font-bold text-gray-800 mb-1">API Verbindungstest</h3>
+          <p class="text-xs text-gray-500 mb-3">
+            Prüft ob das Backend erreichbar ist und das JWT-Token noch gültig ist.
+          </p>
+          <div class="flex items-center gap-3">
+            <button @click="runApiCheck" :disabled="apiCheckRunning"
+                    class="btn-primary px-4 py-2 text-sm disabled:opacity-40">
+              {{ apiCheckRunning ? 'Prüfe…' : 'Verbindung prüfen' }}
+            </button>
+            <span v-if="apiCheckResult !== null" class="text-sm font-semibold flex items-center gap-1.5"
+                  :class="apiCheckResult ? 'text-green-600' : 'text-red-600'">
+              <span class="h-2 w-2 rounded-full" :class="apiCheckResult ? 'bg-green-500' : 'bg-red-500'"></span>
+              {{ apiCheckResult ? 'Backend erreichbar' : 'Verbindung fehlgeschlagen' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Testdaten -->
+        <div class="card p-4">
+          <h3 class="font-bold text-gray-800 mb-1">Testdaten</h3>
+          <p class="text-xs text-gray-500 mb-3">
+            Legt ein vollständiges Testszenario an: Reglement <em>JKS Demo</em> mit Strafen,
+            eine Veranstaltung mit 3 Klassen (Schüler A · Junioren · Senioren) und 6 Teilnehmern.
+          </p>
+          <div class="flex flex-wrap gap-2 mb-3">
+            <button @click="seedTestData" :disabled="seedRunning"
+                    class="btn-primary px-4 py-2 text-sm disabled:opacity-40">
+              {{ seedRunning ? 'Läuft…' : 'Testumgebung anlegen' }}
+            </button>
+            <button @click="deleteTestData" :disabled="seedRunning"
+                    class="btn-secondary px-4 py-2 text-sm disabled:opacity-40">
+              Testdaten entfernen
+            </button>
+            <button v-if="seedLog.length" @click="seedLog = []"
+                    class="text-xs text-gray-400 hover:text-gray-600 px-2 py-1">
+              Log löschen
+            </button>
+          </div>
+
+          <!-- Progress-Log -->
+          <div v-if="seedLog.length"
+               class="bg-gray-900 text-gray-100 font-mono text-xs rounded-lg p-3 max-h-56 overflow-y-auto space-y-0.5">
+            <div v-for="(entry, i) in seedLog" :key="i" class="flex items-start gap-2 leading-relaxed">
+              <span class="shrink-0 w-3"
+                    :class="{
+                      'text-green-400':  entry.status === 'ok',
+                      'text-red-400':    entry.status === 'err',
+                      'text-yellow-300': entry.status === 'running',
+                    }">
+                {{ entry.status === 'ok' ? '✓' : entry.status === 'err' ? '✗' : '›' }}
+              </span>
+              <span>{{ entry.label }}</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
     </section>
   </div>
 </template>
@@ -456,6 +519,7 @@ const tabs = [
   { id: 'users',    label: '👥 Benutzer' },
   { id: 'sponsors', label: '🤝 Sponsoren' },
   { id: 'system',   label: '⚙️ System' },
+  { id: 'test',     label: '🧪 Test' },
 ]
 
 // ── Events ──
@@ -668,6 +732,134 @@ async function saveSettings() {
 onMounted(async () => {
   await Promise.all([loadEvents(), store.loadReglements(), store.loadClubs(), loadUsers(), loadSponsors(), loadSettings()])
 })
+
+// ── Test ──────────────────────────────────────────────────────────────────────
+
+const apiCheckRunning = ref(false)
+const apiCheckResult  = ref(null)
+const seedRunning     = ref(false)
+const seedLog         = ref([])
+
+async function runApiCheck() {
+  apiCheckRunning.value = true
+  apiCheckResult.value  = null
+  try {
+    await api.get('/events/')
+    apiCheckResult.value = true
+  } catch {
+    apiCheckResult.value = false
+  } finally {
+    apiCheckRunning.value = false
+  }
+}
+
+function _log(label, status = 'running') {
+  seedLog.value.push({ label, status })
+}
+
+function _updateLast(status, label) {
+  const last = seedLog.value[seedLog.value.length - 1]
+  if (last) { last.status = status; if (label) last.label = label }
+}
+
+async function seedTestData() {
+  seedRunning.value = true
+  seedLog.value = []
+  try {
+    // 1. Reglement
+    _log('Reglement "JKS Demo" anlegen…')
+    let reg
+    try {
+      reg = (await api.post('/reglements/', {
+        name: 'JKS Demo', scoring_type: 'sum_all', runs_per_class: 2, has_training: true,
+      })).data
+    } catch {
+      reg = (await api.get('/reglements/')).data.find(r => r.name === 'JKS Demo')
+      if (!reg) { _updateLast('err', 'Reglement konnte nicht angelegt werden'); return }
+    }
+    _updateLast('ok', `Reglement "${reg.name}" (ID ${reg.id})`)
+
+    // 2. Strafen
+    _log('Strafen anlegen (Pylone 5 s · Torfehler 10 s · Ausbruch 20 s)…')
+    const penalties = [
+      { label: 'Pylone',    seconds: 5,  shortcut_key: 'P', sort_order: 0 },
+      { label: 'Torfehler', seconds: 10, shortcut_key: 'T', sort_order: 1 },
+      { label: 'Ausbruch',  seconds: 20, shortcut_key: 'A', sort_order: 2 },
+    ]
+    for (const p of penalties) {
+      await api.post(`/reglements/${reg.id}/penalties`, p).catch(() => {})
+    }
+    _updateLast('ok', '3 Strafen angelegt')
+
+    // 3. Veranstaltung
+    const today = new Date().toISOString().slice(0, 10)
+    const year  = new Date().getFullYear()
+    _log(`Veranstaltung "Testlauf ${year}" anlegen…`)
+    const event = (await api.post('/events/', {
+      name: `Testlauf ${year}`, date: today,
+      location: 'Testgelände', reglement_id: reg.id, status: 'active',
+    })).data
+    _updateLast('ok', `Veranstaltung ID ${event.id} angelegt (${today})`)
+
+    // 4. Klassen
+    const classDefs = [
+      { name: 'Schüler A', short_name: 'SA',  min_birth_year: 2015, max_birth_year: 2018, start_order: 0 },
+      { name: 'Junioren',  short_name: 'JUN', min_birth_year: 2010, max_birth_year: 2014, start_order: 1 },
+      { name: 'Senioren',  short_name: 'SEN', min_birth_year: null,  max_birth_year: 2009, start_order: 2 },
+    ]
+    const created = []
+    for (const def of classDefs) {
+      _log(`Klasse "${def.name}" anlegen…`)
+      const c = (await api.post(`/events/${event.id}/classes`, {
+        ...def, reglement_id: reg.id, run_status: 'planned',
+      })).data
+      created.push(c)
+      _updateLast('ok', `Klasse "${c.name}" (ID ${c.id})`)
+    }
+
+    // 5. Teilnehmer
+    const pDefs = [
+      { first_name: 'Tim',   last_name: 'Fischer', birth_year: 2016, start_number: 1, ci: 0 },
+      { first_name: 'Lena',  last_name: 'Braun',   birth_year: 2017, start_number: 2, ci: 0 },
+      { first_name: 'Jonas', last_name: 'Weber',   birth_year: 2012, start_number: 3, ci: 1 },
+      { first_name: 'Anna',  last_name: 'Koch',    birth_year: 2013, start_number: 4, ci: 1 },
+      { first_name: 'Max',   last_name: 'Schulz',  birth_year: 2006, start_number: 5, ci: 2 },
+      { first_name: 'Petra', last_name: 'Mayer',   birth_year: 2005, start_number: 6, ci: 2 },
+    ]
+    _log('6 Testteilnehmer anlegen…')
+    for (const p of pDefs) {
+      await api.post(`/events/${event.id}/participants`, {
+        first_name: p.first_name, last_name: p.last_name,
+        birth_year: p.birth_year, start_number: p.start_number,
+        class_id: created[p.ci].id,
+      })
+    }
+    _updateLast('ok', '6 Testteilnehmer angelegt')
+
+    _log('Testumgebung vollständig angelegt.', 'ok')
+    await loadEvents()
+    await store.loadEvents()
+  } catch (e) {
+    _updateLast('err', e.response?.data?.detail || e.message || 'Unbekannter Fehler')
+  } finally {
+    seedRunning.value = false
+  }
+}
+
+async function deleteTestData() {
+  const year = new Date().getFullYear()
+  const name = `Testlauf ${year}`
+  const evt  = events.value.find(e => e.name === name)
+  if (!evt) {
+    seedLog.value = [{ status: 'err', label: `Keine Veranstaltung "${name}" gefunden.` }]
+    return
+  }
+  if (!confirm(`Testveranstaltung "${evt.name}" und alle zugehörigen Daten löschen?`)) return
+  await api.delete(`/events/${evt.id}`)
+  seedLog.value = [{ status: 'ok', label: `"${evt.name}" gelöscht.` }]
+  await loadEvents()
+  await store.loadEvents()
+}
 
 function eventBadge(s) {
   return { planned: 'bg-gray-100 text-gray-500', active: 'bg-green-100 text-green-700',

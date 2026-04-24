@@ -14,13 +14,15 @@
 
 ## 1. System-Architektur & Infrastruktur
 - ✅ **Server-Setup:** Python/FastAPI + SQLite (WAL-Modus, Offline-First)
-- ⚠️ **Netzwerk:** CORS für lokales WLAN konfiguriert; Setup-Anleitung in README.md – kein dedizierter AP-Konfigurator
+- ✅ **Netzwerk:** CORS für lokales WLAN konfiguriert; alle Geräte erreichbar über `http://<Laptop-IP>:8000`
 - ✅ **Tech-Stack:** Backend FastAPI, Frontend Vue 3 + Tailwind CSS, Axios
-- ❌ **WebSockets:** Aktuell Polling (15 s auf der Landingpage) – kein echter WebSocket-Push
+- ✅ **WebSockets:** Echter Push via BroadcastManager; Livetiming und Landingpage reagieren sofort auf neue Ergebnisse und Statuswechsel
+- ✅ **Veranstaltungstag-Deployment:** `npm run build` einmalig → FastAPI liefert gebautes Frontend direkt aus; kein Node.js am Veranstaltungstag erforderlich
+- ✅ **API-Routing:** Einheitliches `/api`-Präfix für alle Endpunkte (Dev-Proxy und Produktion konsistent)
 
 ## 2. Benutzer- & Rollenverwaltung
 - ✅ **Admin:** Vollzugriff, Veranstaltungen, Klassen, Vereine, Benutzer, Sponsoren, System
-- ✅ **Schiedsrichter:** Korrekturberechtigung, Audit-Log, Klassensteuerung, Einspruchfrist
+- ✅ **Schiedsrichter:** Korrekturberechtigung, Audit-Log, Klassensteuerung, Einspruchfrist, Drucken
 - ✅ **Nennung:** Check-in, Abnahme (Nenngeld + Helm), Nennungsschluss, Drucken
 - ✅ **Zeitnahme:** Tastaturoptimierte Eingabe, Strafen, DNS/DNF/DSQ, Undo, Vorziehen
 - ✅ **Gast/Viewer:** Landingpage, Livetiming (kein Login erforderlich)
@@ -43,14 +45,16 @@
 - ✅ **Desktop-Ansicht:** Datendichte für Zeitnahme und Admin
 - ✅ **Tablet-Ansicht:** Touch-optimiert für Nennbüro und Schiedsrichter
 - ✅ **Mobile-First Livetiming:** Dunkles Card-Layout, Sponsorenbereich, Klassenstatus
-- ❌ **PWA-Support:** Service Worker, Offline-Indikator – noch nicht implementiert
+- ✅ **PWA-Support:** Service Worker (Workbox), Offline-Caching für Standings und Public-API, Web App Manifest, "Zum Startbildschirm hinzufügen"
+- ✅ **Offline-Indikator:** Amber-Banner erscheint automatisch bei Netzwerkausfall (alle Views)
 
 ## 6. Reporting & Export
-- ⚠️ **Nennliste drucken:** HTML-Druck mit Unterschriftsfeld, Versicherungshinweis und Einverständniserklärung – fertig
-- ❌ **Ergebnisliste PDF:** Export im ADAC Hessen-Thüringen Standardformat – offen
-- ❌ **Sprecherliste:** Ausdruck mit Startnummer, Name, Verein, Klasse für den Hallensprecher – offen
+- ✅ **Nennliste drucken:** HTML-Druck mit Unterschriftsfeld, Versicherungshinweis, Einverständniserklärung
+- ✅ **Offizielles Nennungsformular:** 2-seitiger ADAC-Ausdruck pro Teilnehmer (Nennungsformular + Haftungsausschluss); verfügbar sobald Lizenz + Helm + Nenngeld OK
+- ✅ **Ergebnisliste drucken:** A4 quer, ADAC-Format mit Fahrzeit / Fehlerpunkte / Lauf-Gesamt pro Lauf, Jahrgang, Summe, Differenz, Einspruchfrist-Zeitstempel, Schiedsrichter-Unterschriftszeile
+- ✅ **Sprecherliste drucken:** A4 hoch, alle Teilnehmer nach Klasse sortiert mit Startnummer, Name, Verein, Jahrgang, Notiz-Spalte
+- ✅ **Einspruchsfrist-Zeitstempel:** 30-Minuten-Timer ab Klassenende; „bis: HH:MM Uhr" auf der Ergebnisliste
 - ❌ **Urkunden:** Seriendruckvorlage für Platziertenurkunden – offen
-- ⚠️ **Einspruchsfrist-Zeitstempel:** 30-Minuten-Timer vorhanden; „Aushang um: …"-Text für den Ausdruck fehlt noch
 
 ## 7. Datenbank-Design & Datenmodell
 - ✅ **Reglement-Tabellen:** `Reglements`, `PenaltyDefinitions`
@@ -65,7 +69,9 @@
 ## 8. Qualitätssicherung & Test
 - ❌ **Stresstest:** Simulation mit 300 Datensätzen und 50+ simultanen Clients – noch nicht durchgeführt
 - ✅ **Datensicherheit:** Sofortige Persistenz bei jeder Eingabe (kein Datenverlust bei WLAN-Abbruch)
-- ❌ **Automatisierte Tests:** Unit-/Integrationstests für Backend und Frontend – noch nicht vorhanden
+- ✅ **Automatisierte Tests:** pytest-Integrationstests (auth, events, participants, results, public); Vitest-Tests für useNetworkStatus und useRealtimeUpdate; GitHub Actions CI/CD
+- ✅ **Admin Test-Tab:** API Verbindungscheck + Testdaten-Seeder (Reglement, Klassen, Teilnehmer) mit Progress-Log
+- ✅ **GPL-2.0 Lizenzseite:** `/lizenz`-Route mit Projektinfo, Bibliotheken-Übersicht, Link auf gnu.org; GPL-Link in StatusBar
 
 ---
 
@@ -73,10 +79,6 @@
 
 | Priorität | Thema | Aufwand |
 |-----------|-------|---------|
-| 🔴 Hoch | PDF-Export Ergebnisliste (ADAC-Format) | mittel |
-| 🔴 Hoch | Sprecherliste drucken | klein |
-| 🟡 Mittel | WebSockets (Echtzeit-Push statt Polling) | groß |
-| 🟡 Mittel | Einspruchsfrist-Aushang-Text auf Ausdruck | klein |
-| 🟢 Nice-to-have | PWA / Offline-Indikator | mittel |
-| 🟢 Nice-to-have | Urkunden-Seriendruck | mittel |
-| 🟢 Nice-to-have | Automatisierte Tests | groß |
+| 🟡 Mittel | Urkunden-Seriendruck | mittel |
+| 🟢 Nice-to-have | Stresstest (300 Starter, 50 Clients) | groß |
+| ~~🟢 Nice-to-have~~ | ~~Automatisierte Tests~~ | ~~groß~~ |

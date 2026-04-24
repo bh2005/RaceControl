@@ -83,6 +83,20 @@
           </div>
         </div>
 
+        <!-- Lichtschranken-Status -->
+        <div class="flex items-center gap-2 text-xs mb-3">
+          <span class="h-2 w-2 rounded-full shrink-0 transition-colors duration-500"
+                :class="lsConnected ? 'bg-green-500' : 'bg-gray-300'"></span>
+          <span :class="lsConnected ? 'text-green-700 font-semibold' : 'text-gray-400'">
+            {{ lsConnected ? 'Lichtschranke verbunden' : 'Lichtschranke nicht verbunden' }}
+          </span>
+          <Transition name="fade">
+            <span v-if="lsFlash" class="ml-auto text-green-600 font-bold">
+              ⚡ Zeit eingetragen
+            </span>
+          </Transition>
+        </div>
+
         <!-- Zeitfeld -->
         <div class="flex items-center gap-3 mb-3">
           <div class="flex-1 relative">
@@ -92,7 +106,10 @@
               type="text"
               inputmode="decimal"
               placeholder="0.00"
-              class="w-full text-center border-2 border-msc-blue rounded-xl px-4 py-3 text-6xl font-black tabnum text-msc-blue focus:outline-none focus:ring-4 focus:ring-blue-200 bg-blue-50/30"
+              class="w-full text-center border-2 rounded-xl px-4 py-3 text-6xl font-black tabnum focus:outline-none focus:ring-4 bg-blue-50/30 transition-colors duration-300"
+              :class="lsFlash
+                ? 'border-green-500 ring-4 ring-green-200 bg-green-50/30 text-green-700'
+                : 'border-msc-blue focus:ring-blue-200 text-msc-blue'"
               @keydown.enter.prevent="confirm"
             >
             <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg font-semibold">s</span>
@@ -272,6 +289,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import api from '../api/client'
 import { useEventStore } from '../stores/event'
+import { useRealtimeUpdate } from '../composables/useRealtimeUpdate'
 
 const store = useEventStore()
 
@@ -287,6 +305,34 @@ const history          = ref([])  // für Undo
 const currentReglement = ref(null)
 const timeInput        = ref(null)
 const manualOrder      = ref([])  // participant IDs in user-defined sequence
+
+// ── Lichtschranke / Timing-Device ─────────────────────────────────────────────
+const lsConnected = ref(false)   // Raspi aktuell verbunden
+const lsFlash     = ref(false)   // kurzes Aufleuchten wenn Zeit ankommt
+let lsFlashTimer  = null
+
+function handleWsMessage(data) {
+  if (data.type === 'timing_device_status') {
+    lsConnected.value = data.connected
+  }
+  if (data.type === 'timing_device_heartbeat') {
+    lsConnected.value = true
+  }
+  if (data.type === 'timing_result' && typeof data.raw_time === 'number') {
+    rawTime.value      = data.raw_time.toFixed(2)
+    resultStatus.value = 'valid'
+    lsFlash.value      = true
+    clearTimeout(lsFlashTimer)
+    lsFlashTimer = setTimeout(() => { lsFlash.value = false }, 1800)
+    timeInput.value?.focus()
+  }
+  // Reload results if another client confirmed a result
+  if (data.type === 'results' && data.class_id === selectedClassId.value) {
+    loadRunResults()
+  }
+}
+
+useRealtimeUpdate(handleWsMessage)
 
 const runNumbers = computed(() => {
   const reg = currentReglement.value
@@ -462,3 +508,8 @@ function statusLabel(s) {
   return { planned: 'Geplant', running: 'Läuft', paused: 'Unterbrochen', preliminary: 'Vorläufig', official: 'Offiziell' }[s] || s
 }
 </script>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.4s ease; }
+.fade-enter-from, .fade-leave-to       { opacity: 0; }
+</style>

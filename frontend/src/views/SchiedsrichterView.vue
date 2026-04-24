@@ -238,6 +238,17 @@
           class="w-full bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 rounded-lg transition flex items-center justify-center gap-1.5">
           🖨 Sprecherliste
         </button>
+        <div class="border-t border-gray-700 pt-2 space-y-1.5">
+          <div class="text-xs text-gray-500 font-semibold uppercase tracking-widest">Urkunden (Top 3)</div>
+          <button @click="printUrkunden('club')"
+            class="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2 rounded-lg transition flex items-center justify-center gap-1.5">
+            🏆 Clubmeisterschaft
+          </button>
+          <button @click="printUrkunden('adac')"
+            class="w-full bg-gray-600 hover:bg-gray-500 text-white text-xs font-bold py-2 rounded-lg transition flex items-center justify-center gap-1.5">
+            🖨 ADAC-Vordruck Overlay
+          </button>
+        </div>
       </div>
 
       <h2 class="text-xs font-bold uppercase tracking-widest text-gray-500 px-1">Audit-Log</h2>
@@ -685,5 +696,179 @@ async function printSprecherliste() {
     <footer>RaceControl Pro · ${esc(settings.organizer_name || 'MSC Braach e.V. im ADAC')} · Ausdruck: ${printDate}</footer>`
 
   printOpen(`Sprecherliste – ${event.name}`, html)
+}
+
+async function printUrkunden(template) {
+  if (!store.activeEvent) return
+  const eventId = store.activeEvent.id
+  const [stRes, setRes] = await Promise.all([
+    api.get(`/events/${eventId}/standings`),
+    api.get('/settings/'),
+  ])
+  const settings = setRes.data
+  const event    = store.activeEvent
+
+  // Collect podium rows (rank 1-3, valid time only) grouped by class order
+  const pages = []
+  for (const cls of store.classes) {
+    const podium = stRes.data
+      .filter(r => r.class_id === cls.id && r.rank <= 3 && r.total_time != null)
+      .sort((a, b) => a.rank - b.rank)
+    for (const row of podium) {
+      pages.push(template === 'club'
+        ? clubPage(row, cls, event, settings)
+        : adacOverlayPage(row, cls, event, settings))
+    }
+  }
+  if (!pages.length) {
+    alert('Noch keine platzierten Ergebnisse vorhanden.')
+    return
+  }
+
+  const RANK_STYLE = {
+    1: { bg: '#FFD700', border: '#B8860B', text: '#4A3000', label: '1. Platz' },
+    2: { bg: '#D8D8D8', border: '#888',    text: '#2A2A2A', label: '2. Platz' },
+    3: { bg: '#CD8040', border: '#8B5020', text: '#fff',    label: '3. Platz' },
+  }
+
+  function clubPage(row, cls, event, cfg) {
+    const rs  = RANK_STYLE[row.rank] || { bg: '#1a3fa0', border: '#122d78', text: '#fff', label: `${row.rank}. Platz` }
+    const org = esc(cfg.organizer_name || 'MSC Braach e.V. im ADAC')
+    return `
+<div class="page">
+  <!-- blue header band -->
+  <div class="hdr">
+    <div class="hdr-org">${org}</div>
+    <div class="hdr-sub">Kart-Slalom · ADAC Hessen-Thüringen</div>
+  </div>
+
+  <!-- outer decorative frame -->
+  <div class="frame">
+
+    <div class="title-block">
+      <div class="title-line"></div>
+      <div class="title-text">U&nbsp;R&nbsp;K&nbsp;U&nbsp;N&nbsp;D&nbsp;E</div>
+      <div class="title-line"></div>
+    </div>
+
+    <!-- rank badge -->
+    <div class="rank-badge" style="background:${rs.bg};border-color:${rs.border};color:${rs.text}">
+      ${rs.label}
+    </div>
+
+    <!-- name -->
+    <div class="p-name">${esc(row.first_name)}&nbsp;${esc(row.last_name)}</div>
+    <div class="p-club">${esc(row.club || '')}</div>
+
+    <!-- achievement text -->
+    <div class="achievement">
+      hat in der Klasse <span class="hl">${esc(cls.name)}</span> bei der<br>
+      <span class="ev-name">${esc(event.name)}</span><br>
+      am <span class="hl">${fmtDate(event.date)}</span>
+      in <span class="hl">${esc(event.location || '')}</span><br>
+      den <span class="hl">${row.rank}. Platz</span> belegt.
+    </div>
+
+    ${row.total_time != null
+      ? `<div class="time-result">Gesamtzeit: ${row.total_time.toFixed(2)}&thinsp;s</div>`
+      : ''}
+
+  </div><!-- /frame -->
+
+  <!-- footer -->
+  <div class="cert-footer">
+    <div class="foot-place">${esc(event.location || '')}, den ${fmtDate(event.date)}</div>
+    <div class="sig-row">
+      <div class="sig-col"><div class="sig-line"></div><div class="sig-lbl">Schiedsrichter / Sportkommissär</div></div>
+      <div class="sig-col"><div class="sig-line"></div><div class="sig-lbl">Veranstalter</div></div>
+    </div>
+  </div>
+</div>`
+  }
+
+  function adacOverlayPage(row, cls, event, cfg) {
+    // Positional overlay for pre-printed ADAC forms.
+    // Adjust the 'top' values (in mm) to match your specific form.
+    return `
+<div class="page overlay-page">
+  <!-- Guide boxes only visible on screen, hidden in print -->
+  <div class="guide" style="top:98mm">Veranstaltung</div>
+  <div class="guide" style="top:118mm">Klasse / Disziplin</div>
+  <div class="guide" style="top:148mm">Name</div>
+  <div class="guide" style="top:172mm">Platz</div>
+  <div class="guide" style="top:225mm">Datum</div>
+
+  <div class="ol-field ev-field"    style="top:101mm">${esc(event.name)} · ${esc(event.location || '')}</div>
+  <div class="ol-field cls-field"   style="top:121mm">${esc(cls.name)}</div>
+  <div class="ol-field name-field"  style="top:151mm">${esc(row.first_name)} ${esc(row.last_name)}</div>
+  <div class="ol-field rank-field"  style="top:175mm">${row.rank}.</div>
+  <div class="ol-field date-field"  style="top:228mm">${fmtDate(event.date)}</div>
+</div>`
+  }
+
+  const w = window.open('', '_blank', 'width=900,height=700')
+  if (!w) { alert('Popup blockiert.'); return }
+  w.document.write(`<!DOCTYPE html><html lang="de"><head>
+<meta charset="UTF-8"><title>Urkunden – ${esc(event.name)}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  @page { size: A4 portrait; margin: 0; }
+  body { font-family: 'Georgia', 'Times New Roman', serif; background: #ccc; }
+
+  /* ── shared page shell ── */
+  .page { width: 210mm; height: 297mm; position: relative; overflow: hidden;
+          page-break-after: always; background: #fff; margin: 0 auto; }
+  .page:last-child { page-break-after: avoid; }
+
+  /* ── club template ── */
+  .hdr { background: #1a3fa0; color: #fff; text-align: center;
+         padding: 14mm 12mm 10mm; }
+  .hdr-org  { font-size: 15pt; font-weight: bold; letter-spacing: 1px; }
+  .hdr-sub  { font-size: 8.5pt; opacity: .75; margin-top: 3px; letter-spacing: 2px; text-transform: uppercase; }
+
+  .frame { margin: 7mm 10mm; border: 3px double #1a3fa0;
+           padding: 8mm 12mm; min-height: 185mm;
+           display: flex; flex-direction: column; align-items: center; gap: 7mm; }
+
+  .title-block { display: flex; align-items: center; gap: 5mm; width: 100%; }
+  .title-line  { flex: 1; border-top: 1.5px solid #1a3fa0; }
+  .title-text  { font-size: 22pt; font-weight: bold; color: #1a3fa0; letter-spacing: 4px;
+                 white-space: nowrap; }
+
+  .rank-badge  { font-size: 14pt; font-weight: bold; padding: 5px 22px;
+                 border: 3px solid; border-radius: 6px; letter-spacing: 1px; }
+
+  .p-name { font-size: 20pt; font-weight: bold; text-align: center;
+            color: #111; border-bottom: 1.5px solid #ccc; padding-bottom: 4px; width: 100%; text-align: center; }
+  .p-club { font-size: 10pt; color: #666; text-align: center; }
+
+  .achievement { font-size: 11.5pt; text-align: center; line-height: 1.8; color: #222; }
+  .hl      { font-weight: bold; color: #1a3fa0; }
+  .ev-name { font-style: italic; font-size: 12pt; }
+
+  .time-result { font-size: 10pt; color: #555; font-family: 'Courier New', monospace;
+                 background: #f0f4fb; border: 1px solid #c5d0e8; padding: 3px 12px; border-radius: 4px; }
+
+  .cert-footer { position: absolute; bottom: 10mm; left: 10mm; right: 10mm; }
+  .foot-place  { font-size: 9pt; color: #555; margin-bottom: 6mm; font-family: Arial, sans-serif; }
+  .sig-row     { display: flex; gap: 15mm; }
+  .sig-col     { flex: 1; }
+  .sig-line    { border-bottom: 1px solid #333; height: 8mm; margin-bottom: 2mm; }
+  .sig-lbl     { font-size: 8pt; color: #666; text-align: center; font-family: Arial, sans-serif; }
+
+  /* ── ADAC overlay template ── */
+  .overlay-page { background: transparent; }
+  .ol-field     { position: absolute; left: 25mm; right: 20mm; font-family: Arial, sans-serif;
+                  font-size: 12pt; font-weight: bold; color: #000; }
+  .name-field   { font-size: 16pt; }
+  .rank-field   { font-size: 20pt; left: 95mm; }
+  .guide        { position: absolute; left: 25mm; right: 20mm; height: 6mm;
+                  border: 1px dashed #f90; background: rgba(255,180,0,.08);
+                  font-size: 7pt; color: #c70; display: flex; align-items: center; padding-left: 3px; }
+  @media print { .guide { display: none !important; } .overlay-page { background: transparent !important; } }
+</style>
+</head><body>${pages.join('\n')}</body></html>`)
+  w.document.close()
+  setTimeout(() => w.print(), 500)
 }
 </script>

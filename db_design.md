@@ -1,242 +1,350 @@
 # RaceControl Pro – Datenbankdesign
 
-**Stack:** SQLite (Offline-First) · Python/FastAPI  
-**Zielgröße:** ~300 Starter, ~10 Klassen, 50+ simultane WS-Clients
+**Stack:** SQLite (WAL-Modus, Offline-First) · Python 3.9+ / FastAPI  
+**Zielgröße:** ~300 Starter, ~10 Klassen, 50+ simultane WS-Clients  
+**Schema-Datei:** `schema.sql` (Single Source of Truth)  
+*Letzte Aktualisierung: 2026-04-24 · v0.2.0*
 
 ---
 
-## Übersicht: Alle Tabellen
+## Tabellenübersicht
 
 ```
+Reglements
+  └── PenaltyDefinitions
+
 Events
   └── Classes ──────────────────────────────┐
         └── RaceResults                      │
               ├── RunPenalties               │
-              └── AuditLog                   │
-Reglements                                   │
-  └── PenaltyDefinitions                     │
+              └── AuditLog ──── Users        │
 Participants ────────────────────────────────┘
-Users (für AuditLog & Rollenverwaltung)
+  └── Clubs (FK)
+
+Teams
+  └── TeamMembers ── Participants
+
+Sponsors
+Settings
 ```
 
 ---
 
 ## 1. Reglement-Engine
 
-### Tabelle: `Reglements`
+### `Reglements`
 
 | Spalte | Typ | Beschreibung |
 |---|---|---|
-| `id` | INTEGER PK | Eindeutige ID |
-| `name` | TEXT NOT NULL | z.B. `"ADAC JKS 2026"` oder `"KS2000 Hessen"` |
-| `scoring_type` | TEXT NOT NULL | `"sum_all"` (Summe aller Läufe) · `"best_of"` · `"sum_minus_worst"` (Streicher) |
-| `points_formula` | TEXT | Name der Punktetabelle oder JSON-Formel (optional, für Meisterschaft) |
-| `runs_per_class` | INTEGER DEFAULT 2 | Anzahl Wertungsläufe (ohne Training) |
-| `has_training` | BOOLEAN DEFAULT 1 | Ob ein Trainingslauf vorgesehen ist |
-| `created_at` | DATETIME DEFAULT CURRENT_TIMESTAMP | |
+| `id` | INTEGER PK AUTOINCREMENT | |
+| `name` | TEXT NOT NULL UNIQUE | z.B. `"ADAC JKS 2026"`, `"KS2000 Hessen"` |
+| `scoring_type` | TEXT NOT NULL | `"sum_all"` · `"best_of"` · `"sum_minus_worst"` |
+| `points_formula` | TEXT | JSON-Formel oder Tabellen-Name (optional) |
+| `runs_per_class` | INTEGER DEFAULT 2 | Wertungsläufe ohne Training |
+| `has_training` | INTEGER DEFAULT 1 | 1 = Trainingslauf vorgesehen |
+| `created_at` | TEXT | ISO-8601-Timestamp |
 
-### Tabelle: `PenaltyDefinitions`
+### `PenaltyDefinitions`
 
 | Spalte | Typ | Beschreibung |
 |---|---|---|
-| `id` | INTEGER PK | Eindeutige ID |
-| `reglement_id` | INTEGER FK → Reglements | Zu welchem Reglement gehört diese Strafe |
-| `label` | TEXT NOT NULL | Anzeigename (z.B. `"Pylone"`, `"Torfehler"`) |
-| `seconds` | REAL NOT NULL | Strafwert in Sekunden (z.B. `2.0` oder `10.0`) |
-| `shortcut_key` | CHAR(1) | Taste für die Zeitnahme (z.B. `'P'` oder `'1'`) |
-| `sort_order` | INTEGER DEFAULT 0 | Reihenfolge in der Zeitnahme-UI |
+| `id` | INTEGER PK AUTOINCREMENT | |
+| `reglement_id` | INTEGER FK → Reglements CASCADE | |
+| `label` | TEXT NOT NULL | z.B. `"Pylone"`, `"Torfehler"`, `"Ausbruch"` |
+| `seconds` | REAL NOT NULL ≥ 0 | Strafwert in Sekunden |
+| `shortcut_key` | TEXT | Einzeltaste für Zeitnahme-UI (z.B. `'P'`) |
+| `sort_order` | INTEGER DEFAULT 0 | Reihenfolge in der UI |
+
+> UNIQUE: `(reglement_id, shortcut_key)` — keine doppelten Tasten pro Reglement
 
 ---
 
 ## 2. Veranstaltungen & Klassen
 
-### Tabelle: `Events`
-
-Ohne diese Tabelle sind alle Ergebnisse keiner Veranstaltung zugeordnet — bei mehreren Events in der DB wäre nichts trennbar.
+### `Events`
 
 | Spalte | Typ | Beschreibung |
 |---|---|---|
-| `id` | INTEGER PK | Eindeutige ID |
+| `id` | INTEGER PK AUTOINCREMENT | |
 | `name` | TEXT NOT NULL | z.B. `"ADAC Kart-Slalom Kassel 2026-06-01"` |
-| `date` | DATE NOT NULL | Veranstaltungsdatum |
+| `date` | TEXT NOT NULL | ISO-8601: `"2026-06-01"` |
 | `location` | TEXT | Austragungsort |
-| `reglement_id` | INTEGER FK → Reglements | Gilt-für-Reglement (Standardwert, überschreibbar pro Klasse) |
+| `reglement_id` | INTEGER FK → Reglements SET NULL | Standard-Reglement (überschreibbar pro Klasse) |
 | `status` | TEXT DEFAULT `'planned'` | `"planned"` · `"active"` · `"finished"` · `"official"` |
-| `created_at` | DATETIME DEFAULT CURRENT_TIMESTAMP | |
+| `description` | TEXT | Infotext für die Landingpage (HTML/Freitext) |
+| `created_at` | TEXT | ISO-8601-Timestamp |
 
-### Tabelle: `Classes`
-
-Ersetzt die fehlende Referenz von `class_id` in `RaceResults`. Definiert auch die automatische Altersklassen-Zuweisung über `birth_year`.
+### `Classes`
 
 | Spalte | Typ | Beschreibung |
 |---|---|---|
-| `id` | INTEGER PK | Eindeutige ID |
-| `event_id` | INTEGER FK → Events | Zu welcher Veranstaltung |
-| `reglement_id` | INTEGER FK → Reglements | Kann vom Event-Standard abweichen |
+| `id` | INTEGER PK AUTOINCREMENT | |
+| `event_id` | INTEGER FK → Events CASCADE | |
+| `reglement_id` | INTEGER FK → Reglements SET NULL | Kann vom Event-Standard abweichen |
 | `name` | TEXT NOT NULL | z.B. `"Schüler A"`, `"Junioren"`, `"Senioren"` |
 | `short_name` | TEXT | Kürzel für Ausdrucke (z.B. `"SA"`) |
 | `min_birth_year` | INTEGER | Untergrenze Geburtsjahr (inklusiv) |
 | `max_birth_year` | INTEGER | Obergrenze Geburtsjahr (inklusiv) |
-| `run_status` | TEXT DEFAULT `'planned'` | `"planned"` · `"running"` · `"preliminary"` · `"official"` |
+| `run_status` | TEXT DEFAULT `'planned'` | Statuswerte siehe unten |
 | `start_order` | INTEGER DEFAULT 0 | Reihenfolge im Tagesablauf |
+| `registration_closed_at` | TEXT | ISO-8601-Timestamp: Nennungsschluss |
+| `start_time` | TEXT | Geplante/tatsächliche Startzeit `"HH:MM"` |
+| `end_time` | TEXT | ISO-Timestamp Klassenende → startet 30-min-Einspruchsfrist |
+
+> UNIQUE: `(event_id, name)`
+
+**Klassen-Statusübergänge:**
+
+```
+planned → running → paused ↔ running
+                 ↓
+           preliminary → official
+```
+
+| Status | Bedeutung |
+|---|---|
+| `planned` | Noch nicht gestartet |
+| `running` | Läuft aktuell |
+| `paused` | Unterbrochen (z.B. Regen, Vorfall) |
+| `preliminary` | Vorläufig beendet — Einspruchsfrist läuft |
+| `official` | Offiziell — freigegeben durch Schiedsrichter |
 
 ---
 
-## 3. Teilnehmer
+## 3. Vereine
 
-### Tabelle: `Participants`
+### `Clubs`
 
 | Spalte | Typ | Beschreibung |
 |---|---|---|
-| `id` | INTEGER PK | Eindeutige ID |
-| `event_id` | INTEGER FK → Events | Zugeordnete Veranstaltung |
-| `class_id` | INTEGER FK → Classes | Klasse (automatisch via `birth_year` oder manuell) |
-| `start_number` | INTEGER NOT NULL | Die feste Nummer am Kart |
+| `id` | INTEGER PK AUTOINCREMENT | |
+| `name` | TEXT NOT NULL UNIQUE | z.B. `"MSC Braach e.V. im ADAC"` |
+| `short_name` | TEXT | Kürzel für Listen (z.B. `"MSC Braach"`) |
+| `city` | TEXT | Ort (optional) |
+| `created_at` | TEXT | ISO-8601-Timestamp |
+
+---
+
+## 4. Teilnehmer
+
+### `Participants`
+
+| Spalte | Typ | Beschreibung |
+|---|---|---|
+| `id` | INTEGER PK AUTOINCREMENT | |
+| `event_id` | INTEGER FK → Events CASCADE | Zugeordnete Veranstaltung |
+| `class_id` | INTEGER FK → Classes SET NULL | Klasse (auto via `birth_year` oder manuell) |
+| `club_id` | INTEGER FK → Clubs SET NULL | NULL = `"n.N."` (Verein unbekannt) |
+| `start_number` | INTEGER | NULL bis zur Auslosung |
 | `first_name` | TEXT NOT NULL | Vorname |
 | `last_name` | TEXT NOT NULL | Nachname |
 | `birth_year` | INTEGER | Für automatisches Klassen-Mapping |
-| `club` | TEXT | Ortsclub / Team |
 | `license_number` | TEXT | ADAC-Lizenznummer (optional) |
 | `status` | TEXT DEFAULT `'registered'` | `"registered"` · `"checked_in"` · `"technical_ok"` · `"disqualified"` |
+| `fee_paid` | INTEGER DEFAULT 0 | 0/1 — Nenngeld bezahlt |
+| `helmet_ok` | INTEGER DEFAULT 0 | 0/1 — Helmkontrolle bestanden |
 
-> **Automatisches Klassen-Mapping:** Beim Check-in prüft das Backend `birth_year` gegen `Classes.min_birth_year` / `max_birth_year` des Events und schlägt die passende Klasse vor.
+> UNIQUE: `(event_id, start_number)` — Startnummer eindeutig pro Veranstaltung  
+> Automatisches Klassen-Mapping: Backend prüft `birth_year` gegen `min_birth_year`/`max_birth_year` und schlägt passende Klasse vor.
 
 ---
 
-## 4. Ergebnisse & Strafen
+## 5. Ergebnisse & Strafen
 
-### Tabelle: `RaceResults`
+### `RaceResults`
 
-Kernprinzip: **Rohdaten unveränderlich, Korrekturen im AuditLog.**  
-`total_penalties` wird immer aus `RunPenalties` berechnet, nicht direkt gespeichert.
+Kernprinzip: **Rohdaten unveränderlich — Korrekturen über AuditLog.**  
+`total_penalties` wird nie gespeichert, immer live aus `RunPenalties` berechnet.
 
 | Spalte | Typ | Beschreibung |
 |---|---|---|
-| `id` | INTEGER PK | Eindeutige ID |
-| `event_id` | INTEGER FK → Events | Zugeordnete Veranstaltung |
-| `participant_id` | INTEGER FK → Participants | Wer ist gefahren? |
-| `class_id` | INTEGER FK → Classes | In welcher Klasse? |
-| `run_number` | INTEGER NOT NULL | `0` = Training · `1` = Lauf 1 · `2` = Lauf 2 |
-| `raw_time` | REAL | Die gestoppte Zeit in Sekunden (z.B. `45.67`) · NULL bei DNS/DNF |
+| `id` | INTEGER PK AUTOINCREMENT | |
+| `event_id` | INTEGER FK → Events CASCADE | |
+| `participant_id` | INTEGER FK → Participants CASCADE | |
+| `class_id` | INTEGER FK → Classes CASCADE | |
+| `run_number` | INTEGER ≥ 0 | `0` = Training · `1` = Lauf 1 · `2` = Lauf 2 … |
+| `raw_time` | REAL | Gestoppte Zeit in Sekunden · NULL bei DNS/DNF |
 | `status` | TEXT DEFAULT `'valid'` | `"valid"` · `"dns"` · `"dnf"` · `"dsq"` |
-| `is_official` | BOOLEAN DEFAULT 0 | Vom Schiedsrichter freigegeben? |
-| `entered_by` | INTEGER FK → Users | Wer hat den Eintrag erstellt |
-| `created_at` | DATETIME DEFAULT CURRENT_TIMESTAMP | |
+| `is_official` | INTEGER DEFAULT 0 | 1 = Schiedsrichter hat freigegeben |
+| `entered_by` | INTEGER FK → Users SET NULL | Wer hat eingetragen |
+| `created_at` | TEXT | ISO-8601-Timestamp |
 
-> **`total_penalties` wird nicht gespeichert** — sie wird on-the-fly berechnet:  
-> `SELECT SUM(pd.seconds * rp.count) FROM RunPenalties rp JOIN PenaltyDefinitions pd ON pd.id = rp.penalty_definition_id WHERE rp.result_id = ?`
+> UNIQUE: `(participant_id, class_id, run_number)` — ein Ergebnis pro Fahrer/Lauf
 
-### Tabelle: `RunPenalties`
+**Strafberechnung (immer on-the-fly):**
+```sql
+SELECT COALESCE(SUM(pd.seconds * rp.count), 0)
+FROM   RunPenalties rp
+JOIN   PenaltyDefinitions pd ON pd.id = rp.penalty_definition_id
+WHERE  rp.result_id = ?
+```
 
-Einzelne Strafeinträge pro Lauf. Ermöglicht vollständige Nachvollziehbarkeit (welche Strafen wurden vergeben?) und korrekte Neuberechnung, wenn sich ein Strafwert ändert.
+### `RunPenalties`
 
 | Spalte | Typ | Beschreibung |
 |---|---|---|
-| `id` | INTEGER PK | Eindeutige ID |
-| `result_id` | INTEGER FK → RaceResults | Zu welchem Lauf |
-| `penalty_definition_id` | INTEGER FK → PenaltyDefinitions | Welche Strafart |
-| `count` | INTEGER DEFAULT 1 | Anzahl (z.B. 3× Pylone) |
-| `entered_by` | INTEGER FK → Users | Wer hat eingetragen |
-| `created_at` | DATETIME DEFAULT CURRENT_TIMESTAMP | |
+| `id` | INTEGER PK AUTOINCREMENT | |
+| `result_id` | INTEGER FK → RaceResults CASCADE | |
+| `penalty_definition_id` | INTEGER FK → PenaltyDefinitions RESTRICT | |
+| `count` | INTEGER DEFAULT 1 > 0 | Anzahl (z.B. 3× Pylone) |
+| `entered_by` | INTEGER FK → Users SET NULL | |
+| `created_at` | TEXT | ISO-8601-Timestamp |
 
 ---
 
-## 5. Benutzer & Rollen
+## 6. Benutzer & Rollen
 
-### Tabelle: `Users`
-
-Wird für `AuditLog`, `RaceResults.entered_by` und die Session-Verwaltung benötigt.
+### `Users`
 
 | Spalte | Typ | Beschreibung |
 |---|---|---|
-| `id` | INTEGER PK | Eindeutige ID |
-| `username` | TEXT NOT NULL UNIQUE | Anmeldename |
+| `id` | INTEGER PK AUTOINCREMENT | |
+| `username` | TEXT NOT NULL UNIQUE | |
 | `password_hash` | TEXT NOT NULL | bcrypt-Hash |
-| `role` | TEXT NOT NULL | `"admin"` · `"schiedsrichter"` · `"nennung"` · `"zeitnahme"` · `"viewer"` |
-| `display_name` | TEXT | Anzeigename (z.B. `"Hans Müller"`) |
-| `is_active` | BOOLEAN DEFAULT 1 | Konto aktiv? |
-| `created_at` | DATETIME DEFAULT CURRENT_TIMESTAMP | |
+| `role` | TEXT NOT NULL | Werte siehe unten |
+| `display_name` | TEXT | z.B. `"Hans Müller (SRI)"` |
+| `is_active` | INTEGER DEFAULT 1 | 0 = gesperrt |
+| `created_at` | TEXT | ISO-8601-Timestamp |
 
-### Rollen & Aufgaben
-
-| Rolle | Aufgaben | Schreiben | Lesen |
-|---|---|---|---|
-| `admin` | System-Setup, Reglements anlegen, User erstellen, Datenbank-Backups, finale Korrekturen | Alles (inkl. Löschen) | Alles |
-| `schiedsrichter` | Zeiten und Strafen korrigieren (mit Audit-Pflicht), Veto-Recht, offizielle Klassen-Freigabe | Korrekturen + Freigabe (kein System-Setup, keine User-Verwaltung) | Alles |
-| `nennung` | Fahrer-Check-in, Stammdaten korrigieren, Nachnennungen, Klassen-Zuweisung | Nur Stammdaten (`Participants`, `Classes`) | Stammdaten + Zeiten |
-| `zeitnahme` | Eingabe von Laufzeiten und Strafen, Lauf-Status setzen (Start/Ziel) | Nur `RaceResults` + `RunPenalties` | Stammdaten |
-| `viewer` | Ergebnisse live verfolgen, Tabellenstand, Urkunden-Vorschau | — (keine Eingabefelder sichtbar) | Alles (read-only) |
-
-### Berechtigungs-Matrix (API-Ebene)
+**Rollen & API-Berechtigungen:**
 
 | Ressource / Aktion | admin | schiedsrichter | nennung | zeitnahme | viewer |
-|---|---|---|---|---|---|
-| Reglements anlegen / ändern | ✅ | — | — | — | — |
-| Events anlegen / ändern | ✅ | — | — | — | — |
-| Klassen konfigurieren | ✅ | — | — | — | — |
-| User anlegen | ✅ | — | — | — | — |
-| Datenbank-Backup | ✅ | — | — | — | — |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Reglements, Events, Klassen, User | ✅ | — | — | — | — |
 | Teilnehmer anlegen / ändern | ✅ | — | ✅ | — | — |
-| Klassen-Zuweisung setzen | ✅ | — | ✅ | — | — |
-| Check-in / techn. Abnahme | ✅ | — | ✅ | — | — |
-| Zeiten eingeben | ✅ | — | — | ✅ | — |
-| Strafen eingeben | ✅ | — | — | ✅ | — |
-| Lauf-Status setzen | ✅ | — | — | ✅ | — |
+| Check-in, Abnahme (Nenngeld, Helm) | ✅ | — | ✅ | — | — |
+| Zeiten & Strafen eingeben | ✅ | — | — | ✅ | — |
+| Klassen-Status setzen (start/pause) | ✅ | ✅ | — | — | — |
 | Zeiten / Strafen korrigieren | ✅ | ✅ (Audit-Pflicht) | — | — | — |
-| Klasse freigeben (`run_status = official`) | ✅ | ✅ | — | — | — |
-| Ergebnisse lesen | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Livetiming / Urkunden-Vorschau | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Klasse freigeben (`official`) | ✅ | ✅ | — | — | — |
+| Ergebnisse, Livetiming lesen | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-> **Audit-Pflicht für `schiedsrichter`:** Jede Korrektur durch einen Schiedsrichter erfordert
-> eine Begründung (`reason`) und wird im `AuditLog` mit `user_id` und Timestamp festgehalten.
-> Ohne ausgefüllte Begründung lehnt die API die Änderung ab (`HTTP 422`).
+> **Audit-Pflicht:** Jede Schiedsrichter-Korrektur erfordert eine `reason`-Begründung. Ohne diese lehnt die API die Änderung mit HTTP 422 ab.
 
 ---
 
-## 6. Audit-Log
+## 7. Audit-Log
 
-### Tabelle: `AuditLog`
+### `AuditLog`
 
-Jede manuelle Änderung an `RaceResults` oder `RunPenalties` wird hier revisionssicher protokolliert.
+Revisionssichere Protokollierung aller Korrekturen. Wird **nie gelöscht** — auch wenn das zugehörige Ergebnis entfernt wird (`result_id → NULL`).
 
 | Spalte | Typ | Beschreibung |
 |---|---|---|
-| `id` | INTEGER PK | Eindeutige ID |
-| `result_id` | INTEGER FK → RaceResults | Welches Ergebnis wurde geändert |
-| `user_id` | INTEGER FK → Users | Wer hat geändert |
-| `field_changed` | TEXT NOT NULL | Welches Feld: `"raw_time"` · `"status"` · `"penalty"` · `"is_official"` |
-| `old_value` | TEXT | Wert vor der Änderung (JSON-serialisiert) |
-| `new_value` | TEXT | Wert nach der Änderung (JSON-serialisiert) |
-| `reason` | TEXT | Begründung (z.B. `"Pylone nach Videobeweis gestrichen"`) |
-| `timestamp` | DATETIME DEFAULT CURRENT_TIMESTAMP | Wann passierte die Änderung |
+| `id` | INTEGER PK AUTOINCREMENT | |
+| `result_id` | INTEGER FK → RaceResults SET NULL | NULL wenn Ergebnis gelöscht |
+| `user_id` | INTEGER FK → Users SET NULL | |
+| `field_changed` | TEXT NOT NULL | `"raw_time"` · `"status"` · `"penalty"` · `"is_official"` |
+| `old_value` | TEXT | Wert vor der Änderung |
+| `new_value` | TEXT | Wert nach der Änderung |
+| `reason` | TEXT NOT NULL | Pflichtbegründung |
+| `timestamp` | TEXT | ISO-8601-Timestamp |
 
 ---
 
-## 7. Beziehungsdiagramm (vereinfacht)
+## 8. Mannschaftswertung
 
-```
-Events ──────────────────────────┐
-  │                              │
-  ├── Classes ───────────────────┤
-  │     └── Participants ────────┤
-  │                              │
-  └── RaceResults ───────────────┘
-        ├── RunPenalties
-        │     └── PenaltyDefinitions ── Reglements
-        └── AuditLog
-              └── Users
-```
+### `Teams`
+
+| Spalte | Typ | Beschreibung |
+|---|---|---|
+| `id` | INTEGER PK AUTOINCREMENT | |
+| `event_id` | INTEGER FK → Events CASCADE | |
+| `name` | TEXT NOT NULL | z.B. `"MSC Braach I"` |
+| `club` | TEXT | Vereinsname (Freitext) |
+
+> UNIQUE: `(event_id, name)`
+
+### `TeamMembers`
+
+| Spalte | Typ | Beschreibung |
+|---|---|---|
+| `id` | INTEGER PK AUTOINCREMENT | |
+| `team_id` | INTEGER FK → Teams CASCADE | |
+| `participant_id` | INTEGER FK → Participants CASCADE | |
+
+> Bis zu 4 Mitglieder pro Team, beste 3 kommen in die Wertung.  
+> UNIQUE: `(team_id, participant_id)`
 
 ---
 
-## 8. SQLite-Besonderheiten
+## 9. Sponsoren & Einstellungen
 
-- **`REAL` für Zeiten:** SQLite hat keinen `DECIMAL`-Typ — `REAL` (64-bit float) ist präzise genug für Slalomzeiten (±0.001s Genauigkeit bei Werten bis ~999s)
-- **`BOOLEAN`:** SQLite speichert als `0`/`1` — in FastAPI/Pydantic als `bool` abbilden
-- **`DATETIME`:** Als ISO-8601-String speichern (`"2026-06-01T09:30:00"`)
-- **Kein `CASCADE DELETE`** für AuditLog — gelöschte Ergebnisse sollen im Log erhalten bleiben
-- **WAL-Modus aktivieren:** `PRAGMA journal_mode=WAL;` — ermöglicht simultane Lese-/Schreibzugriffe (wichtig für 50+ WS-Clients)
+### `Sponsors`
+
+| Spalte | Typ | Beschreibung |
+|---|---|---|
+| `id` | INTEGER PK AUTOINCREMENT | |
+| `name` | TEXT NOT NULL | Firmenname |
+| `logo_url` | TEXT | URL zum Logo-Bild |
+| `website_url` | TEXT | Klick-Ziel auf der Landingpage |
+| `sort_order` | INTEGER DEFAULT 0 | Anzeigereihenfolge |
+| `is_active` | INTEGER DEFAULT 1 | 0 = ausgeblendet |
+| `created_at` | TEXT | ISO-8601-Timestamp |
+
+### `Settings`
+
+Key-Value-Tabelle für Systemkonfiguration (Druckvorlagen-Texte etc.).
+
+| Spalte | Typ | Beschreibung |
+|---|---|---|
+| `key` | TEXT PRIMARY KEY | Einstellungsname |
+| `value` | TEXT NOT NULL DEFAULT `''` | Wert |
+
+**Vordefinierte Keys:**
+
+| Key | Standardwert |
+|---|---|
+| `organizer_name` | `"MSC Braach e.V. im ADAC"` |
+| `organizer_address` | `""` |
+| `insurance_notice` | Versicherungstext ADAC |
+| `parent_consent_text` | Einverständnistext für Minderjährige |
 
 ---
 
-*Letzte Änderung: 2026-04-22 · RaceControl Pro*
+## 10. Views (berechnete Ergebnisse)
+
+### `v_run_results`
+
+Vollständiges Laufergebnis inkl. berechneter Strafzeit.
+
+| Spalte | Beschreibung |
+|---|---|
+| `result_id`, `event_id`, `class_id`, `class_name` | Identifikation |
+| `run_number` | Laufnummer |
+| `start_number`, `first_name`, `last_name`, `club` | Fahrer-Info |
+| `raw_time`, `status`, `is_official` | Rohzeitwerte |
+| `total_penalties` | Summe aller Strafsekunden (COALESCE → 0.0) |
+| `total_time` | `raw_time + total_penalties` · NULL bei DNS/DNF/DSQ |
+
+### `v_class_standings_sum_all`
+
+Gesamtwertung pro Klasse (Scoring-Typ `sum_all`).
+
+| Spalte | Beschreibung |
+|---|---|
+| `event_id`, `class_id`, `class_name` | |
+| `start_number`, `first_name`, `last_name`, `club` | |
+| `valid_runs` | Anzahl gültiger Wertungsläufe (run_number > 0) |
+| `total_time` | Summe aller `total_time` gültiger Läufe |
+| `rank` | RANK() OVER (PARTITION BY class_id ORDER BY total_time NULLS LAST) |
+
+> Training (run_number = 0) wird in beiden Views aus der Wertung ausgeschlossen.
+
+### `v_fastest_of_day`
+
+Schnellste Einzellaufzeit je Fahrer pro Veranstaltung (für Tagesschnellsten-Auswertung).
+
+---
+
+## 11. SQLite-Besonderheiten
+
+| Thema | Detail |
+|---|---|
+| WAL-Modus | `PRAGMA journal_mode=WAL` — parallele Lese-/Schreibzugriffe (50+ WS-Clients) |
+| Foreign Keys | `PRAGMA foreign_keys=ON` — muss bei jeder Verbindung gesetzt werden |
+| `REAL` für Zeiten | 64-bit IEEE 754 Float — ausreichend für Slalomzeiten (±0,001 s bis ~999 s) |
+| `BOOLEAN` | SQLite speichert als `0`/`1` — in FastAPI/Pydantic als `bool` abgebildet |
+| `DATETIME` | Als ISO-8601-String `"2026-06-01T09:30:00"` gespeichert |
+| AuditLog | Kein CASCADE DELETE — gelöschte Ergebnisse bleiben im Log erhalten (`result_id → NULL`) |
+| Migrationen | `database.py` wendet `ALTER TABLE`-Statements automatisch beim Start an (verlustfrei) |

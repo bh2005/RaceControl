@@ -10,6 +10,7 @@ const routes = [
   { path: '/nennung',        component: () => import('../views/NennungView.vue'),          meta: { roles: ['admin', 'nennung'] } },
   { path: '/schiedsrichter', component: () => import('../views/SchiedsrichterView.vue'),   meta: { roles: ['admin', 'schiedsrichter'] } },
   { path: '/admin',          component: () => import('../views/AdminView.vue'),            meta: { roles: ['admin'] } },
+  { path: '/lizenz',         component: () => import('../views/LizenzView.vue'),            meta: { public: true } },
 ]
 
 const roleHome = {

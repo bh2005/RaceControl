@@ -51,10 +51,48 @@ async def websocket_endpoint(ws: WebSocket):
     await manager.connect(ws)
     try:
         while True:
-            # Keep the connection alive; ignore any client messages
             await ws.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(ws)
+
+
+# Tracks how many timing devices (Raspi) are connected right now
+_timing_devices: set[WebSocket] = set()
+
+
+@app.websocket("/ws/timing")
+async def timing_device_endpoint(ws: WebSocket):
+    """WebSocket endpoint for Raspberry Pi / Lichtschranke devices.
+
+    Accepted messages (JSON):
+      {"type": "timing_result",       "raw_time": 45.32, "device": "..."}
+      {"type": "timing_device_heartbeat"}
+
+    All messages are forwarded to browser clients on /ws.
+    Connect/disconnect events broadcast a timing_device_status message.
+    """
+    await ws.accept()
+    _timing_devices.add(ws)
+    await manager.broadcast({
+        "type": "timing_device_status",
+        "connected": True,
+        "count": len(_timing_devices),
+    })
+    try:
+        while True:
+            data = await ws.receive_json()
+            msg_type = data.get("type")
+            if msg_type in ("timing_result", "timing_device_heartbeat"):
+                await manager.broadcast(data)
+    except (WebSocketDisconnect, Exception):
+        pass
+    finally:
+        _timing_devices.discard(ws)
+        await manager.broadcast({
+            "type": "timing_device_status",
+            "connected": len(_timing_devices) > 0,
+            "count": len(_timing_devices),
+        })
 
 
 # Serve built frontend — must come AFTER all API/WS routes
