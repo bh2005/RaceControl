@@ -88,6 +88,14 @@
             >Nennungsschluss setzen</button>
           </div>
 
+          <!-- Ankündigung wiederholen (wenn Nennungsschluss bereits gesetzt) -->
+          <button v-if="cls.registration_closed_at"
+            @click="announceClass(cls)"
+            class="w-full text-xs bg-amber-500 hover:bg-amber-600 text-white font-bold py-1.5 rounded-lg transition"
+            title="Benachrichtigung an Zuschauer und Sprecher erneut senden">
+            📢 Ankündigung wiederholen
+          </button>
+
           <!-- Nennungsschluss-Formular (inline) -->
           <div v-if="closingClassId === cls.id" class="space-y-1.5">
             <div>
@@ -578,6 +586,12 @@ async function saveNennungsschluss(cls) {
   closingClassId.value = null
   closingStartTime.value = ''
   await store.selectEvent(store.activeEvent)
+  await api.post(`/events/${store.activeEvent.id}/classes/${cls.id}/announce`).catch(() => {})
+}
+
+async function announceClass(cls) {
+  if (!store.activeEvent) return
+  await api.post(`/events/${store.activeEvent.id}/classes/${cls.id}/announce`).catch(() => {})
 }
 
 async function printNennungsformular(p) {

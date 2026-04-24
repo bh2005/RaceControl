@@ -171,20 +171,28 @@
           </button>
         </div>
 
-        <!-- Lauf-Auswahl -->
-        <div class="flex gap-2 mt-3">
-          <span class="text-xs text-gray-500 self-center">Lauf:</span>
-          <button
-            v-for="n in runNumbers"
-            :key="n"
-            @click="selectedRun = n"
-            class="px-3 py-1 rounded-lg text-xs font-bold transition"
-            :class="selectedRun === n
-              ? 'bg-msc-blue text-white'
-              : 'bg-gray-100 hover:bg-gray-200 text-gray-600'"
-          >
-            {{ n === 0 ? 'Training' : 'Lauf ' + n }}
-          </button>
+        <!-- Lauf-Anzeige + manueller Override -->
+        <div class="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100">
+          <div class="shrink-0">
+            <div class="text-xs text-gray-400 leading-none mb-0.5">Aktueller Lauf</div>
+            <div class="text-base font-black text-msc-blue leading-none">
+              {{ selectedRun === 0 ? 'Training' : 'Lauf ' + selectedRun }}
+            </div>
+          </div>
+          <div class="flex-1 flex items-center gap-1 justify-end">
+            <span class="text-xs text-gray-400 mr-0.5">Override:</span>
+            <button
+              v-for="n in runNumbers"
+              :key="n"
+              @click="changeRun(n)"
+              class="px-2 py-0.5 rounded text-xs font-bold transition border"
+              :class="selectedRun === n
+                ? 'bg-msc-blue/15 text-msc-blue border-msc-blue/40'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-500 border-transparent'"
+            >
+              {{ n === 0 ? 'Tr.' : 'L' + n }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -310,6 +318,7 @@ const activePenalties  = ref([])  // [{ id, label, seconds, count }]
 const penalties        = ref([])
 const participants     = ref([])
 const runResults       = ref([])
+const allClassResults  = ref([])   // alle Läufe der Klasse (für Auto-Advance)
 const history          = ref([])  // für Undo
 const currentReglement = ref(null)
 const timeInput        = ref(null)
@@ -409,11 +418,27 @@ const totalTime = computed(() => {
   return t + totalPenalties.value
 })
 
+// Ermittelt automatisch den aktuellen Lauf (erster Lauf, der noch nicht alle Fahrer hat)
+function computeAutoRun() {
+  const reg = currentReglement.value
+  if (!reg || !participants.value.length) return selectedRun.value
+  const nums = []
+  if (reg.has_training) nums.push(0)
+  for (let i = 1; i <= reg.runs_per_class; i++) nums.push(i)
+  for (const rn of nums) {
+    const done = new Set(allClassResults.value.filter(r => r.run_number === rn).map(r => r.participant_id))
+    if (done.size < participants.value.length) return rn
+  }
+  return nums[nums.length - 1]
+}
+
 // Strafen laden wenn Klasse gewechselt
 async function loadClass() {
   if (!selectedClassId.value || !store.activeEvent) return
   manualOrder.value = []
-  const cls = store.classes.find(c => c.id === selectedClassId.value)
+  const eid = store.activeEvent.id
+  const cid = selectedClassId.value
+  const cls = store.classes.find(c => c.id === cid)
   const regId = cls?.reglement_id
   if (regId) {
     const [regRes, penRes] = await Promise.all([
@@ -422,9 +447,17 @@ async function loadClass() {
     ])
     currentReglement.value = regRes.data
     penalties.value = penRes.data
+  } else {
+    currentReglement.value = null
+    penalties.value = []
   }
-  const { data } = await api.get(`/events/${store.activeEvent.id}/participants`)
-  participants.value = data.filter(p => p.class_id === selectedClassId.value)
+  const [partRes, allRes] = await Promise.all([
+    api.get(`/events/${eid}/participants`),
+    api.get(`/events/${eid}/run-results`, { params: { class_id: cid } }),
+  ])
+  participants.value = partRes.data.filter(p => p.class_id === cid)
+  allClassResults.value = allRes.data
+  selectedRun.value = computeAutoRun()
   await loadRunResults()
   resetInput()
 }
@@ -435,6 +468,12 @@ async function loadRunResults() {
     params: { class_id: selectedClassId.value, run_number: selectedRun.value }
   })
   runResults.value = data
+}
+
+async function changeRun(n) {
+  selectedRun.value = n
+  manualOrder.value = []
+  await loadRunResults()
 }
 
 function resetInput() {
@@ -487,6 +526,17 @@ async function confirm() {
     }
     // Undo-Stack
     history.value.push({ resultId: result.id, participantId: p.id })
+    // Alle Ergebnisse neu laden und ggf. Lauf automatisch wechseln
+    const { data: allRes } = await api.get(
+      `/events/${store.activeEvent.id}/run-results`,
+      { params: { class_id: selectedClassId.value } }
+    )
+    allClassResults.value = allRes
+    const ar = computeAutoRun()
+    if (ar !== selectedRun.value) {
+      selectedRun.value = ar
+      manualOrder.value = []
+    }
     await loadRunResults()
     resetInput()
   } catch (e) {
@@ -527,7 +577,6 @@ watch(rawTime, (val) => {
     rawTime.value = val.replace(/,/g, '.')
 })
 
-watch(selectedRun, () => { manualOrder.value = []; loadRunResults() })
 watch(() => store.classes, async (v) => {
   if (v.length && !selectedClassId.value) {
     selectedClassId.value = v[0].id

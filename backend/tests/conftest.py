@@ -8,6 +8,7 @@ from __future__ import annotations
 import pathlib
 import sqlite3
 import sys
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -42,18 +43,33 @@ def client(db):
     def _override():
         yield db
 
+    # Remove the static-files catch-all mount so POST/PATCH/DELETE requests
+    # aren't intercepted by StaticFiles before the API route's slash-redirect fires.
+    static_idx = next(
+        (i for i, r in enumerate(app.routes) if getattr(r, "name", "") == "static"),
+        None,
+    )
+    static_route = app.routes.pop(static_idx) if static_idx is not None else None
+
     app.dependency_overrides[get_db] = _override
-    with TestClient(app) as c:
-        yield c
+    # Patch init_db so the startup event doesn't touch the on-disk racecontrol.db
+    with patch("main.init_db"):
+        with TestClient(app) as c:
+            yield c
     app.dependency_overrides.clear()
+
+    # Restore the static-files route so the app works normally outside tests
+    if static_route is not None:
+        app.routes.append(static_route)
 
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
 
 def _make_user(db, username: str, role: str) -> str:
-    """Insert a user and return a valid JWT for that user."""
+    """Insert a user (idempotent) and return a valid JWT for that user."""
     db.execute(
-        "INSERT INTO Users (username, password_hash, role, is_active) VALUES (?,?,?,1)",
+        """INSERT OR IGNORE INTO Users (username, password_hash, role, is_active)
+           VALUES (?,?,?,1)""",
         (username, hash_password("test1234"), role),
     )
     db.commit()

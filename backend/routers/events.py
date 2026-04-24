@@ -95,6 +95,35 @@ def create_class(
     return dict(db.execute("SELECT * FROM Classes WHERE id = ?", (cur.lastrowid,)).fetchone())
 
 
+NennungOrAdmin = Annotated[sqlite3.Row, Depends(require_roles("admin", "nennung"))]
+
+
+@router.post("/{event_id}/classes/{class_id}/announce", status_code=204)
+def announce_registration_closed(
+    event_id: int,
+    class_id: int,
+    background_tasks: BackgroundTasks,
+    db: Annotated[sqlite3.Connection, Depends(get_db)],
+    _: NennungOrAdmin,
+):
+    cls = db.execute(
+        "SELECT name FROM Classes WHERE id = ? AND event_id = ?", (class_id, event_id)
+    ).fetchone()
+    if not cls:
+        raise HTTPException(404, "Klasse nicht gefunden")
+    background_tasks.add_task(
+        manager.broadcast,
+        {
+            "type": "notification",
+            "event_id": event_id,
+            "class_id": class_id,
+            "class_name": cls["name"],
+            "message": f"Klasse {cls['name']}: Nennungsschluss – Auslosung der Startnummern in 5 Minuten an der Nennung!",
+            "level": "info",
+        },
+    )
+
+
 @router.patch("/{event_id}/classes/{class_id}", response_model=ClassResponse)
 def update_class(
     event_id: int,

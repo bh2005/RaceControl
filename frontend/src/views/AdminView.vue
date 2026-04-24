@@ -466,6 +466,35 @@
           </div>
         </div>
 
+        <!-- Reglements-Vorlagen -->
+        <div class="card p-4">
+          <h3 class="font-bold text-gray-800 mb-1">Reglements-Vorlagen</h3>
+          <p class="text-xs text-gray-500 mb-3">
+            Legt vordefinierte Reglements mit den offiziellen Straf-Definitionen an.
+            Bereits vorhandene Reglements gleichen Namens werden übersprungen.
+          </p>
+          <div class="flex flex-wrap gap-2 mb-3">
+            <button @click="seedKs2000" :disabled="ks2000Running"
+                    class="btn-primary px-4 py-2 text-sm disabled:opacity-40">
+              {{ ks2000Running ? 'Läuft…' : 'KS 2000 anlegen' }}
+            </button>
+          </div>
+          <div v-if="ks2000Log.length"
+               class="bg-gray-900 text-gray-100 font-mono text-xs rounded-lg p-3 max-h-40 overflow-y-auto space-y-0.5">
+            <div v-for="(entry, i) in ks2000Log" :key="i" class="flex items-start gap-2 leading-relaxed">
+              <span class="shrink-0 w-3"
+                    :class="{
+                      'text-green-400':  entry.status === 'ok',
+                      'text-red-400':    entry.status === 'err',
+                      'text-yellow-300': entry.status === 'running',
+                    }">
+                {{ entry.status === 'ok' ? '✓' : entry.status === 'err' ? '✗' : '›' }}
+              </span>
+              <span>{{ entry.label }}</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Testdaten -->
         <div class="card p-4">
           <h3 class="font-bold text-gray-800 mb-1">Testdaten</h3>
@@ -741,6 +770,52 @@ onMounted(async () => {
 })
 
 // ── Test ──────────────────────────────────────────────────────────────────────
+
+const ks2000Running = ref(false)
+const ks2000Log     = ref([])
+
+async function seedKs2000() {
+  ks2000Running.value = true
+  ks2000Log.value = []
+  const _l = (label, status = 'running') => ks2000Log.value.push({ label, status })
+  const _u = (status, label) => {
+    const last = ks2000Log.value[ks2000Log.value.length - 1]
+    if (last) { last.status = status; if (label) last.label = label }
+  }
+  try {
+    _l('Reglement "KS 2000" prüfen / anlegen…')
+    let reg = (await api.get('/reglements/')).data.find(r => r.name === 'KS 2000')
+    if (!reg) {
+      reg = (await api.post('/reglements/', {
+        name: 'KS 2000', scoring_type: 'sum_all', runs_per_class: 2, has_training: true,
+      })).data
+      _u('ok', `Reglement "KS 2000" angelegt (ID ${reg.id})`)
+    } else {
+      _u('ok', `Reglement "KS 2000" bereits vorhanden (ID ${reg.id})`)
+    }
+
+    _l('Straf-Definitionen anlegen…')
+    const penalties = [
+      { label: 'Pylone umwerfen/verschieben',                        seconds:  3, shortcut_key: 'P', sort_order: 0 },
+      { label: 'Pylonentore/Schweizer auslassen',                    seconds: 10, shortcut_key: 'T', sort_order: 1 },
+      { label: 'Gasse auslassen',                                    seconds: 15, shortcut_key: 'G', sort_order: 2 },
+      { label: 'Begrenzungslinie überschreiten/Klötzchen verschieben', seconds:  3, shortcut_key: 'L', sort_order: 3 },
+      { label: 'Fahrtrichtung nicht eingehalten nach Zieldurchfahrt', seconds: 10, shortcut_key: null, sort_order: 4 },
+      { label: 'Unkorrektes Verhalten gg. Veranstalter/Funktionäre', seconds: 20, shortcut_key: null, sort_order: 5 },
+    ]
+    let added = 0
+    for (const p of penalties) {
+      try { await api.post(`/reglements/${reg.id}/penalties`, p); added++ } catch { /* skip duplicates */ }
+    }
+    _u('ok', `${added} Straf-Definitionen angelegt`)
+    ks2000Log.value.push({ status: 'ok', label: 'KS 2000 fertig.' })
+    await store.loadReglements()
+  } catch (e) {
+    _u('err', e.response?.data?.detail || e.message || 'Fehler')
+  } finally {
+    ks2000Running.value = false
+  }
+}
 
 const apiCheckRunning = ref(false)
 const apiCheckResult  = ref(null)

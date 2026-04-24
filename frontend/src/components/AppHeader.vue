@@ -28,6 +28,9 @@
 
       <!-- Event-Anzeige + User -->
       <div class="flex items-center gap-4">
+        <div class="text-right hidden lg:block">
+          <div class="font-black text-xl tabnum text-white tracking-tight leading-none">{{ currentTime }}</div>
+        </div>
         <div v-if="store.activeEvent" class="text-right text-sm hidden lg:block">
           <div class="font-semibold text-blue-100">{{ store.activeEvent.name }}</div>
           <div class="text-xs text-blue-300">{{ store.activeEvent.date }}</div>
@@ -51,7 +54,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useEventStore } from '../stores/event'
@@ -59,6 +62,18 @@ import { useEventStore } from '../stores/event'
 const auth   = useAuthStore()
 const store  = useEventStore()
 const router = useRouter()
+
+const currentTime = ref('')
+let clockTimer = null
+
+function updateClock() {
+  currentTime.value = new Date().toLocaleTimeString('de-DE', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  })
+}
+
+onMounted(() => { updateClock(); clockTimer = setInterval(updateClock, 1000) })
+onUnmounted(() => clearInterval(clockTimer))
 
 const allNav = [
   { to: '/zeitnahme',      label: 'Zeitnahme',      roles: ['admin', 'zeitnahme'] },
@@ -79,3 +94,7 @@ function handleLogout() {
   router.push('/')
 }
 </script>
+
+<style scoped>
+.tabnum { font-variant-numeric: tabular-nums; }
+</style>

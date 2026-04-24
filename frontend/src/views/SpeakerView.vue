@@ -11,11 +11,28 @@
         <option v-for="c in store.classes" :key="c.id" :value="c.id">{{ c.name }}</option>
       </select>
 
-      <select v-model="selectedRun"
-        class="bg-gray-800 border border-gray-600 rounded-lg px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500 w-32">
-        <option v-if="currentReglement?.has_training" :value="0">Training</option>
-        <option v-for="n in runNums" :key="n" :value="n">Lauf {{ n }}</option>
-      </select>
+      <!-- Lauf-Anzeige: automatisch erkannt, manueller Override möglich -->
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-black text-white">{{ runLabel }}</span>
+        <div class="flex gap-1">
+          <button v-if="currentReglement?.has_training"
+            @click="selectedRun = 0; loadData()"
+            class="text-xs px-2 py-0.5 rounded font-bold transition border"
+            :class="selectedRun === 0
+              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+              : 'bg-gray-700 text-gray-400 border-transparent hover:bg-gray-600'">
+            Tr.
+          </button>
+          <button v-for="n in runNums" :key="n"
+            @click="selectedRun = n; loadData()"
+            class="text-xs px-2 py-0.5 rounded font-bold transition border"
+            :class="selectedRun === n
+              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+              : 'bg-gray-700 text-gray-400 border-transparent hover:bg-gray-600'">
+            L{{ n }}
+          </button>
+        </div>
+      </div>
 
       <span class="flex items-center gap-1.5 text-xs font-bold rounded-full px-2.5 py-1 border ml-auto"
         :class="wsConnected
@@ -193,6 +210,7 @@ const selectedClassId  = ref(null)
 const selectedRun      = ref(1)
 const standings        = ref([])
 const runResults       = ref([])
+const allClassResults  = ref([])
 const participants     = ref([])
 const currentReglement = ref(null)
 const penalties        = ref([])
@@ -275,27 +293,51 @@ const timeTargets = computed(() => {
     .filter(Boolean)
 })
 
+function computeAutoRun() {
+  const reg = currentReglement.value
+  if (!reg || !participants.value.length) return selectedRun.value
+  const nums = []
+  if (reg.has_training) nums.push(0)
+  for (let i = 1; i <= reg.runs_per_class; i++) nums.push(i)
+  for (const rn of nums) {
+    const done = new Set(allClassResults.value.filter(r => r.run_number === rn).map(r => r.participant_id))
+    if (done.size < participants.value.length) return rn
+  }
+  return nums[nums.length - 1]
+}
+
 async function loadData() {
   if (!store.activeEvent || !selectedClassId.value) return
   const eid = store.activeEvent.id
   const cid = selectedClassId.value
 
-  const [stRes, rrRes, allRrRes, partRes] = await Promise.all([
+  const [stRes, rrAllRes, partRes] = await Promise.all([
     api.get(`/events/${eid}/standings`, { params: { class_id: cid } }),
-    api.get(`/events/${eid}/run-results`, { params: { class_id: cid, run_number: selectedRun.value } }),
     api.get(`/events/${eid}/run-results`, { params: { class_id: cid } }),
     api.get(`/events/${eid}/participants`),
   ])
 
-  standings.value    = stRes.data
-  runResults.value   = rrRes.data
-  allRunResults.value = allRrRes.data
-  participants.value = partRes.data.filter(p => p.class_id === cid)
+  participants.value   = partRes.data.filter(p => p.class_id === cid)
+  allClassResults.value = rrAllRes.data
+  allRunResults.value  = rrAllRes.data
+  standings.value      = stRes.data
+
+  // Auto-advance: nächsten unvollständigen Lauf wählen
+  const ar = computeAutoRun()
+  if (ar !== selectedRun.value) selectedRun.value = ar
+
+  // Ergebnisse des aktuellen Laufs laden
+  const rrRes = await api.get(`/events/${eid}/run-results`, {
+    params: { class_id: cid, run_number: selectedRun.value }
+  })
+  runResults.value = rrRes.data
 }
 
 async function onClassChange() {
   const cls = selectedClass.value
   if (!cls) return
+  allClassResults.value = []
+  participants.value = []
   const regId = cls.reglement_id
   if (regId) {
     const [regRes, penRes] = await Promise.all([
@@ -304,8 +346,6 @@ async function onClassChange() {
     ])
     currentReglement.value = regRes.data
     penalties.value = penRes.data
-    if (selectedRun.value === 0 && !currentReglement.value?.has_training)
-      selectedRun.value = 1
   } else {
     currentReglement.value = null
     penalties.value = []
@@ -335,7 +375,6 @@ watch(() => store.classes, async (v) => {
     await onClassChange()
   }
 })
-watch(selectedRun, loadData)
 </script>
 
 <style scoped>
