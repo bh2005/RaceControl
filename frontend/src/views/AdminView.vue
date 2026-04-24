@@ -110,6 +110,7 @@
                   <th class="py-2 px-3 text-left">Jg. von</th>
                   <th class="py-2 px-3 text-left">Jg. bis</th>
                   <th class="py-2 px-3 text-left">Reglement</th>
+                  <th class="py-2 px-3 text-center" title="Vorstarter/Showklasse: Zeiteingabe ohne Klassenstart möglich">Vorstart.</th>
                   <th class="py-2 px-3 text-center">Status</th>
                   <th></th>
                 </tr>
@@ -134,6 +135,11 @@
                       <option :value="null">–</option>
                       <option v-for="r in store.reglements" :key="r.id" :value="r.id">{{ r.name }}</option>
                     </select>
+                  </td>
+                  <td class="py-2 px-3 text-center">
+                    <input type="checkbox" v-model="cls.is_exhibition"
+                      class="h-4 w-4 rounded accent-msc-blue cursor-pointer"
+                      title="Vorstarter/Showklasse: Zeiteingabe ohne Klassenstart erlaubt">
                   </td>
                   <td class="py-2 px-3 text-center">
                     <span :class="{
@@ -584,7 +590,8 @@ async function saveEvent() {
 function addClassRow() {
   classRows.value.push({
     _key: Date.now(), name: '', short_name: '', min_birth_year: null,
-    max_birth_year: null, reglement_id: null, run_status: 'planned', start_order: classRows.value.length
+    max_birth_year: null, reglement_id: null, run_status: 'planned', start_order: classRows.value.length,
+    is_exhibition: false
   })
 }
 

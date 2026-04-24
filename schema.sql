@@ -63,6 +63,8 @@ CREATE TABLE IF NOT EXISTS Classes (
     registration_closed_at  TEXT,                       -- Zeitpunkt Nennungsschluss (ISO-8601)
     start_time              TEXT,                       -- geplante/tatsächliche Startzeit "HH:MM"
     end_time                TEXT,                       -- Zeitpunkt Klassenende → löst Einspruchfrist aus
+    is_exhibition           INTEGER NOT NULL DEFAULT 0  -- 1 = Vorstarter/Showklasse, kein run_status-Check
+                            CHECK (is_exhibition IN (0, 1)),
     UNIQUE (event_id, name)
 );
 

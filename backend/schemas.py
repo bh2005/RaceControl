@@ -122,6 +122,7 @@ class ClassCreate(BaseModel):
     registration_closed_at: Optional[str] = None
     start_time: Optional[str] = None   # "HH:MM"
     end_time: Optional[str] = None     # ISO timestamp, triggers protest period
+    is_exhibition: bool = False         # Vorstarter/Showklasse — kein run_status-Check bei Zeiteingabe
 
 
 class ClassUpdate(BaseModel):
@@ -135,6 +136,7 @@ class ClassUpdate(BaseModel):
     registration_closed_at: Optional[str] = None
     start_time: Optional[str] = None
     end_time: Optional[str] = None
+    is_exhibition: Optional[bool] = None
 
 
 class ClassResponse(ClassCreate):

@@ -65,6 +65,7 @@ const allNav = [
   { to: '/nennung',        label: 'Nennung',         roles: ['admin', 'nennung'] },
   { to: '/schiedsrichter', label: 'Schiedsrichter',  roles: ['admin', 'schiedsrichter'] },
   { to: '/livetiming',     label: 'Livetiming',      roles: null },
+  { to: '/speaker',        label: 'Sprecher',         roles: ['admin', 'schiedsrichter', 'zeitnahme'] },
   { to: '/nennen',         label: 'Online-Nennung',  roles: null },
   { to: '/admin',          label: 'Admin',           roles: ['admin'] },
 ]

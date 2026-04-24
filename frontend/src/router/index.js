@@ -11,6 +11,7 @@ const routes = [
   { path: '/schiedsrichter', component: () => import('../views/SchiedsrichterView.vue'),   meta: { roles: ['admin', 'schiedsrichter'] } },
   { path: '/admin',          component: () => import('../views/AdminView.vue'),            meta: { roles: ['admin'] } },
   { path: '/lizenz',         component: () => import('../views/LizenzView.vue'),            meta: { public: true } },
+  { path: '/speaker',        component: () => import('../views/SpeakerView.vue'),            meta: { public: true } },
 ]
 
 const roleHome = {

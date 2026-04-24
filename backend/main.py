@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from database import init_db
 from broadcast import manager
 from routers import auth, users, reglements, events, participants, results, teams, clubs, public, sponsors, settings
+from routers import import_router
 
 app = FastAPI(
     title="RaceControl Pro",
@@ -39,6 +40,7 @@ app.include_router(clubs.router,        prefix=_API)
 app.include_router(sponsors.router,     prefix=_API)
 app.include_router(public.router,       prefix=_API)
 app.include_router(settings.router,     prefix=_API)
+app.include_router(import_router.router, prefix=_API)
 
 
 @app.get("/health")

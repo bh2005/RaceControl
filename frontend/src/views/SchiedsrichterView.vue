@@ -113,7 +113,7 @@
 
       <!-- Filter -->
       <div class="card p-3 flex gap-3">
-        <select v-model="filterClass" @change="loadResults" class="flex-1 input">
+        <select v-model="filterClass" @change="loadResults(); loadAuditLog()" class="flex-1 input">
           <option value="">Alle Klassen</option>
           <option v-for="c in store.classes" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
@@ -171,8 +171,11 @@
                 </span>
               </td>
               <td class="py-2.5 px-3 text-center">
-                <button @click="startEdit(r)"
+                <button
+                  v-if="classStatus[r.class_id] !== 'official'"
+                  @click="startEdit(r)"
                   class="text-msc-blue hover:underline text-xs font-semibold">Korrigieren</button>
+                <span v-else class="text-xs text-green-700 font-semibold" title="Klasse offiziell – gesperrt">✓ gesperrt</span>
               </td>
             </tr>
             <tr v-if="results.length === 0">
@@ -300,18 +303,32 @@
       <div v-if="auditLog.length === 0" class="card p-4 text-center text-sm text-gray-400">
         Noch keine Korrekturen
       </div>
-      <div v-for="entry in auditLog.slice(0, 10)" :key="entry.id" class="card p-3">
-        <div class="flex items-start justify-between mb-1">
-          <span class="text-xs font-bold text-msc-blue">{{ entry.field_changed }}</span>
-          <span class="text-xs text-gray-400">{{ entry.timestamp?.slice(11, 16) }}</span>
+      <div v-for="entry in auditLog.slice(0, 15)" :key="entry.id" class="card p-3 space-y-1.5">
+        <!-- Kopfzeile: Fahrer + Zeit -->
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span v-if="entry.start_number" class="text-xs font-black text-msc-blue">#{{ entry.start_number }}</span>
+            <span class="text-xs font-semibold text-gray-700 truncate">{{ entry.driver_name }}</span>
+            <span class="text-xs text-gray-400">
+              {{ entry.run_number === 0 ? 'Training' : 'Lauf ' + entry.run_number }}
+            </span>
+          </div>
+          <span class="text-xs text-gray-400 shrink-0">{{ entry.timestamp?.slice(11, 16) }}</span>
         </div>
-        <div class="flex items-center gap-1.5 text-xs mb-1.5">
-          <span class="line-through text-gray-400 font-mono">{{ entry.old_value }}</span>
+        <!-- Feldname + Wert-Diff -->
+        <div class="flex items-center gap-1.5 text-xs">
+          <span class="bg-gray-100 text-gray-600 font-semibold rounded px-1.5 py-0.5">{{ entry.field_changed }}</span>
+          <span class="line-through text-gray-400 font-mono">{{ entry.old_value ?? '–' }}</span>
           <span class="text-gray-400">→</span>
-          <span class="font-bold text-green-600 font-mono">{{ entry.new_value }}</span>
+          <span class="font-bold text-green-700 font-mono">{{ entry.new_value ?? '–' }}</span>
         </div>
+        <!-- Begründung -->
         <div class="text-xs text-gray-500 italic bg-gray-50 rounded px-2 py-1 line-clamp-2">
           "{{ entry.reason }}"
+        </div>
+        <!-- Bearbeiter -->
+        <div v-if="entry.user_name" class="text-xs text-gray-400 text-right">
+          — {{ entry.user_name }}
         </div>
       </div>
     </aside>
@@ -336,6 +353,11 @@ const filterRun            = ref('')
 const editPenalties        = ref([])   // [{ id?, penalty_definition_id, label, seconds, count }]
 const originalPenalties    = ref([])   // snapshot beim Öffnen → für Delete-Diff
 const availablePenaltyDefs = ref([])   // Strafarten des Reglements
+
+// class_id → run_status — für Lock-Check im Template
+const classStatus = computed(() =>
+  Object.fromEntries(store.classes.map(c => [c.id, c.run_status]))
+)
 
 // ── Protest-Timer ───────────────────────────────────────────────────
 const now = ref(new Date())
@@ -413,7 +435,11 @@ async function loadResults() {
 }
 
 async function loadAuditLog() {
-  auditLog.value = []
+  if (!store.activeEvent) return
+  const params = {}
+  if (filterClass.value) params.class_id = filterClass.value
+  const { data } = await api.get(`/events/${store.activeEvent.id}/audit-log`, { params })
+  auditLog.value = data
 }
 
 const editTotalPenalties = computed(() =>

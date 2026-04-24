@@ -18,6 +18,35 @@ ZeitnahmeOrAbove = Annotated[sqlite3.Row, Depends(require_roles("admin", "schied
 SchiriOrAdmin = Annotated[sqlite3.Row, Depends(require_roles("admin", "schiedsrichter"))]
 
 
+def _get_class_row(db: sqlite3.Connection, class_id: int) -> sqlite3.Row:
+    row = db.execute("SELECT run_status, is_exhibition FROM Classes WHERE id = ?", (class_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "Klasse nicht gefunden")
+    return row
+
+
+def _require_class_running(db: sqlite3.Connection, class_id: int) -> None:
+    """Zeitnahme darf nur buchen wenn Klasse läuft (Ausnahme: Vorstarter/Exhibition)."""
+    cls = _get_class_row(db, class_id)
+    if cls["is_exhibition"]:
+        return
+    if cls["run_status"] not in ("running", "paused"):
+        raise HTTPException(
+            409,
+            "Klasse läuft nicht – Zeiteingabe erst nach Klassenstart möglich",
+        )
+
+
+def _require_class_not_official(db: sqlite3.Connection, class_id: int) -> None:
+    """Korrekturen gesperrt sobald die Klasse offiziell freigegeben wurde."""
+    cls = _get_class_row(db, class_id)
+    if cls["run_status"] == "official":
+        raise HTTPException(
+            409,
+            "Klasse ist offiziell freigegeben – keine Korrekturen mehr möglich",
+        )
+
+
 # ── RaceResults ───────────────────────────────────────────────────────────────
 
 @router.get("/results", response_model=list[RaceResultResponse])
@@ -48,6 +77,7 @@ def create_result(
     user: ZeitnahmeOrAbove,
 ):
     body.event_id = event_id
+    _require_class_running(db, body.class_id)
     try:
         cur = db.execute(
             """INSERT INTO RaceResults
@@ -77,6 +107,7 @@ def update_result(
     existing = db.execute("SELECT * FROM RaceResults WHERE id = ? AND event_id = ?", (result_id, event_id)).fetchone()
     if not existing:
         raise HTTPException(404, "Ergebnis nicht gefunden")
+    _require_class_not_official(db, existing["class_id"])
 
     updates: dict = {}
     if body.raw_time is not None:
@@ -148,8 +179,49 @@ def delete_penalty(
     db: Annotated[sqlite3.Connection, Depends(get_db)],
     _: SchiriOrAdmin,
 ):
+    row = db.execute("SELECT class_id FROM RaceResults WHERE id = ?", (result_id,)).fetchone()
+    if row:
+        _require_class_not_official(db, row["class_id"])
     db.execute("DELETE FROM RunPenalties WHERE id = ? AND result_id = ?", (penalty_id, result_id))
     db.commit()
+
+
+# ── Audit-Log ─────────────────────────────────────────────────────────────────
+
+@router.get("/audit-log")
+def get_audit_log(
+    event_id: int,
+    class_id: Optional[int] = None,
+    limit: int = 100,
+    db: Annotated[sqlite3.Connection, Depends(get_db)] = ...,
+):
+    query = """
+        SELECT
+            al.id,
+            al.result_id,
+            al.field_changed,
+            al.old_value,
+            al.new_value,
+            al.reason,
+            al.timestamp,
+            COALESCE(u.display_name, u.username) AS user_name,
+            p.start_number,
+            p.first_name || ' ' || p.last_name   AS driver_name,
+            r.class_id,
+            r.run_number
+        FROM AuditLog al
+        JOIN  RaceResults  r ON r.id  = al.result_id
+        LEFT JOIN Users       u ON u.id  = al.user_id
+        LEFT JOIN Participants p ON p.id = r.participant_id
+        WHERE r.event_id = ?
+    """
+    params: list = [event_id]
+    if class_id is not None:
+        query += " AND r.class_id = ?"
+        params.append(class_id)
+    query += " ORDER BY al.timestamp DESC LIMIT ?"
+    params.append(limit)
+    return [dict(r) for r in db.execute(query, params).fetchall()]
 
 
 # ── Views ─────────────────────────────────────────────────────────────────────

@@ -154,6 +154,18 @@
           Nach Auslosung eintragen
         </span>
         <div class="ml-auto flex gap-2">
+          <!-- CSV-Import -->
+          <label class="text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 transition flex items-center gap-1.5 cursor-pointer"
+                 title="ADAC-Portal CSV importieren">
+            📥 CSV Import
+            <input type="file" accept=".csv,.txt" class="hidden" @change="importCsv">
+          </label>
+          <div v-if="importResult" class="flex items-center gap-1.5 text-xs font-semibold rounded-lg px-2.5 py-1.5 border"
+               :class="importResult.errors.length ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-green-50 text-green-800 border-green-300'">
+            ✓ {{ importResult.imported }} importiert · {{ importResult.skipped }} übersprungen
+            <span v-if="importResult.errors.length" class="text-msc-red">· {{ importResult.errors.length }} Fehler</span>
+            <button @click="importResult = null" class="ml-1 opacity-50 hover:opacity-100">✕</button>
+          </div>
           <button @click="printNennliste()"
             class="text-xs font-bold px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 transition flex items-center gap-1.5">
             🖨 Nennliste drucken
@@ -410,6 +422,27 @@ const search        = ref('')
 const saveError     = ref('')
 const mode          = ref('list')        // 'list' | 'numbers'
 const numberDraft   = reactive({})       // { participantId: value }
+const importResult  = ref(null)          // { imported, skipped, errors }
+
+async function importCsv(evt) {
+  const file = evt.target.files?.[0]
+  evt.target.value = ''   // reset so same file can be selected again
+  if (!file || !store.activeEvent) return
+  const fd = new FormData()
+  fd.append('file', file)
+  try {
+    const { data } = await api.post(
+      `/events/${store.activeEvent.id}/import-participants`,
+      fd,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+    importResult.value = data
+    if (data.errors.length) console.warn('Import-Fehler:', data.errors)
+    await loadParticipants()
+  } catch (e) {
+    alert(e.response?.data?.detail || 'Fehler beim Import')
+  }
+}
 
 // Nennungsschluss
 const closingClassId   = ref(null)

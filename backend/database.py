@@ -34,6 +34,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
     _migrate_participants(conn)
     _migrate_classes(conn)
     _migrate_classes_status(conn)
+    _migrate_classes_exhibition(conn)
     _migrate_events(conn)
 
 
@@ -111,6 +112,14 @@ def _migrate_classes(conn: sqlite3.Connection) -> None:
     ]:
         if col not in existing:
             conn.execute(ddl)
+
+
+def _migrate_classes_exhibition(conn: sqlite3.Connection) -> None:
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(Classes)")}
+    if not existing:
+        return
+    if "is_exhibition" not in existing:
+        conn.execute("ALTER TABLE Classes ADD COLUMN is_exhibition INTEGER NOT NULL DEFAULT 0")
 
 
 def _migrate_classes_status(conn: sqlite3.Connection) -> None:

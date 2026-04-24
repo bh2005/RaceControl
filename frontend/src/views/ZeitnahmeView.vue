@@ -67,6 +67,15 @@
     <!-- ── MITTE: Eingabe ── -->
     <section class="col-span-6 space-y-4">
 
+      <!-- Status-Banner: Klasse noch nicht gestartet / offiziell -->
+      <div v-if="classBlockReason" class="rounded-xl px-4 py-3 flex items-center gap-3 text-sm font-semibold"
+           :class="selectedClass?.run_status === 'official'
+             ? 'bg-green-100 text-green-800 border border-green-300'
+             : 'bg-amber-100 text-amber-800 border border-amber-300'">
+        <span class="text-xl">{{ selectedClass?.run_status === 'official' ? '✓' : '⚠' }}</span>
+        {{ classBlockReason }}
+      </div>
+
       <!-- Zeit-Eingabe -->
       <div class="card p-5">
         <div class="flex items-center justify-between mb-3">
@@ -146,7 +155,7 @@
         <div class="flex gap-2">
           <button
             @click="confirm"
-            :disabled="!currentParticipant || (!rawTime && resultStatus === 'valid')"
+            :disabled="!currentParticipant || (!rawTime && resultStatus === 'valid') || !!classBlockReason"
             class="flex-1 btn-primary py-3 text-lg disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <span>✓ Bestätigen</span>
@@ -333,6 +342,24 @@ function handleWsMessage(data) {
 }
 
 useRealtimeUpdate(handleWsMessage)
+
+const selectedClass = computed(() =>
+  store.classes.find(c => c.id === selectedClassId.value) || null
+)
+
+// null = OK; string = Grund warum Eingabe gesperrt
+const classBlockReason = computed(() => {
+  const cls = selectedClass.value
+  if (!cls) return null
+  if (cls.is_exhibition) return null
+  if (cls.run_status === 'official')
+    return 'Klasse ist offiziell freigegeben – keine Zeiteingaben mehr möglich.'
+  if (cls.run_status === 'planned')
+    return 'Klasse noch nicht gestartet – bitte Schiedsrichter den Start bestätigen lassen.'
+  if (cls.run_status === 'preliminary')
+    return 'Klasse abgeschlossen (vorläufig) – keine neuen Zeiteingaben.'
+  return null  // running / paused → OK
+})
 
 const runNumbers = computed(() => {
   const reg = currentReglement.value

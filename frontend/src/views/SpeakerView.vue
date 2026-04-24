@@ -1,0 +1,343 @@
+<template>
+  <div class="min-h-screen bg-gray-950 text-white flex flex-col">
+
+    <!-- Header / Steuerung -->
+    <header class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center gap-4 flex-wrap">
+      <img src="/msc-logo.svg" alt="MSC" class="h-8 w-8 rounded-full border border-white/20 shrink-0">
+      <span class="font-black text-lg tracking-tight text-white shrink-0">Sprecher-Dashboard</span>
+
+      <select v-model="selectedClassId" @change="onClassChange"
+        class="bg-gray-800 border border-gray-600 rounded-lg px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500">
+        <option v-for="c in store.classes" :key="c.id" :value="c.id">{{ c.name }}</option>
+      </select>
+
+      <select v-model="selectedRun"
+        class="bg-gray-800 border border-gray-600 rounded-lg px-3 py-1.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500 w-32">
+        <option v-if="currentReglement?.has_training" :value="0">Training</option>
+        <option v-for="n in runNums" :key="n" :value="n">Lauf {{ n }}</option>
+      </select>
+
+      <span class="flex items-center gap-1.5 text-xs font-bold rounded-full px-2.5 py-1 border ml-auto"
+        :class="wsConnected
+          ? 'bg-green-500/20 text-green-300 border-green-500/30'
+          : 'bg-gray-600/20 text-gray-400 border-gray-600/30'">
+        <span class="h-2 w-2 rounded-full"
+          :class="wsConnected ? 'bg-green-400 animate-pulse' : 'bg-gray-500'"></span>
+        {{ wsConnected ? 'LIVE' : 'Offline' }}
+      </span>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex-1 grid grid-cols-12 gap-6 p-6 max-w-screen-2xl mx-auto w-full">
+
+      <!-- Linke Spalte: Aktueller Fahrer -->
+      <div class="col-span-5 flex flex-col gap-4">
+
+        <!-- Aktueller Fahrer - Hauptbox -->
+        <div class="bg-gray-900 rounded-2xl border border-gray-700 p-6 flex flex-col gap-2">
+          <div class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">
+            Jetzt am Start · {{ runLabel }}
+          </div>
+
+          <div v-if="currentDriver" class="space-y-1">
+            <div class="flex items-baseline gap-4">
+              <span class="font-black text-cyan-400" style="font-size: 6rem; line-height: 1;">
+                #{{ currentDriver.start_number }}
+              </span>
+            </div>
+            <div class="font-black text-white" style="font-size: 2.8rem; line-height: 1.1;">
+              {{ currentDriver.first_name }}<br>{{ currentDriver.last_name }}
+            </div>
+            <div class="text-gray-400 text-xl mt-2">{{ currentDriver.club_name || 'n.N.' }}</div>
+
+            <!-- Bisherige Läufe -->
+            <div v-if="driverPrevRuns.length" class="mt-4 space-y-1">
+              <div class="text-xs font-bold uppercase tracking-widest text-gray-600 mb-1">Bisherige Läufe</div>
+              <div v-for="run in driverPrevRuns" :key="run.run_number"
+                   class="flex items-center gap-3 text-sm font-mono">
+                <span class="text-gray-500 w-16">
+                  {{ run.run_number === 0 ? 'Training' : 'Lauf ' + run.run_number }}
+                </span>
+                <span class="text-white font-bold">{{ run.raw_time?.toFixed(2) }}</span>
+                <span :class="run.total_penalties > 0 ? 'text-red-400 font-bold' : 'text-gray-600'">
+                  +{{ run.total_penalties.toFixed(1) }}s
+                </span>
+                <span v-if="run.total_time" class="text-cyan-300 font-black">
+                  = {{ run.total_time.toFixed(2) }}
+                </span>
+              </div>
+              <div class="pt-1 border-t border-gray-800 flex items-center gap-2 text-sm font-mono">
+                <span class="text-gray-500 w-16">Teilsumme</span>
+                <span class="text-cyan-400 font-black text-lg">{{ driverPartial.toFixed(2) }}s</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="text-gray-600 text-2xl font-bold py-8 text-center">
+            Warten auf Fahrer…
+          </div>
+        </div>
+
+        <!-- Startnummern-Warteschlange -->
+        <div class="bg-gray-900 rounded-2xl border border-gray-700 p-4">
+          <div class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Nächste Starter</div>
+          <div class="flex flex-wrap gap-2">
+            <span v-for="(p, i) in nextDrivers" :key="p.id"
+                  class="rounded-xl px-3 py-1.5 text-sm font-bold"
+                  :class="i === 0 ? 'bg-cyan-600 text-white' : 'bg-gray-800 text-gray-300'">
+              #{{ p.start_number }} {{ p.first_name[0] }}. {{ p.last_name }}
+            </span>
+            <span v-if="nextDrivers.length === 0" class="text-gray-600 text-sm">Alle gefahren</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rechte Spalte: Zeitanalyse -->
+      <div class="col-span-7 flex flex-col gap-4">
+
+        <!-- Zeitanalyse für aktuellen Fahrer -->
+        <div class="bg-gray-900 rounded-2xl border border-gray-700 p-6" v-if="currentDriver && selectedRun > 0">
+          <div class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">
+            Zeitanalyse – was braucht {{ currentDriver.first_name }} {{ currentDriver.last_name }}?
+          </div>
+
+          <div v-if="timeTargets.length === 0" class="text-gray-600 text-sm">
+            Noch keine Wertungszeiten vorhanden.
+          </div>
+
+          <div v-else class="space-y-3">
+            <div v-for="t in timeTargets" :key="t.label"
+                 class="rounded-xl p-4 flex items-center gap-4"
+                 :class="t.impossible ? 'bg-gray-800/50 opacity-50' : t.rank <= 3 ? 'bg-gray-800' : 'bg-gray-800/60'">
+
+              <!-- Rang-Badge -->
+              <div class="shrink-0 h-12 w-12 rounded-full flex items-center justify-center font-black text-xl"
+                   :class="{
+                     'bg-yellow-500/20 text-yellow-300': t.rank === 1,
+                     'bg-slate-400/20 text-slate-300':  t.rank === 2,
+                     'bg-amber-700/20 text-amber-400':  t.rank === 3,
+                     'bg-gray-700 text-gray-400':        t.rank > 3,
+                   }">
+                {{ t.rank }}
+              </div>
+
+              <div class="flex-1">
+                <div class="text-gray-400 text-xs font-semibold uppercase tracking-wide">{{ t.label }}</div>
+                <div class="text-gray-300 text-xs mt-0.5">
+                  {{ t.holderName }} · {{ t.holderTime.toFixed(2) }}s Gesamt
+                </div>
+              </div>
+
+              <div class="text-right shrink-0">
+                <div v-if="t.impossible" class="text-red-400 font-bold text-lg">nicht möglich</div>
+                <template v-else>
+                  <div class="font-black tabnum" style="font-size: 2rem; line-height: 1;"
+                       :class="t.needed < 0 ? 'text-red-400' : 'text-cyan-300'">
+                    {{ t.needed.toFixed(2) }}<span class="text-base font-normal text-gray-500">s</span>
+                  </div>
+                  <!-- Pylonen-Budget -->
+                  <div v-if="mainPenalty && t.needed > 0" class="text-xs text-gray-500 mt-1">
+                    bis {{ Math.floor(t.needed / mainPenalty) }}× Pylone (à {{ mainPenalty }}s)
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Aktuelle Wertung -->
+        <div class="bg-gray-900 rounded-2xl border border-gray-700 p-4 flex-1">
+          <div class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">
+            Aktuelle Wertung · {{ selectedClass?.name }}
+          </div>
+          <div class="space-y-1">
+            <div v-for="(row, i) in topStandings" :key="row.participant_id || row.start_number"
+                 class="flex items-center gap-3 rounded-lg px-3 py-2"
+                 :class="{
+                   'bg-yellow-500/10 border border-yellow-500/20': i === 0,
+                   'bg-gray-800/60': i > 0,
+                   'ring-1 ring-cyan-500': row.start_number === currentDriver?.start_number,
+                 }">
+              <span class="font-black text-sm w-5 text-center"
+                    :class="i === 0 ? 'text-yellow-300' : i === 1 ? 'text-slate-400' : i === 2 ? 'text-amber-600' : 'text-gray-500'">
+                {{ row.rank }}
+              </span>
+              <span class="font-bold text-sm text-gray-300 w-8">#{{ row.start_number }}</span>
+              <span class="font-semibold text-sm flex-1 truncate"
+                    :class="row.start_number === currentDriver?.start_number ? 'text-cyan-300' : 'text-white'">
+                {{ row.first_name }} {{ row.last_name }}
+              </span>
+              <span class="font-black tabnum text-sm" :class="i === 0 ? 'text-yellow-300' : 'text-white'">
+                {{ row.total_time?.toFixed(2) ?? '–' }}
+              </span>
+            </div>
+          </div>
+          <div v-if="standings.length > 10" class="text-xs text-gray-600 text-center mt-2">
+            + {{ standings.length - 10 }} weitere
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import api from '../api/client'
+import { useEventStore } from '../stores/event'
+import { useRealtimeUpdate } from '../composables/useRealtimeUpdate'
+
+const store = useEventStore()
+
+const selectedClassId  = ref(null)
+const selectedRun      = ref(1)
+const standings        = ref([])
+const runResults       = ref([])
+const participants     = ref([])
+const currentReglement = ref(null)
+const penalties        = ref([])
+
+const runNums = computed(() => {
+  const n = currentReglement.value?.runs_per_class ?? 2
+  return Array.from({ length: n }, (_, i) => i + 1)
+})
+
+const runLabel = computed(() =>
+  selectedRun.value === 0 ? 'Training' : `Lauf ${selectedRun.value}`
+)
+
+const selectedClass = computed(() =>
+  store.classes.find(c => c.id === selectedClassId.value) || null
+)
+
+const mainPenalty = computed(() => {
+  if (!penalties.value.length) return null
+  return Math.min(...penalties.value.map(p => p.seconds))
+})
+
+// Wer hat den aktuellen Lauf noch NICHT absolviert → pending queue
+const queue = computed(() => {
+  const doneIds = new Set(runResults.value.map(r => r.participant_id))
+  return participants.value
+    .filter(p => !doneIds.has(p.id))
+    .sort((a, b) => (a.start_number ?? 9999) - (b.start_number ?? 9999))
+})
+
+const currentDriver  = computed(() => queue.value[0] || null)
+const nextDrivers    = computed(() => queue.value.slice(0, 8))
+
+// Bisherige Läufe des aktuellen Fahrers (run_number < selectedRun)
+const driverPrevRuns = computed(() => {
+  if (!currentDriver.value) return []
+  // All run-results endpoint returns all runs for the class
+  return allRunResults.value
+    .filter(r =>
+      r.participant_id === currentDriver.value.id &&
+      r.run_number > 0 &&
+      r.run_number < selectedRun.value &&
+      r.status === 'valid'
+    )
+    .sort((a, b) => a.run_number - b.run_number)
+})
+
+const driverPartial = computed(() =>
+  driverPrevRuns.value.reduce((s, r) => s + (r.total_time ?? 0), 0)
+)
+
+const allRunResults = ref([])  // alle Läufe der Klasse (nicht nur aktueller Lauf)
+
+const topStandings = computed(() => standings.value.slice(0, 10))
+
+// Zeitanalyse: welche Zeiten braucht der Fahrer für Pn?
+const timeTargets = computed(() => {
+  if (!currentDriver.value || standings.value.length === 0) return []
+  const partial = driverPartial.value
+  const targets = [1, 3, 10]
+  return targets
+    .map(rank => {
+      const idx = rank - 1
+      if (idx >= standings.value.length) return null
+      const holder = standings.value[idx]
+      if (!holder.total_time) return null
+      const isCurrentDriver = holder.start_number === currentDriver.value.start_number
+      // Wenn der Fahrer selbst diese Position hat: zeige nicht doppelt
+      if (isCurrentDriver && driverPrevRuns.value.length > 0) return null
+      const needed = holder.total_time - partial
+      return {
+        rank,
+        label: rank === 1 ? '🥇 Platz 1 schlagen' : rank === 3 ? '🥉 Top 3 erreichen' : `Top ${rank} erreichen`,
+        holderName: `${holder.first_name} ${holder.last_name}`,
+        holderTime: holder.total_time,
+        needed,
+        impossible: needed <= 0,
+      }
+    })
+    .filter(Boolean)
+})
+
+async function loadData() {
+  if (!store.activeEvent || !selectedClassId.value) return
+  const eid = store.activeEvent.id
+  const cid = selectedClassId.value
+
+  const [stRes, rrRes, allRrRes, partRes] = await Promise.all([
+    api.get(`/events/${eid}/standings`, { params: { class_id: cid } }),
+    api.get(`/events/${eid}/run-results`, { params: { class_id: cid, run_number: selectedRun.value } }),
+    api.get(`/events/${eid}/run-results`, { params: { class_id: cid } }),
+    api.get(`/events/${eid}/participants`),
+  ])
+
+  standings.value    = stRes.data
+  runResults.value   = rrRes.data
+  allRunResults.value = allRrRes.data
+  participants.value = partRes.data.filter(p => p.class_id === cid)
+}
+
+async function onClassChange() {
+  const cls = selectedClass.value
+  if (!cls) return
+  const regId = cls.reglement_id
+  if (regId) {
+    const [regRes, penRes] = await Promise.all([
+      api.get(`/reglements/${regId}`),
+      api.get(`/reglements/${regId}/penalties`),
+    ])
+    currentReglement.value = regRes.data
+    penalties.value = penRes.data
+    if (selectedRun.value === 0 && !currentReglement.value?.has_training)
+      selectedRun.value = 1
+  } else {
+    currentReglement.value = null
+    penalties.value = []
+  }
+  await loadData()
+}
+
+const { connected: wsConnected } = useRealtimeUpdate(async (msg) => {
+  if (!store.activeEvent) return
+  if (msg.event_id && msg.event_id !== store.activeEvent.id) return
+  if (msg.type === 'results' || msg.type === 'classes') await loadData()
+})
+
+onMounted(async () => {
+  if (!store.classes.length) await store.loadEvents()
+  if (store.classes.length) {
+    // Bevorzuge laufende Klasse
+    const running = store.classes.find(c => c.run_status === 'running')
+    selectedClassId.value = (running ?? store.classes[0]).id
+    await onClassChange()
+  }
+})
+
+watch(() => store.classes, async (v) => {
+  if (v.length && !selectedClassId.value) {
+    selectedClassId.value = v[0].id
+    await onClassChange()
+  }
+})
+watch(selectedRun, loadData)
+</script>
+
+<style scoped>
+.tabnum { font-variant-numeric: tabular-nums; }
+</style>
