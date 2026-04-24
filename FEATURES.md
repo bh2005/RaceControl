@@ -20,6 +20,7 @@ Stand: April 2026
 - Ergebnisse aller Klassen in Echtzeit
 - Wechsel zwischen Klassen und Läufen
 - Tabellarische Darstellung mit Rang, Startnummer, Name, Verein, Zeit, Strafen
+- Lauf-Detailzeilen pro Fahrer: Rohzeit + Strafzeit für jeden Lauf (z.B. `Lauf 1  56.13 +12.0s = 68.13`); Strafzeit immer sichtbar (grau bei 0.0 s)
 
 ### Online-Nennung `/nennen`
 - Selbstanmeldung vor Ort über Tablet/Smartphone
@@ -66,6 +67,7 @@ Stand: April 2026
 ### Zeiteingabe
 - Klassenwahl und Laufwahl (Training / Lauf 1 / Lauf 2)
 - Großes Zeitfeld mit numerischer Eingabe
+- Komma als Dezimaltrennzeichen akzeptiert (56,13 = 56.13 s)
 - Bestätigung mit Enter oder Button
 - Sonderstatus: DNS / DNF / DSQ per Button
 
@@ -108,8 +110,11 @@ Stand: April 2026
 - Frühzeitige Freigabe trotzdem möglich (mit Warnanzeige)
 
 ### Ergebniskorrekturen
+- Lauf-Spalte in der Ergebnistabelle (Training grau, Lauf N blau)
 - Zeitkorrektur mit Pflichtfeld „Begründung"
 - Statuskorrektur (valid / DNS / DNF / DSQ)
+- Strafen-Korrektur für Wertungsläufe: bestehende Strafen ändern, neue hinzufügen; Live-Vorschau der Gesamtzeit
+- Training: nur Rohzeit und Status korrigierbar (keine Straffelder)
 - Audit-Log aller Korrekturen (Feld, Alter Wert, Neuer Wert, Begründung, Zeitstempel)
 
 ---

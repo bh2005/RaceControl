@@ -3,7 +3,7 @@
 **Stack:** SQLite (WAL-Modus, Offline-First) · Python 3.9+ / FastAPI  
 **Zielgröße:** ~300 Starter, ~10 Klassen, 50+ simultane WS-Clients  
 **Schema-Datei:** `schema.sql` (Single Source of Truth)  
-*Letzte Aktualisierung: 2026-04-24 · v0.2.0*
+*Letzte Aktualisierung: 2026-04-24 · v0.3.0*
 
 ---
 
@@ -312,10 +312,13 @@ Vollständiges Laufergebnis inkl. berechneter Strafzeit.
 |---|---|
 | `result_id`, `event_id`, `class_id`, `class_name` | Identifikation |
 | `run_number` | Laufnummer |
+| `participant_id` | ID des Teilnehmers (für Queue-Logik in der Zeitnahme) |
 | `start_number`, `first_name`, `last_name`, `club` | Fahrer-Info |
 | `raw_time`, `status`, `is_official` | Rohzeitwerte |
 | `total_penalties` | Summe aller Strafsekunden (COALESCE → 0.0) |
 | `total_time` | `raw_time + total_penalties` · NULL bei DNS/DNF/DSQ |
+
+> **Hinweis:** Alle drei Views (`v_run_results`, `v_class_standings_sum_all`, `v_fastest_of_day`) werden in `schema.sql` mit `DROP VIEW IF EXISTS` + `CREATE VIEW` erzeugt (nicht `CREATE VIEW IF NOT EXISTS`), damit Schema-Änderungen beim Neustart des Backends immer wirksam werden.
 
 ### `v_class_standings_sum_all`
 

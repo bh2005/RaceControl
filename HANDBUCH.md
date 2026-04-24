@@ -160,9 +160,9 @@ Das System prüft automatisch, ob der Teilnehmer bereits gemeldet ist (Duplikatc
 
 ### Zeit eingeben
 
-- Zahl eintippen (z.B. `45.23`)
+- Zahl eintippen (z.B. `45.23` oder `45,23` — Komma und Punkt werden akzeptiert)
 - Strafen über die Buttons klicken (oder Tastaturkürzel)
-- **Enter** bestätigt die Zeit und wechselt zum nächsten Fahrer
+- **Enter** bestätigt die Zeit und wechselt automatisch zum nächsten Fahrer
 
 ### Sonderstatus
 
@@ -217,13 +217,16 @@ Falls ein Fahrer seine Startreihenfolge tauscht (z.B. #4 ist schon im Warmfahrpa
 
 ### Ergebnis korrigieren
 
-1. In der Mitte das Ergebnis finden, das korrigiert werden soll
+1. In der Mitte das Ergebnis finden, das korrigiert werden soll (Spalte „Lauf" zeigt Training oder Lauf N)
 2. **Korrigieren** klicken
-3. Neue Zeit oder neuen Status eingeben
-4. **Begründung** eingeben (Pflichtfeld, z.B. „Pylone nach Video gestrichen")
-5. **Korrektur speichern**
+3. Neue Rohzeit oder neuen Status eingeben
+4. Bei Wertungsläufen (Lauf 1, 2, …): Strafen anpassen — bestehende Strafen entfernen (✕) oder neue hinzufügen (+ Button); die Gesamtzeit wird sofort aktualisiert
+5. **Begründung** eingeben (Pflichtfeld, z.B. „Pylone nach Video gestrichen")
+6. **Korrektur speichern**
 
 > Alle Korrekturen werden im Audit-Log (rechts) dauerhaft protokolliert.
+
+> **Hinweis Training:** Beim Trainingslauf gibt es keine Straffelder — hier können nur Rohzeit und Status korrigiert werden.
 
 ---
 
@@ -232,8 +235,8 @@ Falls ein Fahrer seine Startreihenfolge tauscht (z.B. #4 ist schon im Warmfahrpa
 **URL:** `/livetiming` | Kein Login erforderlich
 
 - Zeigt Ergebnisse aller Klassen in Echtzeit
-- Klassen und Läufe über Dropdown wählbar
-- Rang, Startnummer, Name, Verein, Rohzeit, Strafen, Gesamtzeit
+- Klassen über Tabs wählbar; Gesamtwertung mit Rang, Startnummer, Name, Verein, Gesamtzeit
+- Lauf-Detailzeilen unter jedem Fahrer: Rohzeit + Strafzeit pro Lauf (z.B. `Lauf 1  56.13 +12.0s = 68.13`)
 
 ---
 

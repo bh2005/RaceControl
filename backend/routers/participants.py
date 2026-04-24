@@ -47,7 +47,7 @@ def _row_with_club(db: sqlite3.Connection, participant_id: int) -> dict:
     return dict(row) if row else {}
 
 
-@router.get("/", response_model=list[ParticipantResponse])
+@router.get("", response_model=list[ParticipantResponse])
 def list_participants(event_id: int, db: Annotated[sqlite3.Connection, Depends(get_db)]):
     rows = db.execute(
         """SELECT p.*, COALESCE(c.short_name, c.name) AS club_name
@@ -60,7 +60,7 @@ def list_participants(event_id: int, db: Annotated[sqlite3.Connection, Depends(g
     return [dict(r) for r in rows]
 
 
-@router.post("/", response_model=ParticipantResponse, status_code=201)
+@router.post("", response_model=ParticipantResponse, status_code=201)
 def create_participant(
     event_id: int,
     body: ParticipantCreate,

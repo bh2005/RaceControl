@@ -132,6 +132,7 @@
             <tr class="bg-msc-blue text-white text-xs">
               <th class="py-2.5 px-3 text-left">Nr.</th>
               <th class="py-2.5 px-3 text-left">Fahrer</th>
+              <th class="py-2.5 px-3 text-left">Lauf</th>
               <th class="py-2.5 px-3 text-right">Rohzeit</th>
               <th class="py-2.5 px-3 text-right">Strafen</th>
               <th class="py-2.5 px-3 text-right">Gesamt</th>
@@ -150,12 +151,16 @@
                 <span class="font-semibold text-gray-800">{{ r.first_name[0] }}. {{ r.last_name }}</span>
                 <span class="text-gray-400 text-xs ml-1">{{ r.class_name }}</span>
               </td>
+              <td class="py-2.5 px-3 text-xs font-semibold"
+                  :class="r.run_number === 0 ? 'text-gray-400' : 'text-msc-blue'">
+                {{ r.run_number === 0 ? 'Training' : 'Lauf ' + r.run_number }}
+              </td>
               <td class="py-2.5 px-3 text-right font-mono text-gray-700">
                 {{ r.raw_time !== null ? r.raw_time.toFixed(2) : '–' }}
               </td>
               <td class="py-2.5 px-3 text-right font-mono font-bold"
                   :class="r.total_penalties > 0 ? 'text-msc-red' : 'text-gray-400'">
-                +{{ r.total_penalties.toFixed(1) }}
+                {{ r.run_number === 0 ? '–' : '+' + r.total_penalties.toFixed(1) }}
               </td>
               <td class="py-2.5 px-3 text-right font-mono font-bold text-gray-800">
                 {{ r.total_time !== null ? r.total_time.toFixed(2) : r.status.toUpperCase() }}
@@ -171,7 +176,7 @@
               </td>
             </tr>
             <tr v-if="results.length === 0">
-              <td colspan="7" class="py-6 text-center text-sm text-gray-400">Keine Ergebnisse</td>
+              <td colspan="8" class="py-6 text-center text-sm text-gray-400">Keine Ergebnisse</td>
             </tr>
           </tbody>
         </table>
@@ -183,10 +188,15 @@
           <h3 class="font-bold text-gray-800 flex items-center gap-2">
             <span class="h-2.5 w-2.5 rounded-full bg-msc-blue"></span>
             Korrektur: #{{ editing.start_number }} {{ editing.first_name }} {{ editing.last_name }}
+            <span class="text-xs font-normal px-2 py-0.5 rounded-full"
+                  :class="editing.run_number === 0 ? 'bg-gray-100 text-gray-500' : 'bg-msc-blue/10 text-msc-blue'">
+              {{ editing.run_number === 0 ? 'Training' : 'Lauf ' + editing.run_number }}
+            </span>
           </h3>
           <button @click="editing = null" class="text-gray-400 hover:text-gray-600">✕</button>
         </div>
 
+        <!-- Rohzeit + Status -->
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="text-xs text-gray-500 font-semibold block mb-1">Rohzeit (s)</label>
@@ -204,12 +214,47 @@
           </div>
         </div>
 
+        <!-- Strafen (nur für Wertungsläufe, nicht Training) -->
+        <template v-if="editing.run_number > 0">
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-xs text-gray-500 font-semibold">Strafen</label>
+              <span v-if="editTotalTime !== null" class="text-xs font-mono font-bold text-gray-700">
+                Gesamt: {{ editTotalTime.toFixed(2) }} s
+                <span v-if="editTotalPenalties > 0" class="text-msc-red">(+{{ editTotalPenalties.toFixed(1) }} s)</span>
+              </span>
+            </div>
+            <!-- Aktive Strafen -->
+            <div class="flex flex-wrap gap-1.5 min-h-8 p-2 bg-gray-50 rounded-lg border border-gray-200 mb-2">
+              <span v-for="(p, i) in editPenalties" :key="i"
+                    class="flex items-center gap-1 bg-msc-red text-white text-xs font-bold rounded-full px-2.5 py-1">
+                {{ p.label }} ×{{ p.count }}
+                <button @click="removeEditPenalty(i)" class="ml-1 hover:text-red-200 leading-none">✕</button>
+              </span>
+              <span v-if="editPenalties.length === 0" class="text-xs text-gray-400 self-center ml-1">Keine Strafen</span>
+            </div>
+            <!-- Straf-Buttons -->
+            <div v-if="availablePenaltyDefs.length" class="grid grid-cols-3 gap-1.5">
+              <button
+                v-for="pen in availablePenaltyDefs" :key="pen.id"
+                @click="addEditPenalty(pen)"
+                class="bg-red-50 hover:bg-msc-red hover:text-white border border-red-200 hover:border-msc-red rounded-lg p-2 text-left transition group"
+              >
+                <div class="font-bold text-xs text-gray-800 group-hover:text-white truncate">{{ pen.label }}</div>
+                <div class="text-xs text-gray-500 group-hover:text-white/80">+{{ pen.seconds.toFixed(1) }} s</div>
+              </button>
+            </div>
+            <div v-else class="text-xs text-gray-400">Keine Strafarten für diese Klasse hinterlegt.</div>
+          </div>
+        </template>
+
+        <!-- Begründung -->
         <div>
           <label class="text-xs font-bold block mb-1 flex items-center gap-1.5">
             <span class="text-msc-red">⚠</span>
             <span class="text-gray-700">Begründung <span class="text-msc-red">*</span></span>
           </label>
-          <textarea v-model="editForm.reason" rows="3"
+          <textarea v-model="editForm.reason" rows="2"
             placeholder="z.B. ‹Pylone nach Videobeweis gestrichen›"
             class="w-full border-2 border-amber-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-amber-50/40 resize-none">
           </textarea>
@@ -275,19 +320,22 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import api from '../api/client'
 import { useEventStore } from '../stores/event'
 
 const store = useEventStore()
 
-const results     = ref([])
-const auditLog    = ref([])
-const editing     = ref(null)
-const editForm    = ref({ raw_time: null, status: 'valid', reason: '' })
-const editError   = ref('')
-const filterClass = ref('')
-const filterRun   = ref('')
+const results              = ref([])
+const auditLog             = ref([])
+const editing              = ref(null)
+const editForm             = ref({ raw_time: null, status: 'valid', reason: '' })
+const editError            = ref('')
+const filterClass          = ref('')
+const filterRun            = ref('')
+const editPenalties        = ref([])   // [{ id?, penalty_definition_id, label, seconds, count }]
+const originalPenalties    = ref([])   // snapshot beim Öffnen → für Delete-Diff
+const availablePenaltyDefs = ref([])   // Strafarten des Reglements
 
 // ── Protest-Timer ───────────────────────────────────────────────────
 const now = ref(new Date())
@@ -368,20 +416,81 @@ async function loadAuditLog() {
   auditLog.value = []
 }
 
-function startEdit(r) {
+const editTotalPenalties = computed(() =>
+  editPenalties.value.reduce((s, p) => s + p.seconds * p.count, 0)
+)
+const editTotalTime = computed(() => {
+  if (editForm.value.status !== 'valid') return null
+  const rt = parseFloat(editForm.value.raw_time)
+  if (isNaN(rt)) return null
+  return rt + editTotalPenalties.value
+})
+
+async function startEdit(r) {
   editing.value = r
   editForm.value = { raw_time: r.raw_time, status: r.status, reason: '' }
   editError.value = ''
+  editPenalties.value = []
+  originalPenalties.value = []
+  availablePenaltyDefs.value = []
+
+  if (r.run_number > 0 && store.activeEvent) {
+    const cls   = store.classes.find(c => c.id === r.class_id)
+    const regId = cls?.reglement_id
+    const [penRes, defsRes] = await Promise.all([
+      api.get(`/events/${store.activeEvent.id}/results/${r.result_id}/penalties`),
+      regId ? api.get(`/reglements/${regId}/penalties`) : Promise.resolve({ data: [] }),
+    ])
+    availablePenaltyDefs.value = defsRes.data
+    const mapped = penRes.data.map(p => {
+      const def = defsRes.data.find(d => d.id === p.penalty_definition_id)
+      return { id: p.id, penalty_definition_id: p.penalty_definition_id,
+               label: def?.label || '?', seconds: def?.seconds || 0, count: p.count }
+    })
+    editPenalties.value    = mapped.map(p => ({ ...p }))
+    originalPenalties.value = mapped.map(p => ({ ...p }))
+  }
+}
+
+function addEditPenalty(pen) {
+  const ex = editPenalties.value.find(p => p.penalty_definition_id === pen.id)
+  if (ex) { ex.count++ }
+  else editPenalties.value.push({
+    penalty_definition_id: pen.id, label: pen.label, seconds: pen.seconds, count: 1,
+  })
+}
+
+function removeEditPenalty(i) {
+  const p = editPenalties.value[i]
+  if (p.count > 1) p.count--
+  else editPenalties.value.splice(i, 1)
 }
 
 async function saveEdit() {
   if (!editing.value || !store.activeEvent) return
   editError.value = ''
   try {
+    // 1. Rohzeit / Status korrigieren (Audit-Log)
     await api.patch(
       `/events/${store.activeEvent.id}/results/${editing.value.result_id}`,
       editForm.value
     )
+
+    // 2. Strafen neu setzen (nur Wertungsläufe)
+    if (editing.value.run_number > 0) {
+      for (const p of originalPenalties.value) {
+        await api.delete(
+          `/events/${store.activeEvent.id}/results/${editing.value.result_id}/penalties/${p.id}`
+        )
+      }
+      for (const p of editPenalties.value) {
+        await api.post(
+          `/events/${store.activeEvent.id}/results/${editing.value.result_id}/penalties`,
+          { result_id: editing.value.result_id, penalty_definition_id: p.penalty_definition_id, count: p.count }
+        )
+      }
+    }
+
     editing.value = null
     await loadResults()
     await loadAuditLog()

@@ -63,22 +63,22 @@ def _make_user(db, username: str, role: str) -> str:
 
 @pytest.fixture()
 def admin_headers(db):
-    return {"Authorization": f"Bearer {_make_user(db, 'admin', 'admin')}"}
+    return {"Authorization": f"Bearer {_make_user(db, 't_admin', 'admin')}"}
 
 
 @pytest.fixture()
 def schiri_headers(db):
-    return {"Authorization": f"Bearer {_make_user(db, 'schiri', 'schiedsrichter')}"}
+    return {"Authorization": f"Bearer {_make_user(db, 't_schiri', 'schiedsrichter')}"}
 
 
 @pytest.fixture()
 def zeitnahme_headers(db):
-    return {"Authorization": f"Bearer {_make_user(db, 'zeit', 'zeitnahme')}"}
+    return {"Authorization": f"Bearer {_make_user(db, 't_zeit', 'zeitnahme')}"}
 
 
 @pytest.fixture()
 def nennung_headers(db):
-    return {"Authorization": f"Bearer {_make_user(db, 'nenn', 'nennung')}"}
+    return {"Authorization": f"Bearer {_make_user(db, 't_nenn', 'nennung')}"}
 
 
 # ── Domain object fixtures ────────────────────────────────────────────────────

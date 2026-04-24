@@ -253,13 +253,15 @@ CREATE INDEX IF NOT EXISTS idx_team_members_participant ON TeamMembers (particip
 -- ============================================================
 
 -- Vollständiges Ergebnis pro Lauf inkl. berechneter Strafzeit
-CREATE VIEW IF NOT EXISTS v_run_results AS
+DROP VIEW IF EXISTS v_run_results;
+CREATE VIEW v_run_results AS
 SELECT
     r.id                AS result_id,
     r.event_id,
     r.class_id,
     c.name              AS class_name,
     r.run_number,
+    p.id                AS participant_id,
     p.start_number,
     p.first_name,
     p.last_name,
@@ -288,7 +290,8 @@ JOIN       Classes      c  ON c.id  = r.class_id
 LEFT JOIN  Clubs        cl ON cl.id = p.club_id;
 
 -- Gesamtwertung pro Klasse (scoring_type "sum_all")
-CREATE VIEW IF NOT EXISTS v_class_standings_sum_all AS
+DROP VIEW IF EXISTS v_class_standings_sum_all;
+CREATE VIEW v_class_standings_sum_all AS
 SELECT
     r.event_id,
     r.class_id,
@@ -327,7 +330,8 @@ GROUP BY   r.event_id, r.class_id, r.participant_id;
 -- Tagesschnellste/r: schnellste Einzellaufzeit je Veranstaltung + Reglement-Gruppe
 -- Gibt pro Fahrer die beste Einzellaufzeit zurück (nicht Gesamtsumme).
 -- Gefiltert nach event_id + reglement_id in der Applikationsschicht.
-CREATE VIEW IF NOT EXISTS v_fastest_of_day AS
+DROP VIEW IF EXISTS v_fastest_of_day;
+CREATE VIEW v_fastest_of_day AS
 SELECT
     r.event_id,
     c.reglement_id,

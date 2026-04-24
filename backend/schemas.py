@@ -68,7 +68,7 @@ class ReglementResponse(ReglementCreate):
 # ── PenaltyDefinitions ───────────────────────────────────────────────────────
 
 class PenaltyDefinitionCreate(BaseModel):
-    reglement_id: int
+    reglement_id: Optional[int] = None   # filled by path param in router
     label: str
     seconds: float = Field(ge=0)
     shortcut_key: Optional[str] = None
@@ -111,7 +111,7 @@ class EventResponse(EventCreate):
 # ── Classes ───────────────────────────────────────────────────────────────────
 
 class ClassCreate(BaseModel):
-    event_id: int
+    event_id: Optional[int] = None       # filled by path param in router
     reglement_id: Optional[int] = None
     name: str
     short_name: Optional[str] = None
@@ -146,7 +146,7 @@ class ClassResponse(ClassCreate):
 # ── Participants ──────────────────────────────────────────────────────────────
 
 class ParticipantCreate(BaseModel):
-    event_id: int
+    event_id: Optional[int] = None       # filled by path param in router
     class_id: Optional[int] = None
     club_id: Optional[int] = None   # NULL = "n.N."
     start_number: Optional[int] = None  # NULL bis zur Auslosung
@@ -193,7 +193,7 @@ class ParticipantResponse(BaseModel):
 # ── RaceResults ───────────────────────────────────────────────────────────────
 
 class RaceResultCreate(BaseModel):
-    event_id: int
+    event_id: Optional[int] = None       # filled by path param in router
     participant_id: int
     class_id: int
     run_number: int = Field(ge=0)
@@ -262,7 +262,7 @@ class UserResponse(BaseModel):
 # ── Teams / Mannschaftswertung ───────────────────────────────────────────────
 
 class TeamCreate(BaseModel):
-    event_id: int
+    event_id: Optional[int] = None       # filled by path param in router
     name: str
     club: Optional[str] = None
 
@@ -327,6 +327,7 @@ class RunResultView(BaseModel):
     class_id: int
     class_name: str
     run_number: int
+    participant_id: int
     start_number: int
     first_name: str
     last_name: str

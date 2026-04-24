@@ -478,8 +478,7 @@ async function undo() {
 // Keyboard shortcuts
 function onKey(e) {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-    if (e.key === 'Enter' && e.target === timeInput.value) confirm()
-    return
+    return  // Enter auf dem Zeitfeld wird per @keydown.enter im Template behandelt
   }
   if (e.ctrlKey && e.key === 'z') { undo(); return }
   const pen = penalties.value.find(p => p.shortcut_key === e.key.toUpperCase())
@@ -495,6 +494,11 @@ onMounted(async () => {
 })
 
 onUnmounted(() => window.removeEventListener('keydown', onKey))
+
+watch(rawTime, (val) => {
+  if (typeof val === 'string' && val.includes(','))
+    rawTime.value = val.replace(/,/g, '.')
+})
 
 watch(selectedRun, () => { manualOrder.value = []; loadRunResults() })
 watch(() => store.classes, async (v) => {

@@ -91,7 +91,27 @@
                   {{ row.first_name }} {{ row.last_name }}
                 </span>
               </div>
-              <div class="text-sm opacity-70">{{ row.club || 'n.N.' }}</div>
+              <div class="text-sm opacity-70 mb-1">{{ row.club || 'n.N.' }}</div>
+              <!-- Lauf-Details -->
+              <div v-for="run in runsFor(cls.id, row.start_number)" :key="run.run_number"
+                   class="flex items-center gap-1.5 text-xs font-mono leading-5">
+                <span class="opacity-50 w-14 shrink-0">
+                  {{ run.run_number === 0 ? 'Training' : 'Lauf ' + run.run_number }}
+                </span>
+                <template v-if="run.status === 'valid' && run.raw_time !== null">
+                  <span class="font-bold">{{ run.raw_time.toFixed(2) }}</span>
+                  <template v-if="run.run_number > 0">
+                    <span :class="run.total_penalties > 0 ? 'text-red-400 font-bold' : 'opacity-40'">
+                      +{{ run.total_penalties.toFixed(1) }}s
+                    </span>
+                    <template v-if="run.total_penalties > 0">
+                      <span class="opacity-40">=</span>
+                      <span class="font-bold">{{ run.total_time.toFixed(2) }}</span>
+                    </template>
+                  </template>
+                </template>
+                <span v-else class="opacity-40 uppercase">{{ run.status }}</span>
+              </div>
             </div>
             <div class="text-right shrink-0">
               <div v-if="row.total_time" class="font-black text-2xl tabnum">
@@ -137,6 +157,7 @@ import { useRealtimeUpdate } from '../composables/useRealtimeUpdate'
 const store = useEventStore()
 const selectedClassId  = ref(null)
 const standingsByClass = ref({})
+const runsByKey        = ref({})   // `${class_id}_${start_number}` → runs[]
 const totalRuns = ref(2)
 
 const visibleClasses = computed(() => {
@@ -145,15 +166,32 @@ const visibleClasses = computed(() => {
   return cls
 })
 
+function runsFor(classId, startNumber) {
+  return runsByKey.value[`${classId}_${startNumber}`] || []
+}
+
 async function loadStandings() {
   if (!store.activeEvent) return
-  const { data } = await api.get(`/events/${store.activeEvent.id}/standings`)
+  const [stRes, runRes] = await Promise.all([
+    api.get(`/events/${store.activeEvent.id}/standings`),
+    api.get(`/events/${store.activeEvent.id}/run-results`),
+  ])
+
   const grouped = {}
-  for (const row of data) {
-    if (!grouped[row.class_id]) grouped[row.class_id] = []
-    grouped[row.class_id].push(row)
+  for (const row of stRes.data) {
+    ;(grouped[row.class_id] ??= []).push(row)
   }
   standingsByClass.value = grouped
+
+  const runMap = {}
+  for (const r of runRes.data) {
+    const key = `${r.class_id}_${r.start_number}`
+    ;(runMap[key] ??= []).push(r)
+  }
+  for (const key in runMap) {
+    runMap[key].sort((a, b) => a.run_number - b.run_number)
+  }
+  runsByKey.value = runMap
 }
 
 // WebSocket — sofortige Updates bei neuen Ergebnissen oder Statuswechseln
