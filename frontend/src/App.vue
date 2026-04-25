@@ -15,7 +15,7 @@
            :style="!isOnline ? 'top:40px' : 'top:0'"
            @click="notification = null">
         <span class="text-lg">📢</span>
-        <span>{{ notification.message }}</span>
+        <span>{{ notification.message }}<span v-if="notification.sender" class="font-normal opacity-70 text-sm ml-2">({{ notification.sender }})</span></span>
         <span class="opacity-50 text-sm ml-2">✕</span>
       </div>
     </Transition>

@@ -228,7 +228,7 @@ class RaceResultResponse(BaseModel):
 # ── RunPenalties ──────────────────────────────────────────────────────────────
 
 class RunPenaltyCreate(BaseModel):
-    result_id: int
+    result_id: Optional[int] = None
     penalty_definition_id: int
     count: int = Field(ge=1, default=1)
 

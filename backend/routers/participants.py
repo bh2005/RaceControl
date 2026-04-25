@@ -19,15 +19,6 @@ def _suggest_class(db: sqlite3.Connection, event_id: int, birth_year: Optional[i
     row = db.execute(
         """SELECT id FROM Classes
            WHERE event_id = ?
-             AND (min_birth_year IS NULL OR birth_year >= min_birth_year)
-             AND (max_birth_year IS NULL OR birth_year <= max_birth_year)
-           ORDER BY start_order LIMIT 1""",
-        (event_id, ),
-    ).fetchone()
-    # SQLite does not support named parameters in subqueries — use python-side replacement:
-    row = db.execute(
-        """SELECT id FROM Classes
-           WHERE event_id = ?
              AND (min_birth_year IS NULL OR ? >= min_birth_year)
              AND (max_birth_year IS NULL OR ? <= max_birth_year)
            ORDER BY start_order LIMIT 1""",
@@ -84,7 +75,7 @@ def create_participant(
         db.commit()
         return _row_with_club(db, cur.lastrowid)
     except Exception:
-        detail = (f"Startnummer {body.start_number} bereits vergeben"
+        detail = (f"Startnummer {body.start_number} in dieser Klasse bereits vergeben"
                   if body.start_number else "Fehler beim Speichern")
         raise HTTPException(409, detail)
 
@@ -101,11 +92,17 @@ def update_participant(
     if not updates:
         raise HTTPException(422, "Keine Felder zum Aktualisieren")
     sets = ", ".join(f"{k} = ?" for k in updates)
-    db.execute(
-        f"UPDATE Participants SET {sets} WHERE id = ? AND event_id = ?",
-        (*updates.values(), participant_id, event_id),
-    )
-    db.commit()
+    try:
+        db.execute(
+            f"UPDATE Participants SET {sets} WHERE id = ? AND event_id = ?",
+            (*updates.values(), participant_id, event_id),
+        )
+        db.commit()
+    except Exception:
+        sn = updates.get("start_number")
+        detail = (f"Startnummer {sn} in dieser Klasse bereits vergeben"
+                  if sn else "Fehler beim Speichern")
+        raise HTTPException(409, detail)
     return _row_with_club(db, participant_id)
 
 

@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS Participants (
                     CHECK (fee_paid IN (0, 1)),        -- Nenngeld bezahlt
     helmet_ok       INTEGER NOT NULL DEFAULT 0
                     CHECK (helmet_ok IN (0, 1)),       -- Helmkontrolle bestanden
-    UNIQUE (event_id, start_number)                   -- Startnummer eindeutig pro Veranstaltung
+    UNIQUE (class_id, start_number)                    -- Startnummer eindeutig pro Klasse
 );
 
 -- ============================================================
@@ -244,7 +244,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_timestamp   ON AuditLog (timestamp);
 
 -- Teilnehmersuche nach Name / Startnummer
 CREATE INDEX IF NOT EXISTS idx_participants_event        ON Participants (event_id);
-CREATE INDEX IF NOT EXISTS idx_participants_start_number ON Participants (event_id, start_number);
+CREATE INDEX IF NOT EXISTS idx_participants_start_number ON Participants (class_id, start_number);
 
 -- Mannschaftswertung
 CREATE INDEX IF NOT EXISTS idx_team_members_team        ON TeamMembers (team_id);

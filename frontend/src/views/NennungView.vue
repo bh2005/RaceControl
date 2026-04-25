@@ -266,10 +266,21 @@
         <div v-for="cls in store.classes" :key="cls.id" class="card overflow-hidden">
           <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
             <h3 class="font-bold text-sm text-gray-800">{{ cls.name }}</h3>
-            <span class="text-xs text-gray-400">
-              {{ participantsByClass(cls.id).filter(p => p.start_number).length }}
-              / {{ participantsByClass(cls.id).length }} vergeben
-            </span>
+            <div class="flex items-center gap-3">
+              <span class="text-xs text-gray-400">
+                {{ participantsByClass(cls.id).filter(p => p.start_number).length }}
+                / {{ participantsByClass(cls.id).length }} vergeben
+              </span>
+              <button
+                v-if="participantsByClass(cls.id).length > 0"
+                @click="autoNumber(cls.id)"
+                :disabled="autoNumbering[cls.id]"
+                class="text-xs px-2.5 py-1 rounded-lg bg-msc-blue hover:bg-msc-bluedark text-white font-bold transition disabled:opacity-40"
+                title="Startnummern 1, 2, 3 … alphabetisch vergeben"
+              >
+                {{ autoNumbering[cls.id] ? '…' : '🎲 Auto ab 1' }}
+              </button>
+            </div>
           </div>
           <div v-if="participantsByClass(cls.id).length === 0" class="px-4 py-3 text-sm text-gray-400 text-center">
             Keine Teilnehmer
@@ -299,7 +310,8 @@
           </div>
         </div>
         <p class="text-xs text-gray-400 text-center">
-          Startnummer eingeben + Enter oder Klick außerhalb → wird sofort gespeichert
+          Startnummer eingeben + Enter oder Klick außerhalb → sofort gespeichert ·
+          „🎲 Auto ab 1" vergibt 1, 2, 3 … alphabetisch (überschreibt vorhandene Nummern)
         </p>
       </div>
 
@@ -431,6 +443,7 @@ const saveError     = ref('')
 const mode          = ref('list')        // 'list' | 'numbers'
 const numberDraft   = reactive({})       // { participantId: value }
 const importResult  = ref(null)          // { imported, skipped, errors }
+const autoNumbering = reactive({})       // { classId: true } während Auto-Vergabe läuft
 
 async function importCsv(evt) {
   const file = evt.target.files?.[0]
@@ -566,6 +579,35 @@ async function saveNumber(p) {
     await load()
   } catch (e) {
     alert(e.response?.data?.detail || 'Startnummer bereits vergeben')
+  }
+}
+
+async function autoNumber(classId) {
+  if (!store.activeEvent) return
+  const ps = participantsByClass(classId)  // alphabetisch nach Nachname
+  if (!ps.length) return
+
+  const hasNumbers = ps.some(p => p.start_number)
+  if (hasNumbers && !confirm(
+    `Klasse hat bereits Startnummern.\nAlle Nummern dieser Klasse überschreiben mit 1, 2, 3 … (alphabetisch)?`
+  )) return
+
+  autoNumbering[classId] = true
+  try {
+    // Erst alle auf null setzen um Konflikte beim Neu-Vergeben zu vermeiden
+    await Promise.all(ps.map(p =>
+      api.patch(`/events/${store.activeEvent.id}/participants/${p.id}`, { start_number: null })
+    ))
+    // Dann sequenziell 1, 2, 3 …
+    for (let i = 0; i < ps.length; i++) {
+      await api.patch(`/events/${store.activeEvent.id}/participants/${ps[i].id}`, { start_number: i + 1 })
+    }
+    await load()
+  } catch (e) {
+    alert(e.response?.data?.detail || 'Fehler bei der Auto-Nummerierung')
+    await load()
+  } finally {
+    delete autoNumbering[classId]
   }
 }
 

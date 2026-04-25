@@ -36,6 +36,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
     _migrate_classes_status(conn)
     _migrate_classes_exhibition(conn)
     _migrate_events(conn)
+    _migrate_participants_unique_per_class(conn)
 
 
 def _migrate_events(conn: sqlite3.Connection) -> None:
@@ -120,6 +121,47 @@ def _migrate_classes_exhibition(conn: sqlite3.Connection) -> None:
         return
     if "is_exhibition" not in existing:
         conn.execute("ALTER TABLE Classes ADD COLUMN is_exhibition INTEGER NOT NULL DEFAULT 0")
+
+
+def _migrate_participants_unique_per_class(conn: sqlite3.Connection) -> None:
+    """Change UNIQUE (event_id, start_number) → UNIQUE (class_id, start_number)."""
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='Participants'"
+    ).fetchone()
+    if not row:
+        return  # fresh DB
+    if "class_id, start_number" in row[0]:
+        return  # already migrated
+
+    for view in ("v_run_results", "v_class_standings_sum_all", "v_fastest_of_day"):
+        conn.execute(f"DROP VIEW IF EXISTS {view}")
+
+    conn.execute("PRAGMA foreign_keys = OFF")
+    conn.execute("DROP TABLE IF EXISTS Participants_v3")
+    conn.execute("""
+        CREATE TABLE Participants_v3 (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id        INTEGER NOT NULL REFERENCES Events(id) ON DELETE CASCADE,
+            class_id        INTEGER REFERENCES Classes(id) ON DELETE SET NULL,
+            club_id         INTEGER REFERENCES Clubs(id) ON DELETE SET NULL,
+            start_number    INTEGER,
+            first_name      TEXT    NOT NULL,
+            last_name       TEXT    NOT NULL,
+            birth_year      INTEGER,
+            license_number  TEXT,
+            status          TEXT    NOT NULL DEFAULT 'registered'
+                            CHECK (status IN ('registered','checked_in','technical_ok','disqualified')),
+            fee_paid        INTEGER NOT NULL DEFAULT 0 CHECK (fee_paid IN (0,1)),
+            helmet_ok       INTEGER NOT NULL DEFAULT 0 CHECK (helmet_ok IN (0,1)),
+            UNIQUE (class_id, start_number)
+        )
+    """)
+    conn.execute("INSERT INTO Participants_v3 SELECT * FROM Participants")
+    conn.execute("DROP TABLE Participants")
+    conn.execute("ALTER TABLE Participants_v3 RENAME TO Participants")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_participants_event ON Participants (event_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_participants_start_number ON Participants (class_id, start_number)")
+    conn.execute("PRAGMA foreign_keys = ON")
 
 
 def _migrate_classes_status(conn: sqlite3.Connection) -> None:
