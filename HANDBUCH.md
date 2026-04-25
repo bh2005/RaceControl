@@ -119,6 +119,11 @@ Online-Voranmeldung  →  Nennbüro Check-in  →  Abnahme  →  Starterliste
 1. Im linken Panel bei der jeweiligen Klasse auf **„Nennungsschluss setzen"** klicken
 2. Startzeit der Klasse eingeben (z.B. `10:30`)
 3. **Bestätigen** → Nennungsschluss wird 30 Minuten davor gesetzt
+4. Alle verbundenen Clients (Sprecher, Zeitnahme, Livetiming, …) erhalten automatisch
+   eine Benachrichtigung: „Klasse X: Auslosung der Startnummern in 5 Minuten an der Nennung!"
+
+> **Ankündigung wiederholen:** Falls nötig, erscheint nach dem Setzen ein Button
+> **„📢 Ankündigung wiederholen"** um die Push-Meldung erneut zu senden.
 
 ### Nennliste drucken
 
@@ -153,10 +158,14 @@ Das System prüft automatisch, ob der Teilnehmer bereits gemeldet ist (Duplikatc
 ### Grundablauf
 
 1. **Klasse** wählen (oben links)
-2. **Lauf** wählen: Training / Lauf 1 / Lauf 2
+2. Der aktuelle Lauf wird **automatisch erkannt** (Training → Lauf 1 → Lauf 2)
 3. Der aktuelle Starter wird im blauen Block angezeigt
 4. Zeit eingeben → **Enter** oder **✓ Bestätigen**
-5. Der nächste Fahrer erscheint automatisch
+5. Der nächste Fahrer erscheint automatisch; nach dem letzten Fahrer einer Phase
+   wechselt der Lauf automatisch auf den nächsten
+
+> **Hinweis:** Über die Override-Buttons („Tr.", „L1", „L2") kann der Lauf bei Bedarf
+> manuell gewechselt werden.
 
 ### Zeit eingeben
 

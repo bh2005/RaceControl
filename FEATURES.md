@@ -50,6 +50,9 @@ Stand: April 2026
 - Pro Klasse: Nennungsschluss setzen (= 30 min vor Startzeit)
 - Startzeit der Klasse wird gleichzeitig eingetragen
 - Anzeige im Klassen-Status-Panel
+- **Push-Benachrichtigung** beim Setzen: alle verbundenen Clients erhalten sofort eine Ankündigung
+  („Klasse X: Auslosung der Startnummern in 5 Minuten an der Nennung!")
+- „Ankündigung wiederholen"-Button wenn Nennungsschluss bereits gesetzt
 
 ### Statistiken
 - Übersicht: Gesamt, Ohne Startnummer, Freigegeben, Startklar, Nenngeld offen, Helm ausstehend
@@ -65,11 +68,16 @@ Stand: April 2026
 ## Zeitnahme `/zeitnahme`
 
 ### Zeiteingabe
-- Klassenwahl und Laufwahl (Training / Lauf 1 / Lauf 2)
+- Klassenwahl; Lauf wird automatisch erkannt (Training → Lauf 1 → Lauf 2)
 - Großes Zeitfeld mit numerischer Eingabe
 - Komma als Dezimaltrennzeichen akzeptiert (56,13 = 56.13 s)
 - Bestätigung mit Enter oder Button
 - Sonderstatus: DNS / DNF / DSQ per Button
+
+### Automatische Lauf-Erkennung
+- System erkennt anhand vorhandener Ergebnisse selbstständig den aktuellen Lauf
+- Sequenz: Training → Lauf 1 → Lauf 2 (sobald alle Fahrer einer Phase fertig sind)
+- Override-Buttons für manuellen Wechsel weiterhin vorhanden
 
 ### Startliste & Vorziehen
 - Automatische Queue nach Startnummer (offene Fahrer zuerst)
@@ -140,6 +148,10 @@ Stand: April 2026
 - Live-Vorschau des Logos beim Bearbeiten
 - Aktive Sponsoren erscheinen auf der öffentlichen Landingpage
 
+### Reglements-Vorlagen
+- **KS 2000 Preset**: Ein-Klick-Anlage des KS-2000-Reglements mit allen offiziellen Strafen
+  (Pylone 3 s, Tore 10 s, Gasse 15 s, Linie/Klötzchen 3 s, Fahrtrichtung 10 s, Verhalten 20 s)
+
 ### System
 - Druckvorlage konfigurieren: Veranstalter, Adresse, Versicherungshinweis, Einverständniserklärung
 - Hinweise zu Druckereinstellungen und Elternunterschrift
@@ -153,6 +165,12 @@ Stand: April 2026
 - Straf-Definitionen pro Reglement (Label, Sekunden, Tastaturkürzel)
 
 ---
+
+## Navigation
+
+- **Live-Uhr** in der TopBar (sekundengenau, tabular-nums Darstellung)
+- Rollenbasierte Navigation: nur für die eigene Rolle relevante Menüpunkte sichtbar
+- **Push-Benachrichtigungen** als globales cyan Banner (alle Views, 30 s, schließbar)
 
 ## Technisches
 
