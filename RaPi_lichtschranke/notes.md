@@ -152,6 +152,22 @@ Reset-Taster (GPIO 22, aktiv LOW)
 
 ---
 
+## Alternativer Client: ELV LSU200
+
+Wer keine GPIO-Lichtschranke am Raspberry Pi aufbauen möchte, kann die **ELV LSU200 USB-Lichtschranke** direkt am Laptop betreiben:
+
+| Merkmal | Raspberry Pi (diese Dateien) | ELV LSU200 (`tools/lsu200_client.py`) |
+|---|---|---|
+| Hardware | RPi + 2 Reflexlichtschranken | ELV LSU200 (fertiges Gerät) |
+| Anschluss | GPIO (auf dem RPi) | USB-COM am Laptop |
+| Display | TM1637 oder MAX7219 | — (kein eigenes Display) |
+| Läuft auf | Raspberry Pi | Laptop (Windows/Linux) |
+| Abhängigkeiten | RPi.GPIO, luma / tm1637 | pyserial, websocket-client |
+
+Beide Varianten senden das gleiche WebSocket-Protokoll an `/ws/timing` und erscheinen als Lichtschranken-Indikator in der Zeitnahme.
+
+---
+
 ## WebSocket-Protokoll
 
 ### Client → Backend

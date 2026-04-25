@@ -13,9 +13,11 @@ Stand: April 2026
 4. [Online-Nennung (Teilnehmer)](#4-online-nennung-teilnehmer)
 5. [Zeitnahme](#5-zeitnahme)
 6. [Schiedsrichter](#6-schiedsrichter)
-7. [Livetiming (Gäste)](#7-livetiming-gäste)
-8. [Admin – Stammdaten und Einstellungen](#8-admin--stammdaten-und-einstellungen)
-9. [Häufige Fragen und Probleme](#9-häufige-fragen-und-probleme)
+7. [Nachrichten senden](#7-nachrichten-senden)
+8. [Livetiming (Gäste)](#8-livetiming-gäste)
+9. [Admin – Stammdaten und Einstellungen](#9-admin--stammdaten-und-einstellungen)
+10. [Lichtschranken-Clients](#10-lichtschranken-clients)
+11. [Häufige Fragen und Probleme](#11-häufige-fragen-und-probleme)
 
 ---
 
@@ -113,6 +115,10 @@ Online-Voranmeldung  →  Nennbüro Check-in  →  Abnahme  →  Starterliste
 1. Modus **„🎲 Startnummern vergeben"** wählen
 2. Pro Teilnehmer die ausgeloste Startnummer eingeben
 3. **Enter** drücken oder außerhalb klicken → wird sofort gespeichert
+
+> **Startnummern pro Klasse:** Jede Klasse zählt ab 1. Startnummer #1 kann in jeder Klasse einmal vergeben werden.
+
+> **Auto-Nummerierung:** Mit **„🎲 Auto ab 1"** werden die Nummern 1, 2, 3 … alphabetisch nach Nachname automatisch vergeben. Bei bereits vorhandenen Nummern erscheint eine Bestätigungsabfrage.
 
 ### Nennungsschluss setzen
 
@@ -239,7 +245,25 @@ Falls ein Fahrer seine Startreihenfolge tauscht (z.B. #4 ist schon im Warmfahrpa
 
 ---
 
-## 7. Livetiming (Gäste)
+## 7. Nachrichten senden
+
+**URL:** `/nachrichten` | **Rolle:** alle außer `viewer`
+
+Über die Nachrichten-Seite können alle angemeldeten Mitarbeiter sofort eine Ankündigung an **alle verbundenen Geräte** senden (Zuschauer-Displays, Sprecher, Zeitnahme, Livetiming).
+
+### Nachricht senden
+
+1. Im Menü auf **„📢 Nachrichten"** klicken
+2. Text eingeben oder einen **Schnell-Button** wählen (Bratwurst, JL-Besprechung, Pause, Siegerehrung, …)
+3. **„📤 An alle senden"** klicken oder **Strg+Enter** drücken
+4. Die Nachricht erscheint sofort auf allen Geräten als cyan Banner
+
+> Die Nachricht wird 30 Sekunden angezeigt und kann durch Klicken geschlossen werden.  
+> Am Ende des Banners steht der Absender in Klammern, z.B. `(admin)`.
+
+---
+
+## 8. Livetiming (Gäste)
 
 **URL:** `/livetiming` | Kein Login erforderlich
 
@@ -249,7 +273,7 @@ Falls ein Fahrer seine Startreihenfolge tauscht (z.B. #4 ist schon im Warmfahrpa
 
 ---
 
-## 8. Admin – Stammdaten und Einstellungen
+## 9. Admin – Stammdaten und Einstellungen
 
 ### Vereine
 
@@ -288,7 +312,62 @@ Hier werden die Texte konfiguriert, die auf der Nennliste gedruckt werden:
 
 ---
 
-## 9. Häufige Fragen und Probleme
+## 10. Lichtschranken-Clients
+
+### Raspberry Pi (GPIO-Lichtschranke)
+
+Der Raspberry Pi misst Zeiten über zwei GPIO-Lichtschranken und sendet sie per WebSocket an das Backend.
+
+**Starten:**
+```bash
+cd RaPi_lichtschranke
+python3 racecontrol_client.py        # TM1637-Display
+# oder
+python3 racecontrol_client_max7219.py  # MAX7219-LED-Matrix
+```
+
+**Konfiguration** (am Anfang der Datei):
+```python
+BACKEND_HOST = "192.168.0.100"   # IP des Laptops mit RaceControl
+BACKEND_PORT = 8000
+MIN_TIME     = 5.0               # Läufe unter 5 s werden verworfen
+```
+
+Detaillierte Verkabelung und Autostart-Anleitung: siehe `RaPi_lichtschranke/notes.md`
+
+---
+
+### ELV LSU200 (USB-Lichtschranke)
+
+Der ELV LSU200 Client läuft auf dem **gleichen Laptop** wie das Backend — kein Raspberry Pi nötig.
+
+**Voraussetzungen:**
+```bash
+pip install pyserial websocket-client
+```
+
+**COM-Port ermitteln (Windows):**
+- Gerätemanager → Anschlüsse (COM & LPT) → ELV LSU200 (COMx)
+- oder in PowerShell: `Get-WmiObject Win32_PnPEntity | Where Name -like "*LSU*"`
+
+**Starten:**
+```bash
+cd tools
+python lsu200_client.py
+```
+
+**Konfiguration** (am Anfang der Datei):
+```python
+SERIAL_PORT = None             # None = automatische Erkennung, oder z.B. "COM3"
+BACKEND_WS  = "ws://localhost:8000/ws/timing"
+MIN_TIME    = 3.0              # Messungen unter 3 s werden verworfen
+```
+
+> Bei erkannter Verbindung erscheint der grüne Lichtschranken-Indikator in der Zeitnahme.
+
+---
+
+## 11. Häufige Fragen und Probleme
 
 ### Das Backend startet nicht
 
@@ -304,7 +383,7 @@ Hier werden die Texte konfiguriert, die auf der Nennliste gedruckt werden:
 
 ### Startnummer ist doppelt vergeben
 
-SQLite erzwingt die Eindeutigkeit der Startnummern pro Veranstaltung. Bei Konflikt erscheint eine Fehlermeldung. Die Startnummer muss korrigiert werden.
+SQLite erzwingt die Eindeutigkeit der Startnummern **pro Klasse**. Die gleiche Startnummer kann in verschiedenen Klassen vergeben werden. Bei Konflikt innerhalb einer Klasse erscheint eine Fehlermeldung.
 
 ### Ergebnis wurde falsch eingetragen
 

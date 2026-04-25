@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 
 from database import init_db
 from broadcast import manager
-from routers import auth, users, reglements, events, participants, results, teams, clubs, public, sponsors, settings, notifications
+from routers import auth, users, reglements, events, participants, results, teams, clubs, public, sponsors, settings, notifications, assets as assets_router
 from routers import import_router
 
 app = FastAPI(
@@ -42,6 +42,7 @@ app.include_router(public.router,       prefix=_API)
 app.include_router(settings.router,     prefix=_API)
 app.include_router(import_router.router,      prefix=_API)
 app.include_router(notifications.router,     prefix=_API)
+app.include_router(assets_router.router,     prefix=_API)
 
 
 @app.get("/health")
@@ -97,6 +98,11 @@ async def timing_device_endpoint(ws: WebSocket):
             "count": len(_timing_devices),
         })
 
+
+# Serve assets folder (Reglements, Vorlagen, Logos) — before frontend catch-all
+_assets_dir = pathlib.Path(__file__).parent.parent / "assets"
+if _assets_dir.exists():
+    app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets_files")
 
 # Serve built frontend — must come AFTER all API/WS routes
 _dist = pathlib.Path(__file__).parent.parent / "frontend" / "dist"

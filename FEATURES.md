@@ -1,6 +1,6 @@
 # RaceControl Pro – Funktionsübersicht
 
-Stand: April 2026
+Stand: April 2026 · Version 0.4.1
 
 ---
 
@@ -21,6 +21,13 @@ Stand: April 2026
 - Wechsel zwischen Klassen und Läufen
 - Tabellarische Darstellung mit Rang, Startnummer, Name, Verein, Zeit, Strafen
 - Lauf-Detailzeilen pro Fahrer: Rohzeit + Strafzeit für jeden Lauf (z.B. `Lauf 1  56.13 +12.0s = 68.13`); Strafzeit immer sichtbar (grau bei 0.0 s)
+
+### Dokumente `/dokumente`
+- Öffentlich zugängliche Seite für Reglemente, Formulare und Vorlagen
+- Dateien werden aus dem `assets/`-Ordner des Servers geladen
+- Gruppiert nach Kategorie (Reglemente, Vorlagen & Formulare, Sonstiges)
+- Direkter Download bzw. Öffnen im Browser (PDF, Bilder, Dokumente)
+- Dateigröße wird angezeigt
 
 ### Online-Nennung `/nennen`
 - Selbstanmeldung vor Ort über Tablet/Smartphone
@@ -45,6 +52,8 @@ Stand: April 2026
 - Dedizierter Modus „🎲 Startnummern vergeben" nach der Auslosung
 - Eingabe der ausgelosten Startnummern direkt in der Tabelle
 - Speicherung mit Enter oder Fokusverlust
+- **Startnummern pro Klasse**: jede Klasse beginnt bei 1 (nicht mehr eindeutig pro Veranstaltung)
+- **„🎲 Auto ab 1"** Button pro Klasse: vergibt 1, 2, 3 … alphabetisch nach Nachname automatisch
 
 ### Nennungsschluss
 - Pro Klasse: Nennungsschluss setzen (= 30 min vor Startzeit)
@@ -163,6 +172,31 @@ Stand: April 2026
 - Reglemente mit Scoring-Typ (sum_all, best_of, sum_minus_worst)
 - Anzahl Läufe, Training ja/nein
 - Straf-Definitionen pro Reglement (Label, Sekunden, Tastaturkürzel)
+
+---
+
+## Lichtschranken-Integration
+
+### Raspberry Pi (`RaPi_lichtschranke/`)
+
+- Zwei GPIO-Lichtschranken (Start GPIO 17, Stop GPIO 27, Reset GPIO 22)
+- **Client TM1637**: 7-Segment-Anzeige über I²C (CLK GPIO 21, DIO GPIO 20)
+- **Client MAX7219**: LED-Matrix-Anzeige über SPI (CLK GPIO 11, MOSI GPIO 10, CS GPIO 8)
+- Standalone-Testskripte ohne Backend (TM1637 und MAX7219)
+- Offline-Betrieb: Messung lokal, Zeit auf Display, Senden wenn Backend verfügbar
+- Auto-Reconnect nach Verbindungsabbruch (3 s)
+- systemd-Autostart-Unit für Produktionsbetrieb
+- Konfiguration: `BACKEND_HOST`, `BACKEND_PORT`, `MIN_TIME`
+
+### ELV LSU200 (`tools/lsu200_client.py`)
+
+- USB-Anbindung der ELV LSU200 Lichtschranke (virtueller COM-Port)
+- **Läuft auf dem gleichen Laptop wie das Backend** — kein Raspberry Pi nötig
+- Automatische COM-Port-Erkennung anhand USB-VID/PID
+- Baudrate 19200 Baud (fest nach LSU200-Protokoll)
+- Konfiguration: `SERIAL_PORT` (None = auto-detect), `BACKEND_WS`, `MIN_TIME`
+- Abhängigkeiten: `pyserial`, `websocket-client`
+- COM-Port ermitteln: Gerätemanager → Anschlüsse (COM & LPT)
 
 ---
 

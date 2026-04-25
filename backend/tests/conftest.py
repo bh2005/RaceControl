@@ -112,7 +112,7 @@ def event_id(client, admin_headers):
 @pytest.fixture()
 def class_id(client, admin_headers, event_id):
     r = client.post(f"/api/events/{event_id}/classes", json={
-        "name": "Klasse A", "short_name": "KA", "run_status": "planned",
+        "name": "Klasse A", "short_name": "KA", "run_status": "running",
     }, headers=admin_headers)
     assert r.status_code == 201, r.text
     return r.json()["id"]

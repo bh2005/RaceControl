@@ -13,6 +13,7 @@ const routes = [
   { path: '/lizenz',         component: () => import('../views/LizenzView.vue'),            meta: { public: true } },
   { path: '/speaker',        component: () => import('../views/SpeakerView.vue'),            meta: { public: true } },
   { path: '/nachrichten',   component: () => import('../views/NachrichtenView.vue'),         meta: { roles: ['admin', 'zeitnahme', 'nennung', 'schiedsrichter'] } },
+  { path: '/dokumente',     component: () => import('../views/DokumenteView.vue'),            meta: { public: true } },
 ]
 
 const roleHome = {
