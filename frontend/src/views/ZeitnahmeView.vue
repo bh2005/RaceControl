@@ -196,6 +196,35 @@
         </div>
       </div>
 
+      <!-- Marshal-Meldungen -->
+      <div v-if="marshalQueue.length" class="card p-3 border-2 border-yellow-400 bg-yellow-50">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-yellow-600 font-black text-xs uppercase tracking-widest">🚩 Streckenposten-Meldungen</span>
+          <span class="ml-auto text-xs text-yellow-600">{{ marshalQueue.length }}</span>
+        </div>
+        <div class="space-y-1.5">
+          <div
+            v-for="m in marshalQueue"
+            :key="m._id"
+            class="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-yellow-200 text-sm"
+          >
+            <span class="font-bold text-gray-700">{{ m.penalty_label }}</span>
+            <span class="text-yellow-600 font-semibold">+{{ m.penalty_seconds.toFixed(0) }} s</span>
+            <span class="text-xs text-gray-400">{{ m.station }}</span>
+            <div class="ml-auto flex gap-1.5 shrink-0">
+              <button
+                @click="acceptMarshalPenalty(m)"
+                class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold rounded-lg px-2.5 py-1 transition"
+              >Übernehmen</button>
+              <button
+                @click="dismissMarshalPenalty(m)"
+                class="bg-gray-200 hover:bg-gray-300 text-gray-600 text-xs font-bold rounded-lg px-2 py-1 transition"
+              >✕</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Straf-Buttons -->
       <div class="card p-4">
         <h2 class="font-bold text-gray-700 text-xs uppercase tracking-widest mb-3">
@@ -325,9 +354,33 @@ const timeInput        = ref(null)
 const manualOrder      = ref([])  // participant IDs in user-defined sequence
 
 // ── Lichtschranke / Timing-Device ─────────────────────────────────────────────
-const lsConnected = ref(false)   // Raspi aktuell verbunden
-const lsFlash     = ref(false)   // kurzes Aufleuchten wenn Zeit ankommt
-let lsFlashTimer  = null
+const lsConnected  = ref(false)   // Raspi aktuell verbunden
+const lsFlash      = ref(false)   // kurzes Aufleuchten wenn Zeit ankommt
+let lsFlashTimer   = null
+
+// ── Marshal-Meldungen ──────────────────────────────────────────────────────────
+const marshalQueue  = ref([])     // eingehende Streckenposten-Meldungen
+let _marshalSeq     = 0
+const _marshalTimers = new Map()
+
+function acceptMarshalPenalty(m) {
+  if (m.penalty_id) {
+    const pen = penalties.value.find(p => p.id === m.penalty_id)
+    if (pen) { addPenalty(pen); dismissMarshalPenalty(m); return }
+  }
+  // Ad-hoc: Fehlerpunkte direkt hinzufügen
+  const adHocId = `marshal_${m.penalty_seconds}`
+  const existing = activePenalties.value.find(p => p.id === adHocId)
+  if (existing) existing.count++
+  else activePenalties.value.push({ id: adHocId, label: `Posten (${m.station})`, seconds: m.penalty_seconds, count: 1 })
+  dismissMarshalPenalty(m)
+}
+
+function dismissMarshalPenalty(m) {
+  clearTimeout(_marshalTimers.get(m._id))
+  _marshalTimers.delete(m._id)
+  marshalQueue.value = marshalQueue.value.filter(x => x._id !== m._id)
+}
 
 function handleWsMessage(data) {
   if (data.type === 'timing_device_status') {
@@ -347,6 +400,14 @@ function handleWsMessage(data) {
   // Reload results if another client confirmed a result
   if (data.type === 'results' && data.class_id === selectedClassId.value) {
     loadRunResults()
+  }
+  // Eingehende Streckenposten-Meldung
+  if (data.type === 'marshal_penalty' && data.class_id === selectedClassId.value) {
+    const entry = { ...data, _id: ++_marshalSeq }
+    marshalQueue.value.push(entry)
+    // Auto-Dismiss nach 60 Sekunden
+    const t = setTimeout(() => dismissMarshalPenalty(entry), 60_000)
+    _marshalTimers.set(entry._id, t)
   }
 }
 
@@ -570,7 +631,10 @@ onMounted(async () => {
   window.addEventListener('keydown', onKey)
 })
 
-onUnmounted(() => window.removeEventListener('keydown', onKey))
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKey)
+  _marshalTimers.forEach(t => clearTimeout(t))
+})
 
 watch(rawTime, (val) => {
   if (typeof val === 'string' && val.includes(','))

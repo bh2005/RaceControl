@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 
 from database import init_db
 from broadcast import manager
-from routers import auth, users, reglements, events, participants, results, teams, clubs, public, sponsors, settings, notifications, assets as assets_router
+from routers import auth, users, reglements, events, participants, results, teams, clubs, public, sponsors, settings, notifications, assets as assets_router, marshal as marshal_router
 from routers import import_router
 
 app = FastAPI(
@@ -43,6 +43,7 @@ app.include_router(settings.router,     prefix=_API)
 app.include_router(import_router.router,      prefix=_API)
 app.include_router(notifications.router,     prefix=_API)
 app.include_router(assets_router.router,     prefix=_API)
+app.include_router(marshal_router.router,    prefix=_API)
 
 
 @app.get("/health")

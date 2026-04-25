@@ -41,7 +41,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { api } from '../api/client'
+import api from '../api/client'
 
 const files   = ref([])
 const loading = ref(true)
@@ -49,7 +49,7 @@ const error   = ref(null)
 
 onMounted(async () => {
   try {
-    const data = await api.get('/assets/files')
+    const { data } = await api.get('/assets/files')
     files.value = data.filter(f => !f.category || f.category !== 'logos')
   } catch (e) {
     error.value = 'Dokumente konnten nicht geladen werden.'

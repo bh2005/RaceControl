@@ -1,6 +1,6 @@
 # RaceControl Pro – Funktionsübersicht
 
-Stand: April 2026 · Version 0.4.1
+Stand: April 2026 · Version 0.4.3
 
 ---
 
@@ -42,6 +42,7 @@ Stand: April 2026 · Version 0.4.1
 
 ### Teilnehmerverwaltung
 - Vollständige Teilnehmerliste mit Filter (Klasse, Status, Name/Startnummer)
+- **Sortierung:** Status (Gemeldet → Eingecheckt → Freigegeben → DSQ), dann Klasse, Jahrgang, Nachname
 - Statusworkflow: Gemeldet → Eingecheckt → Freigegeben
 - Abnahme: Nenngeld bezahlt (€) und Helmkontrolle (🪖) einzeln abhakbar
 - Freigabe (→ Starterliste) nur wenn beide Abnahmen bestätigt
@@ -150,7 +151,7 @@ Stand: April 2026 · Version 0.4.1
 
 ### Benutzer
 - Benutzerverwaltung: Benutzername, Passwort, Rolle, Anzeigename
-- Rollen: admin, nennung, zeitnahme, schiedsrichter, viewer
+- Rollen: admin, nennung, zeitnahme, schiedsrichter, marshal, viewer
 
 ### Sponsoren
 - Sponsorenverwaltung: Name, Logo-URL, Website-URL, Reihenfolge, Aktiv/Inaktiv
@@ -200,10 +201,31 @@ Stand: April 2026 · Version 0.4.1
 
 ---
 
+## Streckenposten `/marshal`
+
+- Eigene Rolle `marshal`, Login leitet direkt zur Streckenposten-Ansicht
+- Mobile-optimiertes Layout (dunkler Hintergrund, große Buttons – für Smartphone am Posten)
+- **Posten-Bezeichnung** einstellbar (z.B. „Posten 2"), wird im localStorage gespeichert
+- Klassen-Selector zeigt nur laufende Klassen
+- Straf-Buttons aus dem Reglement der gewählten Klasse – Antippen genügt, sofortiger Versand
+- Grünes „Gesendet ✓"-Flash nach jeder Meldung
+- Log der zuletzt gesendeten Meldungen am unteren Rand
+- Meldungen werden per WebSocket-Broadcast (`marshal_penalty`) an alle Clients gesendet
+- **Zeitnahme** empfängt Meldungen als gelbes Panel über den Straf-Buttons:
+  „Übernehmen" → Strafe wird direkt zur aktiven Zeiteingabe hinzugefügt
+  „✕" → Meldung verwerfen; Auto-Dismiss nach 60 Sekunden
+- Nur Meldungen der aktuell in der Zeitnahme gewählten Klasse werden angezeigt
+- Mehrere Streckenposten (4–5) können gleichzeitig verbunden sein
+
+---
+
 ## Navigation
 
 - **Live-Uhr** in der TopBar (sekundengenau, tabular-nums Darstellung)
 - Rollenbasierte Navigation: nur für die eigene Rolle relevante Menüpunkte sichtbar
+- **„Mehr ▾"-Dropdown** in der TopBar: sekundäre Links (Livetiming, Sprecher, Nachrichten,
+  Streckenposten, Dokumente, Online-Nennung) ausgeblendet, damit die Bar nicht überfüllt wird;
+  Dropdown zeigt fett wenn eine enthaltene Seite aktiv ist
 - **Push-Benachrichtigungen** als globales cyan Banner (alle Views, 30 s, schließbar)
 
 ## Technisches

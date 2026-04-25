@@ -95,6 +95,23 @@
           </div>
         </div>
 
+        <!-- Marshal-Meldungen -->
+        <TransitionGroup name="marshal-list" tag="div" class="space-y-2">
+          <div
+            v-for="m in marshalNotices"
+            :key="m._id"
+            class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-4 py-3 flex items-center gap-3"
+          >
+            <span class="text-yellow-400 text-xl shrink-0">🚩</span>
+            <div class="flex-1 min-w-0">
+              <span class="font-black text-yellow-300">{{ m.penalty_label }}</span>
+              <span class="text-yellow-500 font-semibold ml-2">+{{ m.penalty_seconds.toFixed(0) }}s</span>
+              <span class="text-gray-500 text-xs ml-2">{{ m.station }}</span>
+            </div>
+            <button @click="dismissMarshal(m)" class="text-gray-600 hover:text-gray-400 text-sm">✕</button>
+          </div>
+        </TransitionGroup>
+
         <!-- Startnummern-Warteschlange -->
         <div class="bg-gray-900 rounded-2xl border border-gray-700 p-4">
           <div class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Nächste Starter</div>
@@ -187,6 +204,11 @@
               <span class="font-black tabnum text-sm" :class="i === 0 ? 'text-yellow-300' : 'text-white'">
                 {{ row.total_time?.toFixed(2) ?? '–' }}
               </span>
+              <span v-if="i > 0 && row.total_time && topStandings[0]?.total_time"
+                    class="text-xs tabnum text-gray-500 w-14 text-right shrink-0">
+                +{{ (row.total_time - topStandings[0].total_time).toFixed(2) }}s
+              </span>
+              <span v-else class="w-14 shrink-0"></span>
             </div>
           </div>
           <div v-if="standings.length > 10" class="text-xs text-gray-600 text-center mt-2">
@@ -214,6 +236,17 @@ const allClassResults  = ref([])
 const participants     = ref([])
 const currentReglement = ref(null)
 const penalties        = ref([])
+
+// ── Marshal-Meldungen ─────────────────────────────────────────────────────────
+const marshalNotices   = ref([])
+let _marshalSeq        = 0
+const _marshalTimers   = new Map()
+
+function dismissMarshal(m) {
+  clearTimeout(_marshalTimers.get(m._id))
+  _marshalTimers.delete(m._id)
+  marshalNotices.value = marshalNotices.value.filter(x => x._id !== m._id)
+}
 
 const runNums = computed(() => {
   const n = currentReglement.value?.runs_per_class ?? 2
@@ -357,6 +390,12 @@ const { connected: wsConnected } = useRealtimeUpdate(async (msg) => {
   if (!store.activeEvent) return
   if (msg.event_id && msg.event_id !== store.activeEvent.id) return
   if (msg.type === 'results' || msg.type === 'classes') await loadData()
+  if (msg.type === 'marshal_penalty' && msg.class_id === selectedClassId.value) {
+    const entry = { ...msg, _id: ++_marshalSeq }
+    marshalNotices.value.push(entry)
+    const t = setTimeout(() => dismissMarshal(entry), 30_000)
+    _marshalTimers.set(entry._id, t)
+  }
 })
 
 onMounted(async () => {
@@ -375,8 +414,13 @@ watch(() => store.classes, async (v) => {
     await onClassChange()
   }
 })
+
+onUnmounted(() => _marshalTimers.forEach(t => clearTimeout(t)))
 </script>
 
 <style scoped>
 .tabnum { font-variant-numeric: tabular-nums; }
+
+.marshal-list-enter-active, .marshal-list-leave-active { transition: all 0.3s ease; }
+.marshal-list-enter-from, .marshal-list-leave-to { opacity: 0; transform: translateY(-8px); }
 </style>

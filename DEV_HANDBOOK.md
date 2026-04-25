@@ -91,7 +91,8 @@ RaceControl/
 │   │   ├── sponsors.py      # CRUD Sponsoren
 │   │   ├── settings.py      # Druckvorlagen-Einstellungen
 │   │   ├── public.py        # Öffentliche Endpunkte (kein Login)
-│   │   ├── notifications.py # POST /api/notifications (Push-Nachrichten)
+│   │   ├── notifications.py
+│   ├── marshal.py       # Streckenposten – Fehlerpunkt-Meldungen # POST /api/notifications (Push-Nachrichten)
 │   │   └── import_router.py # CSV-Import Teilnehmer
 │   └── tests/
 │       ├── conftest.py      # Fixtures: db, client, admin_headers, class_id, …
@@ -321,8 +322,10 @@ JWT-Secret: Umgebungsvariable `SECRET_KEY` (Fallback in `auth.py` für lokale En
 
 1. `schema.sql`: CHECK-Constraint in `Users.role` erweitern
 2. `deps.py`: Neue `Annotated`-Typen für die Rolle ergänzen
-3. `router/index.js`: Route mit der neuen Rolle in `meta.roles` hinzufügen
-4. `AppHeader.vue`: Eintrag in `allNav` mit der neuen Rolle
+3. `router/index.js`: Route mit der neuen Rolle in `meta.roles` + `roleHome` hinzufügen
+4. `AppHeader.vue`: Eintrag in `allNav` mit `primary: true/false` und `roles`
+
+**Verfügbare Rollen:** `admin` · `zeitnahme` · `nennung` · `schiedsrichter` · `marshal` · `viewer`
 
 ---
 
@@ -358,6 +361,7 @@ await manager.broadcast({"type": "results", "event_id": 1, "class_id": 3})
 | `timing_result` | Lichtschranke (RaPi oder ELV) | Zeitnahme (→ Zeitfeld) |
 | `timing_device_heartbeat` | Lichtschranke | Zeitnahme (→ Status-Indikator) |
 | `timing_device_status` | Connect/Disconnect eines Messgeräts | Zeitnahme |
+| `marshal_penalty` | Streckenposten (`POST /api/marshal/report`) | Zeitnahme (→ Übernahme-Panel), Sprecher |
 
 ### Push-Benachrichtigung aus einem Router senden
 
@@ -657,15 +661,16 @@ Drei Jobs laufen bei jedem Push/PR auf `main`:
 ### Versionierung
 
 - Semantic Versioning: `MAJOR.MINOR.PATCH`
-- Changelog: `changelog.txt` (UTF-16 LE, kein BOM) — Eintrag immer per Python-Script schreiben:
+- Changelog: `changelog.txt` (UTF-8) — normales Lesen/Schreiben:
   ```python
-  with open("changelog.txt", "rb") as f:
-      text = f.read().decode("utf-16-le")
-  # prepend new entry...
-  with open("changelog.txt", "wb") as f:
-      f.write(new_text.encode("utf-16-le"))
+  import pathlib
+  p = pathlib.Path("changelog.txt")
+  text = p.read_text(encoding="utf-8")
+  idx = text.find("[0.")
+  p.write_text(text[:idx] + new_entry + text[idx:], encoding="utf-8")
   ```
-- `README.md` ist ebenfalls UTF-16 LE (mit BOM `\xff\xfe`) — gleiche Vorgehensweise
+- `README.md` ist UTF-16 LE (mit BOM `ÿþ`) — per Python mit `raw.decode('utf-16')` lesen,
+  `b'ÿþ' + text.encode('utf-16-le')` schreiben
 
 ### Datenbankzugriff
 

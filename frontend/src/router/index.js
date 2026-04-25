@@ -14,6 +14,7 @@ const routes = [
   { path: '/speaker',        component: () => import('../views/SpeakerView.vue'),            meta: { public: true } },
   { path: '/nachrichten',   component: () => import('../views/NachrichtenView.vue'),         meta: { roles: ['admin', 'zeitnahme', 'nennung', 'schiedsrichter'] } },
   { path: '/dokumente',     component: () => import('../views/DokumenteView.vue'),            meta: { public: true } },
+  { path: '/marshal',       component: () => import('../views/MarshalView.vue'),              meta: { roles: ['marshal', 'admin'] } },
 ]
 
 const roleHome = {
@@ -21,6 +22,7 @@ const roleHome = {
   zeitnahme:      '/zeitnahme',
   nennung:        '/nennung',
   schiedsrichter: '/schiedsrichter',
+  marshal:        '/marshal',
   viewer:         '/livetiming',
 }
 

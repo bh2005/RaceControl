@@ -367,6 +367,7 @@
               <option value="zeitnahme">Zeitnahme</option>
               <option value="nennung">Nennung</option>
               <option value="schiedsrichter">Schiedsrichter</option>
+              <option value="marshal">Streckenposten</option>
               <option value="viewer">Viewer</option>
               <option value="admin">Admin</option>
             </select>

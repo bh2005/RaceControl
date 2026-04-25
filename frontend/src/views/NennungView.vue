@@ -486,6 +486,8 @@ const stats = computed(() => {
   }
 })
 
+const STATUS_ORDER = { registered: 0, checked_in: 1, technical_ok: 2, disqualified: 3 }
+
 const filtered = computed(() => {
   let list = participants.value
   if (filterClass.value)  list = list.filter(p => p.class_id === filterClass.value)
@@ -501,7 +503,17 @@ const filtered = computed(() => {
       String(p.start_number ?? '').includes(q)
     )
   }
-  return list
+  // Sortierung: 1. Status  2. Klasse (Reihenfolge im Event)  3. Jahrgang  4. Nachname
+  const classOrder = new Map(store.classes.map((c, i) => [c.id, i]))
+  return [...list].sort((a, b) => {
+    const sd = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9)
+    if (sd !== 0) return sd
+    const cd = (classOrder.get(a.class_id) ?? 99) - (classOrder.get(b.class_id) ?? 99)
+    if (cd !== 0) return cd
+    const yd = (a.birth_year ?? 0) - (b.birth_year ?? 0)
+    if (yd !== 0) return yd
+    return a.last_name.localeCompare(b.last_name, 'de')
+  })
 })
 
 function participantsByClass(classId) {

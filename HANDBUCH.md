@@ -14,10 +14,11 @@ Stand: April 2026
 5. [Zeitnahme](#5-zeitnahme)
 6. [Schiedsrichter](#6-schiedsrichter)
 7. [Nachrichten senden](#7-nachrichten-senden)
-8. [Livetiming (Gäste)](#8-livetiming-gäste)
-9. [Admin – Stammdaten und Einstellungen](#9-admin--stammdaten-und-einstellungen)
-10. [Lichtschranken-Clients](#10-lichtschranken-clients)
-11. [Häufige Fragen und Probleme](#11-häufige-fragen-und-probleme)
+8. [Streckenposten](#8-streckenposten)
+9. [Livetiming (Gäste)](#9-livetiming-gäste)
+10. [Admin – Stammdaten und Einstellungen](#10-admin--stammdaten-und-einstellungen)
+11. [Lichtschranken-Clients](#11-lichtschranken-clients)
+12. [Häufige Fragen und Probleme](#12-häufige-fragen-und-probleme)
 
 ---
 
@@ -96,6 +97,8 @@ Online-Voranmeldung  →  Nennbüro Check-in  →  Abnahme  →  Starterliste
 ```
 
 ### Teilnehmer einchecken
+
+> Die Liste ist sortiert nach: **Status** (Gemeldet zuerst, DSQ zuletzt) → **Klasse** → **Jahrgang** → **Nachname**
 
 1. Teilnehmer in der Liste suchen (Suche nach Name oder Startnummer)
 2. In der Zeile auf **Check-in** klicken → Status wechselt zu „Eingecheckt"
@@ -203,6 +206,16 @@ Falls ein Fahrer seine Startreihenfolge tauscht (z.B. #4 ist schon im Warmfahrpa
 3. Die restliche Reihenfolge bleibt erhalten
 4. Mit **↺ Reihenfolge zurücksetzen** wieder zur Startnummern-Reihenfolge
 
+### Streckenposten-Meldungen
+
+Wenn Streckenposten aktiv sind, erscheinen eingehende Fehlerpunkt-Meldungen
+als **gelbes Panel** über den Straf-Buttons:
+
+- Posten-Bezeichnung, Strafname und Sekunden werden angezeigt
+- **„Übernehmen"** fügt die Strafe zur aktuellen Zeiteingabe hinzu
+- **„✕"** verwirft die Meldung
+- Nur Meldungen der aktuell gewählten Klasse sind sichtbar
+
 ### Undo
 
 - **↩ Undo** klicken oder **Strg+Z** drücken, um den letzten Eintrag rückgängig zu machen
@@ -263,7 +276,48 @@ Falls ein Fahrer seine Startreihenfolge tauscht (z.B. #4 ist schon im Warmfahrpa
 
 ---
 
-## 8. Livetiming (Gäste)
+## 8. Streckenposten
+
+**URL:** `/marshal` | **Rolle:** `marshal` (oder `admin`)
+
+Streckenposten melden Fehlerpunkte (Pylonen, Tore usw.) direkt vom Smartphone oder Tablet
+an die Zeitnahme. Die Meldungen erscheinen dort als gelbes Panel und können mit einem Klick
+übernommen werden.
+
+### Einrichten
+
+1. Im Admin einen Benutzer mit Rolle **`marshal`** anlegen (z.B. „posten1", „posten2", …)
+2. Passwort mitteilen; Login-URL: `http://<IP>:8000/login`
+3. Nach dem Login landet der Streckenposten automatisch auf `/marshal`
+
+### Posten-Bezeichnung setzen
+
+- Oben links steht die aktuelle Bezeichnung (Standard: „Posten 1")
+- Auf den Namen klicken → bearbeiten → **Enter** oder außerhalb klicken zum Speichern
+- Die Bezeichnung wird lokal im Browser gespeichert und erscheint bei jeder Meldung
+
+### Fehlerpunkt melden
+
+1. Klasse oben rechts auswählen (nur laufende Klassen sichtbar)
+2. Straf-Button antippen (z.B. **Pylone +3 s**)
+3. Die Meldung wird sofort gesendet — grünes **„Gesendet ✓"** erscheint kurz
+4. Nächste Meldung kann sofort gesendet werden
+
+> Tipp: Die Klasse muss bei der Zeitnahme auf dieselbe Klasse eingestellt sein,
+> damit die Meldungen angezeigt werden.
+
+### Meldung in der Zeitnahme übernehmen
+
+Eingehende Streckenposten-Meldungen erscheinen in der Zeitnahme als **gelbes Panel**
+über den Straf-Buttons:
+
+- **„Übernehmen"** → Strafe wird der aktuellen Zeiteingabe hinzugefügt
+- **„✕"** → Meldung verwerfen
+- Nach 60 Sekunden werden nicht übernommene Meldungen automatisch ausgeblendet
+
+---
+
+## 9. Livetiming (Gäste)
 
 **URL:** `/livetiming` | Kein Login erforderlich
 
@@ -273,7 +327,7 @@ Falls ein Fahrer seine Startreihenfolge tauscht (z.B. #4 ist schon im Warmfahrpa
 
 ---
 
-## 9. Admin – Stammdaten und Einstellungen
+## 10. Admin – Stammdaten und Einstellungen
 
 ### Vereine
 
@@ -287,7 +341,8 @@ Admin → **🏁 Vereine**
 Admin → **👥 Benutzer**
 
 - Neue Benutzer mit Rolle anlegen
-- Rollen: `admin`, `nennung`, `zeitnahme`, `schiedsrichter`, `viewer`
+- Rollen: `admin`, `nennung`, `zeitnahme`, `schiedsrichter`, `marshal`, `viewer`
+- `marshal` → Streckenposten-Ansicht (Fehlerpunkte melden)
 
 ### Sponsoren
 
@@ -312,7 +367,7 @@ Hier werden die Texte konfiguriert, die auf der Nennliste gedruckt werden:
 
 ---
 
-## 10. Lichtschranken-Clients
+## 11. Lichtschranken-Clients
 
 ### Raspberry Pi (GPIO-Lichtschranke)
 
@@ -367,7 +422,7 @@ MIN_TIME    = 3.0              # Messungen unter 3 s werden verworfen
 
 ---
 
-## 11. Häufige Fragen und Probleme
+## 12. Häufige Fragen und Probleme
 
 ### Das Backend startet nicht
 
