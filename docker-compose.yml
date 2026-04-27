@@ -2,7 +2,7 @@ services:
   racecontrol:
     build: .
     ports:
-      - "8000:8000"
+      - "${PORT:-1980}:8000"
     volumes:
       - ./data:/app/data        # SQLite-Datenbank (persistent)
       - ./assets:/app/assets    # Dokumente, Reglemente, Logos
