@@ -101,10 +101,11 @@ async def timing_device_endpoint(ws: WebSocket):
         })
 
 
-# Serve assets folder (Reglements, Vorlagen, Logos) — before frontend catch-all
+# Serve assets folder (Reglements, Vorlagen, Logos) unter /media
+# Nicht /assets — das ist Vites kompiliertes Frontend (dist/assets/)
 _assets_dir = pathlib.Path(os.environ.get("ASSETS_DIR", str(pathlib.Path(__file__).parent.parent / "assets")))
 if _assets_dir.exists():
-    app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets_files")
+    app.mount("/media", StaticFiles(directory=str(_assets_dir)), name="assets_files")
 
 # Serve built frontend — must come AFTER all API/WS routes
 _dist = pathlib.Path(__file__).parent.parent / "frontend" / "dist"

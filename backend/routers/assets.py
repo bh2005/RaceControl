@@ -36,7 +36,7 @@ def list_asset_files():
         result.append({
             "name": path.name,
             "path": url_path,
-            "url": f"/assets/{url_path}",
+            "url": f"/media/{url_path}",
             "category": category,
             "category_label": category_label,
             "size": path.stat().st_size,
