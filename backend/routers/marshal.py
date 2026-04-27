@@ -22,7 +22,7 @@ _AdminOrSchiri = Annotated[
 ]
 _ReportsReader = Annotated[
     object,
-    Depends(require_roles("admin", "schiedsrichter", "zeitnahme")),
+    Depends(require_roles("admin", "schiedsrichter", "zeitnahme", "viewer")),
 ]
 
 DbDep = Annotated[sqlite3.Connection, Depends(get_db)]

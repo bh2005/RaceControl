@@ -97,6 +97,16 @@ def nennung_headers(db):
     return {"Authorization": f"Bearer {_make_user(db, 't_nenn', 'nennung')}"}
 
 
+@pytest.fixture()
+def marshal_headers(db):
+    return {"Authorization": f"Bearer {_make_user(db, 't_marshal', 'marshal')}"}
+
+
+@pytest.fixture()
+def viewer_headers(db):
+    return {"Authorization": f"Bearer {_make_user(db, 't_viewer', 'viewer')}"}
+
+
 # ── Domain object fixtures ────────────────────────────────────────────────────
 
 @pytest.fixture()

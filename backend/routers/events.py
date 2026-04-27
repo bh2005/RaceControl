@@ -1,6 +1,7 @@
 from __future__ import annotations
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from typing import Annotated, Optional
+from datetime import datetime, timezone
 import sqlite3
 
 from broadcast import manager
@@ -165,9 +166,10 @@ def auto_close_class(
     ).fetchone()
     if not row or row["run_status"] not in ("running", "paused"):
         return  # Falsche Status — silent no-op
+    end_time = datetime.now(timezone.utc).isoformat()
     db.execute(
-        "UPDATE Classes SET run_status = 'preliminary' WHERE id = ? AND event_id = ?",
-        (class_id, event_id),
+        "UPDATE Classes SET run_status = 'preliminary', end_time = ? WHERE id = ? AND event_id = ?",
+        (end_time, class_id, event_id),
     )
     db.commit()
     background_tasks.add_task(

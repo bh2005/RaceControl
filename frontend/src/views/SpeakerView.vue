@@ -16,7 +16,7 @@
         <span class="text-sm font-black text-white">{{ runLabel }}</span>
         <div class="flex gap-1">
           <button v-if="currentReglement?.has_training"
-            @click="selectedRun = 0; loadData()"
+            @click="selectedRun = 0; loadData(false)"
             class="text-xs px-2 py-0.5 rounded font-bold transition border"
             :class="selectedRun === 0
               ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
@@ -24,7 +24,7 @@
             Tr.
           </button>
           <button v-for="n in runNums" :key="n"
-            @click="selectedRun = n; loadData()"
+            @click="selectedRun = n; loadData(false)"
             class="text-xs px-2 py-0.5 rounded font-bold transition border"
             :class="selectedRun === n
               ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
@@ -45,10 +45,10 @@
     </header>
 
     <!-- Main Content -->
-    <div class="flex-1 grid grid-cols-12 gap-6 p-6 max-w-screen-2xl mx-auto w-full">
+    <div class="flex-1 grid grid-cols-12 gap-4 p-6 max-w-screen-2xl mx-auto w-full">
 
-      <!-- Linke Spalte: Aktueller Fahrer -->
-      <div class="col-span-5 flex flex-col gap-4">
+      <!-- ── Linke Spalte: Aktueller Fahrer ── -->
+      <div class="col-span-4 flex flex-col gap-4">
 
         <!-- Aktueller Fahrer - Hauptbox -->
         <div class="bg-gray-900 rounded-2xl border border-gray-700 p-6 flex flex-col gap-2">
@@ -95,7 +95,7 @@
           </div>
         </div>
 
-        <!-- Marshal-Meldungen -->
+        <!-- Marshal-Meldungen (Echtzeit-Alerts) -->
         <TransitionGroup name="marshal-list" tag="div" class="space-y-2">
           <div
             v-for="m in marshalNotices"
@@ -112,7 +112,7 @@
           </div>
         </TransitionGroup>
 
-        <!-- Startnummern-Warteschlange -->
+        <!-- Nächste Starter -->
         <div class="bg-gray-900 rounded-2xl border border-gray-700 p-4">
           <div class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Nächste Starter</div>
           <div class="flex flex-wrap gap-2">
@@ -126,10 +126,10 @@
         </div>
       </div>
 
-      <!-- Rechte Spalte: Zeitanalyse -->
-      <div class="col-span-7 flex flex-col gap-4">
+      <!-- ── Mittlere Spalte: Zeitanalyse + Wertung ── -->
+      <div class="col-span-5 flex flex-col gap-4">
 
-        <!-- Zeitanalyse für aktuellen Fahrer -->
+        <!-- Zeitanalyse -->
         <div class="bg-gray-900 rounded-2xl border border-gray-700 p-6" v-if="currentDriver && selectedRun > 0">
           <div class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-4">
             Zeitanalyse – was braucht {{ currentDriver.first_name }} {{ currentDriver.last_name }}?
@@ -144,7 +144,6 @@
                  class="rounded-xl p-4 flex items-center gap-4"
                  :class="t.impossible ? 'bg-gray-800/50 opacity-50' : t.rank <= 3 ? 'bg-gray-800' : 'bg-gray-800/60'">
 
-              <!-- Rang-Badge -->
               <div class="shrink-0 h-12 w-12 rounded-full flex items-center justify-center font-black text-xl"
                    :class="{
                      'bg-yellow-500/20 text-yellow-300': t.rank === 1,
@@ -169,7 +168,6 @@
                        :class="t.needed < 0 ? 'text-red-400' : 'text-cyan-300'">
                     {{ t.needed.toFixed(2) }}<span class="text-base font-normal text-gray-500">s</span>
                   </div>
-                  <!-- Pylonen-Budget -->
                   <div v-if="mainPenalty && t.needed > 0" class="text-xs text-gray-500 mt-1">
                     bis {{ Math.floor(t.needed / mainPenalty) }}× Pylone (à {{ mainPenalty }}s)
                   </div>
@@ -216,6 +214,39 @@
           </div>
         </div>
       </div>
+
+      <!-- ── Rechte Spalte: Ereignis-Log ── -->
+      <div class="col-span-3 flex flex-col">
+        <div class="bg-gray-900 rounded-2xl border border-gray-700 p-4 flex flex-col flex-1">
+          <div class="flex items-center justify-between mb-3 shrink-0">
+            <div class="text-xs font-bold uppercase tracking-widest text-gray-500">Ereignis-Log</div>
+            <button @click="announcementLog = []"
+              class="text-xs text-gray-600 hover:text-gray-400 transition">leeren</button>
+          </div>
+          <div class="space-y-1 overflow-y-auto flex-1 pr-1">
+            <div v-for="entry in announcementLog" :key="entry._id"
+                 class="flex items-start gap-2 rounded-lg px-2 py-1.5"
+                 :class="{
+                   'bg-yellow-500/10 border border-yellow-500/15': entry.level === 'important',
+                   'bg-orange-500/10':                              entry.level === 'warn',
+                 }">
+              <span class="shrink-0 leading-5 text-sm">{{ entry.icon }}</span>
+              <div class="flex-1 min-w-0">
+                <div class="text-xs leading-snug"
+                     :class="entry.level === 'important' ? 'text-yellow-200 font-semibold' : entry.level === 'warn' ? 'text-orange-200' : 'text-gray-300'">
+                  {{ entry.text }}
+                </div>
+                <div class="text-gray-600 text-xs tabnum mt-0.5">{{ entry.timeStr }}</div>
+              </div>
+            </div>
+            <div v-if="announcementLog.length === 0"
+                 class="text-gray-600 text-xs text-center py-6">
+              Keine Ereignisse
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -375,7 +406,7 @@ function computeAutoRun() {
   return nums[nums.length - 1]
 }
 
-async function loadData() {
+async function loadData(autoAdvance = true) {
   if (!store.activeEvent || !selectedClassId.value) return
   const eid = store.activeEvent.id
   const cid = selectedClassId.value
@@ -386,14 +417,16 @@ async function loadData() {
     api.get(`/events/${eid}/participants`),
   ])
 
-  participants.value   = partRes.data.filter(p => p.class_id === cid)
+  participants.value    = partRes.data.filter(p => p.class_id === cid)
   allClassResults.value = rrAllRes.data
-  allRunResults.value  = rrAllRes.data
-  standings.value      = stRes.data
+  allRunResults.value   = rrAllRes.data
+  standings.value       = stRes.data
 
-  // Auto-advance: nächsten unvollständigen Lauf wählen
-  const ar = computeAutoRun()
-  if (ar !== selectedRun.value) selectedRun.value = ar
+  // Auto-advance nur bei automatischen Loads, nicht bei manueller Lauf-Auswahl
+  if (autoAdvance) {
+    const ar = computeAutoRun()
+    if (ar !== selectedRun.value) selectedRun.value = ar
+  }
 
   // Ergebnisse des aktuellen Laufs laden
   const rrRes = await api.get(`/events/${eid}/run-results`, {
@@ -461,6 +494,20 @@ const { connected: wsConnected } = useRealtimeUpdate(async (msg) => {
   }
 })
 
+async function loadInitialLog() {
+  if (!store.activeEvent) return
+  try {
+    const { data } = await api.get('/marshal/reports', {
+      params: { event_id: store.activeEvent.id, cancelled: 0, limit: 20 }
+    })
+    // oldest first so unshift results in newest-first display
+    for (const r of [...data].reverse()) {
+      const cls = r.class_name ? ` (${r.class_name})` : ''
+      announcementLog.value.push({ _id: ++_logSeq, icon: '🚩', text: `Posten ${r.station}${cls}: ${r.penalty_label}`, level: 'warn', timeStr: _fmtTime(r.ts) })
+    }
+  } catch { /* ignore */ }
+}
+
 onMounted(async () => {
   if (!store.classes.length) await store.loadEvents()
   if (store.classes.length) {
@@ -469,6 +516,7 @@ onMounted(async () => {
     selectedClassId.value = (running ?? store.classes[0]).id
     await onClassChange()
   }
+  await loadInitialLog()
 })
 
 watch(() => store.classes, async (v) => {

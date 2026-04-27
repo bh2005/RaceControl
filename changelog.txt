@@ -4,6 +4,53 @@ RaceControl Pro  Changelog
 
 
 
+[0.5.0] - 2026-04-27
+---------------------
+Streckenposten, Zeitnahme, Sprecher – Stabilisierung + neue Features
+
+  Streckenposten / Marshal
+  + MarshalView: History der letzten 3 Meldungen mit Storno-Funktion
+  + Meldungen werden in DB (MarshalReports) persistiert – keine WS-only-Abhaengigkeit mehr
+  + Zeitnahme: offene Meldungen werden beim Laden aus DB nachgeladen (letzte 30 Min.)
+  + Zeitnahme: Meldungsqueue wird nach Bestaetigung automatisch geleert
+  + Verworfene Meldungen tauchen nach Seitenneuladen nicht mehr auf (_seenReportIds-Tracking)
+  ~ Backend: await manager.broadcast() statt background_tasks.add_task() (zuverlaessige Auslieferung)
+  ~ Filter-Fix: Meldungen ohne class_id (kein Klassen-Filter) kommen jetzt korrekt an
+
+  Zeitnahme
+  + Automatischer Klassensprung auf laufende Klasse nach Seiten-Refresh
+  + Ad-hoc-Streckenposten-Strafzeit wird in raw_time eingerechnet (kein 422 mehr)
+  + Automatischer Klassenabschluss: Klasse -> 'preliminary' wenn alle Teilnehmer
+    alle Laeufe absolviert haben (inkl. gruener Toast-Meldung)
+  + Zufaellige Startnummernvergabe (Fisher-Yates-Shuffle statt alphabetisch)
+  ~ 3-Phasen-Bestaetigung: Fehler beim Strafbuchen blockiert nicht mehr die naechste Eingabe
+  ~ Auto-Startnummernvergabe: exclude_unset statt exclude_none (null-Wert wird korrekt gespeichert)
+
+  Schiedsrichter
+  + Auto-Close setzt jetzt end_time -> Einspruchfrist-Timer startet sofort
+    (auch bei automatischem Klassenabschluss, nicht nur bei manuellem)
+
+  Admin – Logs-Tab
+  + Neues Tab Logs im Admin-Bereich:
+    Streckenposten-Meldungen, Zeitkorrekturen (AuditLog), System-Log
+  + system_logger.py: Thread-sicherer Helfer (Server-Start, Login-OK/Fail, User-Erstellung)
+  + Anmelde-Ereignisse werden in SystemLog protokolliert (IP-Adresse, Zeitstempel)
+  + schemas.py: Rolle 'marshal' in UserCreate.role-Literal ergaenzt (422-Fix)
+
+  Sprecher-Dashboard
+  + 3-spaltiges Layout (Fahrer | Zeitanalyse + Wertung | Ereignis-Log)
+  + Ereignis-Log: Echtzeit-Protokoll fuer Streckenposten-Meldungen,
+    Klassen-Statusaenderungen (Start / Vorlaeufig / Offiziell) und Ankuendigungen
+  + Ereignis-Log wird beim Laden mit den letzten Marshal-Meldungen aus DB vorbefuellt
+  + Trainingszeiten werden angezeigt wenn noch keine Wertungslaeufe vorhanden
+  ~ Manueller Lauf-Override (Tr. / L1 / L2) wird nicht mehr durch Auto-Advance ueberschrieben
+  ~ viewer-Rolle erhaelt Zugriff auf Sprecher-Board und Nachrichten-Board
+
+  Livetiming
+  + Trainingszeiten werden angezeigt solange noch keine Wertungslauf-Ergebnisse vorhanden
+    (cyan Zeitanzeige, 'Training'-Hinweis statt Lauf X/Y *)
+  ~ Fix: nur der erste Trainingseintrag wurde angezeigt (classesWithStandings-Set)
+
 [0.4.4] – 2026-04-27
   Docker-Deployment
   - Dockerfile: Multi-Stage-Build (Node 22 baut Frontend, Python 3.12-slim fuehrt Backend aus)

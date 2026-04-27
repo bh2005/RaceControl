@@ -1,7 +1,7 @@
 # Projekt-Agenda: "RaceControl Pro"
 **Konzept:** Modulare Veranstaltungssoftware für Kart-Slalom (JKS & KS2000)  
 **Zielgruppe:** ADAC Hessen-Thüringen (ca. 10 Klassen / 300 Starter)  
-**Stand:** April 2026
+**Stand:** April 2026 (v0.5.0)
 
 ---
 
@@ -25,7 +25,8 @@
 - ✅ **Schiedsrichter:** Korrekturberechtigung, Audit-Log, Klassensteuerung, Einspruchfrist, Drucken
 - ✅ **Nennung:** Check-in, Abnahme (Nenngeld + Helm), Nennungsschluss, Drucken
 - ✅ **Zeitnahme:** Tastaturoptimierte Eingabe, Strafen, DNS/DNF/DSQ, Undo, Vorziehen
-- ✅ **Gast/Viewer:** Landingpage, Livetiming (kein Login erforderlich)
+- ✅ **Streckenposten (marshal):** Mobile-optimierte Meldungserfassung, Storno, History
+- ✅ **Sprecher/Viewer:** Sprecher-Dashboard, Nachrichten-Board, Livetiming (kein Login für Livetiming erforderlich)
 
 ## 3. Dynamische Reglement-Engine
 - ✅ **Serien-Verwaltung:** Reglements-Tabelle (JKS, KS2000, freie Meisterschaften)
@@ -37,14 +38,18 @@
 - ✅ **Speed-Entry Interface:** Zifferneingabe, Enter-Bestätigung, Tastaturkürzel für Strafen
 - ✅ **Klassen-Management:** geplant → läuft → unterbrochen → vorläufig → offiziell
 - ✅ **Klasse pausieren/fortsetzen:** Unterbrechung und Wiederaufnahme (Schiri + Admin)
+- ✅ **Auto-Klassenabschluss:** Automatisch auf „vorläufig" wenn alle Teilnehmer alle Läufe absolviert haben
 - ✅ **Vorziehen:** Fahrer in der Warteschlange an Position 1 setzen (manuelle Queue-Steuerung)
+- ✅ **Zufällige Startnummernvergabe:** Fisher-Yates-Shuffle beim Auto-Nummerieren
 - ✅ **Audit-Log:** Revisionssichere Protokollierung aller Korrekturen
 - ✅ **Undo:** Letzten Zeiteintrag rückgängig machen
+- ✅ **Streckenposten-Integration:** Meldungsempfang in Zeitnahme (WS + DB-Fallback), Übernahme in Strafzeit
 
 ## 5. Responsive Frontend & Livetiming
 - ✅ **Desktop-Ansicht:** Datendichte für Zeitnahme und Admin
 - ✅ **Tablet-Ansicht:** Touch-optimiert für Nennbüro und Schiedsrichter
 - ✅ **Mobile-First Livetiming:** Dunkles Card-Layout, Sponsorenbereich, Klassenstatus
+- ✅ **Trainingszeiten im Livetiming:** Werden angezeigt solange noch keine Wertungsläufe vorhanden
 - ✅ **PWA-Support:** Service Worker (Workbox), Offline-Caching für Standings und Public-API, Web App Manifest, "Zum Startbildschirm hinzufügen"
 - ✅ **Offline-Indikator:** Amber-Banner erscheint automatisch bei Netzwerkausfall (alle Views)
 
@@ -61,15 +66,24 @@
 - ✅ **Teilnehmer-Management:** `Participants` mit Jahrgangsmapping, nullable Startnummer
 - ✅ **Ergebnis-Architektur:** `RaceResults` + `RunPenalties` (Rohzeit und Strafen getrennt)
 - ✅ **Audit-Logging:** `AuditLog` mit Pflichtbegründung
+- ✅ **Streckenposten-Log:** `MarshalReports` mit Storno-Tracking (cancelled, cancelled_at, cancelled_by)
+- ✅ **System-Log:** `SystemLog` (Login-Events, Server-Start, User-Erstellung, Level info/warn/error)
 - ✅ **Sponsoren:** `Sponsors` mit Logo-URL, Sortierung, Aktiv-Flag
 - ✅ **Systemeinstellungen:** `Settings` (Key-Value für Druckvorlagen-Texte)
 - ✅ **Mannschaftswertung:** `Teams`, `TeamMembers` (bis 4 Mitglieder, beste 3 gewertet)
 - ✅ **Automatische Migrationen:** Bestehende DBs werden verlustfrei auf den aktuellen Stand gebracht
 
-## 8. Qualitätssicherung & Test
+## 8. Sprecher-Dashboard & Ereignis-Log
+- ✅ **3-spaltiges Layout:** Aktueller Fahrer | Zeitanalyse + Wertung | Ereignis-Log
+- ✅ **Ereignis-Log:** Echtzeit-Protokoll für Streckenposten-Meldungen, Klassen-Statusänderungen, Ankündigungen (📢 Nennungsschluss etc.)
+- ✅ **DB-Vorladung:** Letzte Marshal-Meldungen werden beim Öffnen aus der DB geladen
+- ✅ **Trainingsanzeige:** Trainingszeiten und -queue werden korrekt angezeigt (manueller Override bleibt erhalten)
+- ✅ **Zeitanalyse:** Was braucht der Fahrer für Platz 1 / Top 3 / Top 10? Pylonen-Budget
+
+## 9. Qualitätssicherung & Test
 - ❌ **Stresstest:** Simulation mit 300 Datensätzen und 50+ simultanen Clients – noch nicht durchgeführt
 - ✅ **Datensicherheit:** Sofortige Persistenz bei jeder Eingabe (kein Datenverlust bei WLAN-Abbruch)
-- ✅ **Automatisierte Tests:** pytest-Integrationstests (auth, events, participants, results, public); Vitest-Tests für useNetworkStatus und useRealtimeUpdate; GitHub Actions CI/CD
+- ✅ **Automatisierte Tests:** pytest-Integrationstests (auth, events, participants, results, public, marshal, auto-close, admin-logs — 105 Tests); Vitest-Tests für useNetworkStatus und useRealtimeUpdate; GitHub Actions CI/CD
 - ✅ **Admin Test-Tab:** API Verbindungscheck + Testdaten-Seeder (Reglement, Klassen, Teilnehmer) mit Progress-Log
 - ✅ **GPL-2.0 Lizenzseite:** `/lizenz`-Route mit Projektinfo, Bibliotheken-Übersicht, Link auf gnu.org; GPL-Link in StatusBar
 
@@ -80,5 +94,6 @@
 | Priorität | Thema | Aufwand |
 |-----------|-------|---------|
 | 🟡 Mittel | Urkunden-Seriendruck | mittel |
+| ~~🟡 Mittel~~ | ~~pytest-Tests für neue Endpunkte (marshal, admin_logs, auto-close)~~ | ~~mittel~~ |
 | 🟢 Nice-to-have | Stresstest (300 Starter, 50 Clients) | groß |
 | ~~🟢 Nice-to-have~~ | ~~Automatisierte Tests~~ | ~~groß~~ |

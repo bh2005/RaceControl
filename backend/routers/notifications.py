@@ -9,10 +9,9 @@ from deps import CurrentUser, require_roles
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
-# All logged-in non-viewer roles may send notifications
 _NotifUser = Annotated[
     object,
-    Depends(require_roles("admin", "zeitnahme", "nennung", "schiedsrichter")),
+    Depends(require_roles("admin", "zeitnahme", "nennung", "schiedsrichter", "viewer")),
 ]
 
 

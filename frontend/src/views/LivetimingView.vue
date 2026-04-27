@@ -185,9 +185,10 @@ async function loadStandings() {
   }
 
   // For classes with no wertungsläufe yet, fall back to training results
+  const classesWithStandings = new Set(stRes.data.map(r => r.class_id))
   for (const r of runRes.data) {
     if (r.run_number !== 0 || r.status !== 'valid' || r.raw_time === null) continue
-    if (grouped[r.class_id]?.length) continue  // already has real standings
+    if (classesWithStandings.has(r.class_id)) continue  // has real standings
     ;(grouped[r.class_id] ??= []).push({
       participant_id: r.participant_id,
       start_number:   r.start_number,
