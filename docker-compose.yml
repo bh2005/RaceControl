@@ -2,7 +2,7 @@ services:
   racecontrol:
     build: .
     ports:
-      - "${PORT:-1980}:8000"
+      - "${PORT:-1980}:1980"
     volumes:
       - ./data:/app/data        # SQLite-Datenbank (persistent)
       - ./assets:/app/assets    # Dokumente, Reglemente, Logos
@@ -12,7 +12,7 @@ services:
       - ASSETS_DIR=/app/assets
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:1980/health')"]
       interval: 30s
       timeout: 5s
       retries: 3

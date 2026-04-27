@@ -14,7 +14,7 @@
 
 ## 1. System-Architektur & Infrastruktur
 - ✅ **Server-Setup:** Python/FastAPI + SQLite (WAL-Modus, Offline-First)
-- ✅ **Netzwerk:** CORS für lokales WLAN konfiguriert; alle Geräte erreichbar über `http://<Laptop-IP>:8000`
+- ✅ **Netzwerk:** CORS für lokales WLAN konfiguriert; alle Geräte erreichbar über `http://<Laptop-IP>:1980`
 - ✅ **Tech-Stack:** Backend FastAPI, Frontend Vue 3 + Tailwind CSS, Axios
 - ✅ **WebSockets:** Echter Push via BroadcastManager; Livetiming und Landingpage reagieren sofort auf neue Ergebnisse und Statuswechsel
 - ✅ **Veranstaltungstag-Deployment:** `npm run build` einmalig → FastAPI liefert gebautes Frontend direkt aus; kein Node.js am Veranstaltungstag erforderlich

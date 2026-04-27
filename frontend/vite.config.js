@@ -54,16 +54,16 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:1980',
         changeOrigin: true,
         // no rewrite — /api prefix is now part of the FastAPI routes
       },
       '/ws': {
-        target: 'ws://localhost:8000',
+        target: 'ws://localhost:1980',
         ws: true,
       },
       '/media': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:1980',
         changeOrigin: true,
       },
     },

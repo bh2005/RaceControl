@@ -25,7 +25,7 @@ import websocket
 
 # IP-Adresse des Laptops, auf dem RaceControl läuft
 BACKEND_HOST = "192.168.0.100"
-BACKEND_PORT = 8000
+BACKEND_PORT = 1980
 BACKEND_WS   = f"ws://{BACKEND_HOST}:{BACKEND_PORT}/ws/timing"
 
 # GPIO-Pins (BCM-Nummerierung)

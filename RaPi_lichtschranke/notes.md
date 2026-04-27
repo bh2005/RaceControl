@@ -81,7 +81,7 @@ In `racecontrol_client.py` bzw. `racecontrol_client_max7219.py`:
 
 ```python
 BACKEND_HOST = "192.168.0.100"   # IP des Laptops mit RaceControl
-BACKEND_PORT = 8000
+BACKEND_PORT = 1980
 MIN_TIME     = 5.0               # Läufe kürzer als 5 s werden verworfen
 ```
 

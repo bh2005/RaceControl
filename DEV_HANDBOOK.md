@@ -34,11 +34,11 @@ Stand: April 2026 · Version 0.4.1
 ```bash
 cd RaceControl/backend
 pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn main:app --reload --host 0.0.0.0 --port 1980
 ```
 
 Die SQLite-Datenbank `racecontrol.db` wird beim ersten Start automatisch aus `schema.sql` angelegt.  
-Interaktive API-Dokumentation: `http://localhost:8000/docs`
+Interaktive API-Dokumentation: `http://localhost:1980/docs`
 
 ### Frontend starten (Dev-Modus)
 
@@ -48,13 +48,13 @@ npm install
 npm run dev
 ```
 
-Läuft auf `http://localhost:5173`. Alle `/api/` und `/ws`-Aufrufe werden automatisch an Port 8000 proxyt (konfiguriert in `vite.config.js`).
+Läuft auf `http://localhost:5173`. Alle `/api/` und `/ws`-Aufrufe werden automatisch an Port 1980 proxyt (konfiguriert in `vite.config.js`).
 
 ### Beide zusammen (Empfehlung)
 
 ```bash
 # Terminal 1
-cd backend && uvicorn main:app --reload --host 0.0.0.0 --port 8000
+cd backend && uvicorn main:app --reload --host 0.0.0.0 --port 1980
 
 # Terminal 2
 cd frontend && npm run dev
@@ -63,7 +63,7 @@ cd frontend && npm run dev
 ### Erster Login nach Neustart
 
 Standardbenutzer `admin` wird beim ersten Start über `schema.sql` oder `seed.py` angelegt.  
-Passwort über `http://localhost:8000/docs` → `POST /api/auth/login` testen oder `seed.py` ausführen.
+Passwort über `http://localhost:1980/docs` → `POST /api/auth/login` testen oder `seed.py` ausführen.
 
 ### Docker (alternativ zur manuellen Einrichtung)
 
@@ -94,7 +94,7 @@ ASSETS_DIR=/app/assets
 ```
 Stage 1 (node:22-alpine)   → npm ci && npm run build  → dist/
 Stage 2 (python:3.12-slim) → pip install + COPY backend + COPY dist/
-                           → uvicorn main:app --host 0.0.0.0 --port 8000
+                           → uvicorn main:app --host 0.0.0.0 --port 1980
 ```
 
 ---

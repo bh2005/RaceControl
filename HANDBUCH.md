@@ -55,7 +55,7 @@ docker compose down
 ```bash
 # Backend
 cd RaceControl/backend
-uvicorn main:app --host 0.0.0.0 --port 8000
+uvicorn main:app --host 0.0.0.0 --port 1980
 ```
 
 Das Backend ist bereit, wenn `Application startup complete.` im Terminal erscheint.
@@ -80,7 +80,7 @@ ipconfig
 ip addr
 ```
 
-Auf dem Gerät im Browser aufrufen: `http://<IP>:8000`
+Auf dem Gerät im Browser aufrufen: `http://<IP>:1980`
 (im Entwicklungsmodus ohne Docker: `http://<IP>:5173`)
 
 ---
@@ -320,7 +320,7 @@ an die Zeitnahme. Die Meldungen erscheinen dort als gelbes Panel und können mit
 ### Einrichten
 
 1. Im Admin einen Benutzer mit Rolle **`marshal`** anlegen (z.B. „posten1", „posten2", …)
-2. Passwort mitteilen; Login-URL: `http://<IP>:8000/login`
+2. Passwort mitteilen; Login-URL: `http://<IP>:1980/login`
 3. Nach dem Login landet der Streckenposten automatisch auf `/marshal`
 
 ### Posten-Bezeichnung setzen
@@ -416,7 +416,7 @@ python3 racecontrol_client_max7219.py  # MAX7219-LED-Matrix
 **Konfiguration** (am Anfang der Datei):
 ```python
 BACKEND_HOST = "192.168.0.100"   # IP des Laptops mit RaceControl
-BACKEND_PORT = 8000
+BACKEND_PORT = 1980
 MIN_TIME     = 5.0               # Läufe unter 5 s werden verworfen
 ```
 
@@ -446,7 +446,7 @@ python lsu200_client.py
 **Konfiguration** (am Anfang der Datei):
 ```python
 SERIAL_PORT = None             # None = automatische Erkennung, oder z.B. "COM3"
-BACKEND_WS  = "ws://localhost:8000/ws/timing"
+BACKEND_WS  = "ws://localhost:1980/ws/timing"
 MIN_TIME    = 3.0              # Messungen unter 3 s werden verworfen
 ```
 
@@ -458,7 +458,7 @@ MIN_TIME    = 3.0              # Messungen unter 3 s werden verworfen
 
 ### Das Backend startet nicht
 
-- Prüfen ob Port 8000 frei ist: `netstat -an | grep 8000`
+- Prüfen ob Port 1980 frei ist: `netstat -an | grep 1980`
 - Python-Version prüfen: `python --version` (mind. 3.9)
 - Abhängigkeiten installiert? `pip install fastapi uvicorn pyjwt bcrypt`
 
