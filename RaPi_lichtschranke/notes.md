@@ -152,6 +152,8 @@ Reset-Taster (GPIO 22, aktiv LOW)
 
 ---
 
+> **Vollständiges Setup-Handbuch für alle Varianten:** [`LICHTSCHRANKE_SETUP.md`](../LICHTSCHRANKE_SETUP.md)
+
 ## Alternativer Client: ELV LSU200
 
 Wer keine GPIO-Lichtschranke am Raspberry Pi aufbauen möchte, kann die **ELV LSU200 USB-Lichtschranke** direkt am Laptop betreiben:
