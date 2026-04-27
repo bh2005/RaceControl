@@ -1,12 +1,13 @@
 from __future__ import annotations
 import mimetypes
+import os
 import pathlib
 
 from fastapi import APIRouter
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
-_ASSETS = pathlib.Path(__file__).parent.parent.parent / "assets"
+_ASSETS = pathlib.Path(os.environ.get("ASSETS_DIR", str(pathlib.Path(__file__).parent.parent.parent / "assets")))
 
 _CATEGORY_LABELS = {
     "reglements": "Reglemente",

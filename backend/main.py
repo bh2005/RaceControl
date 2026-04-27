@@ -1,3 +1,4 @@
+import os
 import pathlib
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -101,7 +102,7 @@ async def timing_device_endpoint(ws: WebSocket):
 
 
 # Serve assets folder (Reglements, Vorlagen, Logos) — before frontend catch-all
-_assets_dir = pathlib.Path(__file__).parent.parent / "assets"
+_assets_dir = pathlib.Path(os.environ.get("ASSETS_DIR", str(pathlib.Path(__file__).parent.parent / "assets")))
 if _assets_dir.exists():
     app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets_files")
 

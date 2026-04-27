@@ -1,6 +1,6 @@
 # RaceControl Pro – Funktionsübersicht
 
-Stand: April 2026 · Version 0.4.3
+Stand: April 2026 · Version 0.4.4
 
 ---
 
@@ -207,7 +207,7 @@ Stand: April 2026 · Version 0.4.3
 - Mobile-optimiertes Layout (dunkler Hintergrund, große Buttons – für Smartphone am Posten)
 - **Posten-Bezeichnung** einstellbar (z.B. „Posten 2"), wird im localStorage gespeichert
 - Klassen-Selector zeigt nur laufende Klassen
-- Straf-Buttons aus dem Reglement der gewählten Klasse – Antippen genügt, sofortiger Versand
+- Einfaches Zahlen-Eingabefeld (Fehlerpunkte in Sekunden) + „Senden"-Button
 - Grünes „Gesendet ✓"-Flash nach jeder Meldung
 - Log der zuletzt gesendeten Meldungen am unteren Rand
 - Meldungen werden per WebSocket-Broadcast (`marshal_penalty`) an alle Clients gesendet
@@ -228,6 +228,18 @@ Stand: April 2026 · Version 0.4.3
   Dropdown zeigt fett wenn eine enthaltene Seite aktiv ist
 - **Push-Benachrichtigungen** als globales cyan Banner (alle Views, 30 s, schließbar)
 
+## Docker-Deployment
+
+- **Multi-Stage Dockerfile**: Node 22 baut das Frontend, Python 3.12-slim führt das Backend aus
+- Ein einziger Container enthält Frontend + Backend + alle API-Endpunkte
+- `docker compose up --build` startet das gesamte System ohne Python- oder Node-Installation
+- **Volumes**: `./data/` für die SQLite-DB, `./assets/` für Dokumente — beide persistent
+- `SECRET_KEY` per Umgebungsvariable (`.env`-Datei)
+- Healthcheck auf `/health` eingebaut
+- Pfade (DB, Assets) über `DATA_DIR` / `ASSETS_DIR` Env-Vars konfigurierbar
+
+---
+
 ## Technisches
 
 - Automatische Datenbank-Migration beim Start (verlustfrei)
@@ -236,3 +248,4 @@ Stand: April 2026 · Version 0.4.3
 - Rollenbasierte Zugangskontrolle (Frontend + Backend)
 - Audit-Log für alle Zeitkorrekturen
 - Responsive Design (Tablet-optimiert für Nennbüro und Zeitnahme)
+- Docker-ready: Single-Container-Deployment per `docker compose up`

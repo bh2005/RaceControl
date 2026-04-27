@@ -65,6 +65,38 @@ cd frontend && npm run dev
 Standardbenutzer `admin` wird beim ersten Start über `schema.sql` oder `seed.py` angelegt.  
 Passwort über `http://localhost:8000/docs` → `POST /api/auth/login` testen oder `seed.py` ausführen.
 
+### Docker (alternativ zur manuellen Einrichtung)
+
+```bash
+# Image bauen + starten (Frontend wird im Build kompiliert)
+docker compose up --build
+
+# Nur Backend-Image neu bauen nach Python-Änderungen
+docker compose up --build racecontrol
+
+# Logs verfolgen
+docker compose logs -f
+
+# Container stoppen
+docker compose down
+```
+
+Die DB liegt in `data/racecontrol.db`, Assets in `assets/` — beide als Volumes gemountet.
+
+**Umgebungsvariablen** (`.env`-Datei im Projektroot):
+```
+SECRET_KEY=mein-geheimes-passwort
+DATA_DIR=/app/data
+ASSETS_DIR=/app/assets
+```
+
+**Dockerfile-Struktur (Multi-Stage):**
+```
+Stage 1 (node:22-alpine)   → npm ci && npm run build  → dist/
+Stage 2 (python:3.12-slim) → pip install + COPY backend + COPY dist/
+                           → uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
 ---
 
 ## 2. Projektstruktur
@@ -120,7 +152,12 @@ RaceControl/
 │   └── package.json
 ├── RaPi_lichtschranke/      # Raspberry Pi GPIO-Clients
 ├── tools/                   # ELV LSU200 USB-Client
+├── assets/                  # Dokumente (Reglements, Vorlagen, Logos) – per Volume mount
+├── data/                    # SQLite-DB-Ablage (Docker-Volume, lokal .gitkeep)
 ├── schema.sql               # SQLite-Schema (direkt im Root — Backend und Tests lesen hier)
+├── Dockerfile               # Multi-Stage: Node-Builder + Python-Runtime
+├── docker-compose.yml       # Single-Container-Deployment mit Volumes
+├── .dockerignore
 ├── db_design.md             # Datenbankschema-Dokumentation
 └── .github/workflows/ci.yml # GitHub Actions CI
 ```

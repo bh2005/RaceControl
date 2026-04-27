@@ -1,0 +1,19 @@
+services:
+  racecontrol:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data        # SQLite-Datenbank (persistent)
+      - ./assets:/app/assets    # Dokumente, Reglemente, Logos
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-bitte-aendern-fuer-produktion}
+      - DATA_DIR=/app/data
+      - ASSETS_DIR=/app/assets
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

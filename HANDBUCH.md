@@ -29,26 +29,59 @@ Stand: April 2026
 1. WLAN-Hotspot aktivieren (Laptop als Zugangspunkt) **oder** Verbindung mit dem Veranstaltungs-WLAN.
 2. Terminal öffnen und ins Projektverzeichnis wechseln.
 
-### Backend starten
+---
+
+### Option A – Docker (empfohlen)
+
+Kein Python oder Node.js nötig – nur Docker Desktop muss installiert sein.
 
 ```bash
+cd RaceControl
+docker compose up -d --build
+```
+
+Beim ersten Start wird das Image gebaut (ca. 2–3 Minuten). Ab dem zweiten Mal startet es in Sekunden.
+Die Datenbank und alle Dokumente bleiben in den Ordnern `data/` und `assets/` erhalten.
+
+System stoppen:
+```bash
+docker compose down
+```
+
+---
+
+### Option B – Direkt (Entwicklung / ohne Docker)
+
+```bash
+# Backend
 cd RaceControl/backend
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 Das Backend ist bereit, wenn `Application startup complete.` im Terminal erscheint.
 
-### Frontend (falls Entwicklungsmodus)
-
 ```bash
+# Frontend (nur im Entwicklungsmodus nötig)
 cd RaceControl/frontend
 npm run dev
 ```
 
+---
+
 ### Zugriff vom Tablet / Smartphone
 
-Die IP-Adresse des Laptops im WLAN ermitteln (z.B. `192.168.1.100`).  
-Auf dem Gerät im Browser aufrufen: `http://192.168.1.100:5173`
+Die IP-Adresse des Laptops im WLAN ermitteln:
+
+```bash
+# Windows
+ipconfig
+
+# Linux/macOS
+ip addr
+```
+
+Auf dem Gerät im Browser aufrufen: `http://<IP>:8000`
+(im Entwicklungsmodus ohne Docker: `http://<IP>:5173`)
 
 ---
 
@@ -298,13 +331,12 @@ an die Zeitnahme. Die Meldungen erscheinen dort als gelbes Panel und können mit
 
 ### Fehlerpunkt melden
 
-1. Klasse oben rechts auswählen (nur laufende Klassen sichtbar)
-2. Straf-Button antippen (z.B. **Pylone +3 s**)
-3. Die Meldung wird sofort gesendet — grünes **„Gesendet ✓"** erscheint kurz
-4. Nächste Meldung kann sofort gesendet werden
+1. Anzahl der Fehlerpunkte (Sekunden) in das große Zahlenfeld eintippen
+2. **„📤 Senden"** tippen oder **Enter** drücken
+3. Grünes **„✓ X Punkte gesendet"** erscheint kurz als Bestätigung
+4. Das Feld leert sich automatisch — nächste Meldung kann sofort eingegeben werden
 
-> Tipp: Die Klasse muss bei der Zeitnahme auf dieselbe Klasse eingestellt sein,
-> damit die Meldungen angezeigt werden.
+> Die Fehlerpunkte werden direkt in Sekunden angegeben (Pylone = 3, Tor = 10 usw.).
 
 ### Meldung in der Zeitnahme übernehmen
 

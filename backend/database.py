@@ -1,8 +1,12 @@
+import os
 import sqlite3
 import pathlib
 
-DB_PATH = pathlib.Path(__file__).parent.parent / "racecontrol.db"
-SCHEMA_PATH = pathlib.Path(__file__).parent.parent / "schema.sql"
+_ROOT = pathlib.Path(__file__).parent.parent
+# DATA_DIR kann per Env-Variable überschrieben werden (z.B. Docker-Volume)
+_DATA_DIR   = pathlib.Path(os.environ.get("DATA_DIR", str(_ROOT)))
+DB_PATH     = _DATA_DIR / "racecontrol.db"
+SCHEMA_PATH = _ROOT / "schema.sql"
 
 
 def get_db():

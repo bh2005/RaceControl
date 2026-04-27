@@ -1,26 +1,60 @@
-RaceControl Pro  Changelog
-===========================
-
-[0.4.3] – 2026-04-25
-  Streckenposten-Rolle, Nav-Dropdown, Teilnehmerliste-Sortierung
-  - Neue Rolle 'marshal' (Streckenposten): eigene Ansicht /marshal, Login leitet direkt dorthin
-  - MarshalView: mobile-optimiert, grosse Straf-Buttons aus dem Reglement
-  - Posten-Bezeichnung einstellbar (localStorage), Klassen-Selector (nur laufende)
-  - Sofort-Versand per Antippen, gruenes 'Gesendet'-Flash, Log der letzten Meldungen
-  - WebSocket-Broadcast 'marshal_penalty' an alle Clients
-  - Zeitnahme: gelbes Uebernahme-Panel fuer Streckenposten-Meldungen (Uebernehmen / Verwerfen)
-  - TopBar: 'Mehr'-Dropdown fuer sekundaere Navigationspunkte (bei Admin sonst 10 Eintraege)
-  - Nennbuero Teilnehmerliste: Sortierung nach Status -> Klasse -> Jahrgang -> Nachname
-  - Admin Benutzerverwaltung: Rolle 'Streckenposten' (marshal) auswahlbar
-
-[0.4.2] – 2026-04-25
-  Dokumente-Seite
-  - Neue oeffentliche Seite /dokumente mit allen Dateien aus assets/ (Reglemente, Vorlagen, Logos)
-  - FastAPI-Endpunkt GET /api/assets/files liefert Dateiliste mit Metadaten
-  - Statisches Serving unter /assets/ (PDF, PNG etc. direkt aufrufbar)
-  - Dateien nach Kategorie (Unterordner) gruppiert, Dateigroeße angezeigt
-  - Navigationslink Dokumente fuer alle Benutzer (inkl. Gaeste)
-
+RaceControl Pro  Changelog
+
+===========================
+
+
+
+[0.4.4] – 2026-04-27
+  Docker-Deployment
+  - Dockerfile: Multi-Stage-Build (Node 22 baut Frontend, Python 3.12-slim fuehrt Backend aus)
+  - docker-compose.yml: Single-Container-Start mit Volumes fuer DB und Assets
+  - .dockerignore: node_modules, __pycache__, .git, Tests, Screenshots ausgeschlossen
+  - data/ Verzeichnis fuer persistente SQLite-DB (Docker-Volume)
+  - DATA_DIR / ASSETS_DIR Env-Vars fuer konfigurierbare Pfade
+  - SECRET_KEY per Umgebungsvariable (.env-Datei)
+  - Healthcheck auf /health eingebaut
+  - README, FEATURES, HANDBUCH, DEV_HANDBOOK aktualisiert
+
+[0.4.3] – 2026-04-25
+
+  Streckenposten-Rolle, Nav-Dropdown, Teilnehmerliste-Sortierung
+
+  - Neue Rolle 'marshal' (Streckenposten): eigene Ansicht /marshal, Login leitet direkt dorthin
+
+  - MarshalView: mobile-optimiert, grosse Straf-Buttons aus dem Reglement
+
+  - Posten-Bezeichnung einstellbar (localStorage), Klassen-Selector (nur laufende)
+
+  - Sofort-Versand per Antippen, gruenes 'Gesendet'-Flash, Log der letzten Meldungen
+
+  - WebSocket-Broadcast 'marshal_penalty' an alle Clients
+
+  - Zeitnahme: gelbes Uebernahme-Panel fuer Streckenposten-Meldungen (Uebernehmen / Verwerfen)
+
+  - TopBar: 'Mehr'-Dropdown fuer sekundaere Navigationspunkte (bei Admin sonst 10 Eintraege)
+
+  - Nennbuero Teilnehmerliste: Sortierung nach Status -> Klasse -> Jahrgang -> Nachname
+
+  - Admin Benutzerverwaltung: Rolle 'Streckenposten' (marshal) auswahlbar
+
+
+
+[0.4.2] – 2026-04-25
+
+  Dokumente-Seite
+
+  - Neue oeffentliche Seite /dokumente mit allen Dateien aus assets/ (Reglemente, Vorlagen, Logos)
+
+  - FastAPI-Endpunkt GET /api/assets/files liefert Dateiliste mit Metadaten
+
+  - Statisches Serving unter /assets/ (PDF, PNG etc. direkt aufrufbar)
+
+  - Dateien nach Kategorie (Unterordner) gruppiert, Dateigroeße angezeigt
+
+  - Navigationslink Dokumente fuer alle Benutzer (inkl. Gaeste)
+
+
+
 [0.4.1]  2026-04-25
 ---------------------
 Neue Features:
@@ -101,140 +135,277 @@ Bugfixes & Technische Aenderungen:
         Fehler wenn User-Fixtures in mehreren Tests verwendet werden
   ~ package-lock.json neu generiert (war nicht synchron mit package.json)
 
-[0.3.0]  2026-04-24
----------------------
-Neue Features:
-
-  Zeitnahme
-  + Komma als Dezimaltrennzeichen akzeptiert (z.B. 56,13 = 56.13 s)
-  + Queue springt nach Bestaetigung automatisch auf den naechsten Starter
-    (Bugfix: participant_id fehlte im v_run_results-View)
-
-  Schiedsrichter
-  + Lauf-Spalte in der Ergebnistabelle (Training grau, Lauf N blau)
-  + Strafen-Korrektur fuer Wertungslaeufe: bestehende Strafen aendern und
-    neue hinzufuegen; Live-Vorschau Rohzeit + Strafzeit = Gesamtzeit
-  + Training: nur Rohzeit und Status korrigierbar (keine Straffelder)
-
-  Livetiming
-  + Lauf-Detailzeilen pro Fahrer: Rohzeit + Strafzeit (z.B. Lauf 1  56.13 +12.0s = 68.13)
-  + Strafzeit immer angezeigt, auch wenn 0.0s (grau)
-
-  Raspberry Pi
-  + Neuer Client fuer MAX7219 LED-Matrix-Display (SPI, luma.led_matrix)
-    als Alternative zum TM1637-Client
-
-Technische Aenderungen & Bugfixes:
-  ~ DB-Schema: v_run_results + participant_id-Spalte; alle Views nun mit
-    DROP VIEW IF EXISTS + CREATE VIEW (statt CREATE VIEW IF NOT EXISTS)
-    damit Schema-Aenderungen beim Neustart immer wirksam werden
-  ~ Pydantic-Schemas: path-param-Felder (event_id, reglement_id etc.)
-    in Create-Schemas auf Optional[int] = None gesetzt (Validierung
-    laeuft vor dem Router-Setzen der Werte)
-  ~ participants-Router: Decorator "/" -> "" (kein Trailing-Slash mehr);
-    POST-Requests liefen sonst auf 405 Method Not Allowed
-  ~ Test-Fixtures: Benutzernamen t_admin/t_schiri/t_zeit/t_nenn statt
-    admin/schiri/zeit/nenn (Konflikt mit schema.sql-Seed-User behoben)
-  ~ Zeitnahme: doppelter Enter-Handler entfernt (@keydown.enter +
-    window-keydown liefen gleichzeitig -> 409 "bereits vorhanden")
-
-[0.2.0]  2026-04-24
----------------------
-Neue Features:
-
-  Lichtschranken-Integration (Hauptfeature)
-  + Backend-Endpoint /ws/timing fuer externe Zeitmessgeraete (WebSocket)
-  + Raspi-Client (tools/racecontrol_client.py): GPIO-Lichtschranke an
-    Raspberry Pi; TM1637-Display lokal + Auto-Reconnect per WLAN
-  + ELV LSU200 Client (tools/lsu200_client.py): USB-Anbindung der
-    ELV LSU200 Lichtschranke (COM-Port, 19200 Baud, Auto-Detect)
-  + ZeitnahmeView: automatische Zeituebertragung aus Lichtschranke ins
-    Eingabefeld (gruen blinkend); Strafen und Bestaetigung wie gewohnt
-  + Lichtschranken-Statusindikator (gruen/grau) in der Zeitnahme
-  + Heartbeat-Mechanismus: Backend trackt verbundene Messgeraete
-
-  Druck & Export
-  + Ergebnisliste drucken: A4 quer, ADAC Hessen-Thueringen Standardformat
-    (Fahrzeit / Fehlerpunkte / Gesamt pro Lauf, Jahrgang, Summe, Differenz,
-    Einspruchfrist-Zeitstempel, Schiedsrichter-Unterschriftszeile)
-  + Sprecherliste drucken: A4 hoch, alle Teilnehmer nach Klasse mit
-    Startnummer, Name, Verein, Jahrgang, Notiz-Spalte
-  + Offizielles ADAC-Nennungsformular: 2-seitiger Ausdruck pro Teilnehmer
-    (Nennungsformular + Haftungsausschluss); verfuegbar ab Lizenz + Helm + Geld
-  + Urkunden: Clubmeisterschaft-Vorlage (Gestaltung mit Goldrahmen) und
-    ADAC-Vordruck (Overlay-Positionierung auf vorgedrucktem Formular)
-
-  Echtzeit & PWA
-  + WebSocket Live-Push: Zeitnahme, Livetiming und Landingpage reagieren
-    sofort auf neue Ergebnisse und Statuswechsel
-  + PWA-Unterstuetzung: Service Worker (Workbox), Offline-Caching fuer
-    Standings und Public-API, Web App Manifest, "Zum Startbildschirm"
-  + Offline-Indikator: Amber-Banner bei Netzwerkausfall (alle Views)
-  + Veranstaltungstag-Deployment: npm run build einmalig, FastAPI liefert
-    gebauetes Frontend direkt aus; kein Node.js am Veranstaltungstag
-
-  Admin
-  + Test-Tab im Admin-Bereich: API-Verbindungstest (JWT-Check) und
-    Testdaten-Seeder (Reglement, Klassen, Teilnehmer) mit Live-Fortschrittslog
-  + GPL-2.0 Lizenzseite (/lizenz) mit Projektinfo, Bibliotheksuebersicht
-    und Link auf gnu.org; Lizenz-Link in der Statusbar
-
-  Qualitaetssicherung & CI/CD
-  + pytest-Integrationstests: auth, events, participants, results, public
-    (40+ Tests, In-Memory-SQLite, JWT-Fixtures, Role-Guard-Checks)
-  + Vitest-Tests: useNetworkStatus und useRealtimeUpdate (12 Tests)
-  + GitHub Actions CI/CD: backend-tests (Python 3.11) + frontend-tests
-    (Node 20) + frontend-build; automatisch bei Push/PR auf main
-
-Technische Aenderungen:
-  ~ API-Routing: einheitliches /api-Praefix fuer alle Endpunkte
-    (Dev-Proxy und Produktion konsistent)
-  ~ ZeitnahmeView nutzt jetzt useRealtimeUpdate-Composable fuer WS
-  ~ StatusBar: GPL-2.0 Link neben Versionsanzeige
-  + Route /lizenz (public, kein Login erforderlich)
-  + tools/ Verzeichnis: externe Geraete-Clients und deren requirements.txt
-
-
-[0.1.0]  2026-04-22
----------------------
-Erste vollstaendige Version fuer den Einsatz beim MSC Braach e.V. im ADAC.
-
-Neu:
-  + Oeffentliche Landingpage (/) mit Veranstaltungsinfos, Klassenstatus,
-    Zwischenwertung, Sponsoren und Beschreibungstext
-  + Online-Selbstanmeldung (/nennen) fuer Teilnehmer vor Ort (kein Login)
-    mit Duplikatpruefung nach Lizenznummer und Name/Jahrgang
-  + Livetiming (/livetiming) ohne Login
-  + Nennbuero: Teilnehmerverwaltung, Abnahme (Nenngeld + Helm),
-    Statusworkflow (gemeldet -> eingecheckt -> freigegeben)
-  + Startnummernvergabe-Modus nach der Auslosung
-  + Nennungsschluss pro Klasse mit Startzeiterfassung
-  + Nennliste drucken mit Versicherungshinweis und Elternunterschriftfeld
-  + Zeitnahme: Zeiteingabe, Strafbuchung per Button/Tastaturkuerzel,
-    DNS/DNF/DSQ, Undo-Funktion, Keyboard-Shortcuts
-  + Vorziehen-Funktion in der Zeitnahme: beliebigen Fahrer an die
-    Startposition 1 setzen (manuelle Warteschlangen-Umstellung)
-  + Schiedsrichterview: Klasse starten, unterbrechen, fortsetzen,
-    beenden; 30-Minuten Einspruchfrist-Timer; Ergebniskorrekturen
-    mit Pflichtbegruendung und Audit-Log
-  + Klassenstatus: geplant / laeuft / unterbrochen / vorlaeufig / offiziell
-  + Admin-Bereich: Veranstaltungen (CRUD inkl. Loeschen), Klassen,
-    Vereine, Benutzer, Sponsoren, Systemeinstellungen
-  + Sponsorenverwaltung mit Logo-URL, Website-Link, Sortierung,
-    Aktiv/Inaktiv; erscheinen auf der Landingpage
-  + Veranstaltungsbeschreibung (Infotext auf der Landingpage)
-  + Systemeinstellungen: Druckvorlage (Veranstalter, Adresse,
-    Versicherungshinweis, Einverstaendniserklaerung)
-  + Reglementverwaltung: Scoring-Typen, Straf-Definitionen
-  + Mannschaftswertung (Teams, bis zu 4 Mitglieder, beste 3 gewertet)
-  + Rollenbasierte Zuganskontrolle: admin, nennung, zeitnahme,
-    schiedsrichter, viewer
-  + JWT-Authentifizierung (HS256), bcrypt-Passwoerter
-  + SQLite mit WAL-Modus fuer parallele Zugriffe
-  + Automatische Datenbank-Migration beim Start (verlustfrei)
-  + Logout leitet auf die oeffentliche Landingpage weiter
-
-Technische Basis:
-  Backend:   Python 3.9+, FastAPI, SQLite, PyJWT, bcrypt
-  Frontend:  Vue 3 (Composition API), Vite, Pinia, Vue Router,
-             Tailwind CSS, Axios
+[0.3.0]  2026-04-24
+
+---------------------
+
+Neue Features:
+
+
+
+  Zeitnahme
+
+  + Komma als Dezimaltrennzeichen akzeptiert (z.B. 56,13 = 56.13 s)
+
+  + Queue springt nach Bestaetigung automatisch auf den naechsten Starter
+
+    (Bugfix: participant_id fehlte im v_run_results-View)
+
+
+
+  Schiedsrichter
+
+  + Lauf-Spalte in der Ergebnistabelle (Training grau, Lauf N blau)
+
+  + Strafen-Korrektur fuer Wertungslaeufe: bestehende Strafen aendern und
+
+    neue hinzufuegen; Live-Vorschau Rohzeit + Strafzeit = Gesamtzeit
+
+  + Training: nur Rohzeit und Status korrigierbar (keine Straffelder)
+
+
+
+  Livetiming
+
+  + Lauf-Detailzeilen pro Fahrer: Rohzeit + Strafzeit (z.B. Lauf 1  56.13 +12.0s = 68.13)
+
+  + Strafzeit immer angezeigt, auch wenn 0.0s (grau)
+
+
+
+  Raspberry Pi
+
+  + Neuer Client fuer MAX7219 LED-Matrix-Display (SPI, luma.led_matrix)
+
+    als Alternative zum TM1637-Client
+
+
+
+Technische Aenderungen & Bugfixes:
+
+  ~ DB-Schema: v_run_results + participant_id-Spalte; alle Views nun mit
+
+    DROP VIEW IF EXISTS + CREATE VIEW (statt CREATE VIEW IF NOT EXISTS)
+
+    damit Schema-Aenderungen beim Neustart immer wirksam werden
+
+  ~ Pydantic-Schemas: path-param-Felder (event_id, reglement_id etc.)
+
+    in Create-Schemas auf Optional[int] = None gesetzt (Validierung
+
+    laeuft vor dem Router-Setzen der Werte)
+
+  ~ participants-Router: Decorator "/" -> "" (kein Trailing-Slash mehr);
+
+    POST-Requests liefen sonst auf 405 Method Not Allowed
+
+  ~ Test-Fixtures: Benutzernamen t_admin/t_schiri/t_zeit/t_nenn statt
+
+    admin/schiri/zeit/nenn (Konflikt mit schema.sql-Seed-User behoben)
+
+  ~ Zeitnahme: doppelter Enter-Handler entfernt (@keydown.enter +
+
+    window-keydown liefen gleichzeitig -> 409 "bereits vorhanden")
+
+
+
+[0.2.0]  2026-04-24
+
+---------------------
+
+Neue Features:
+
+
+
+  Lichtschranken-Integration (Hauptfeature)
+
+  + Backend-Endpoint /ws/timing fuer externe Zeitmessgeraete (WebSocket)
+
+  + Raspi-Client (tools/racecontrol_client.py): GPIO-Lichtschranke an
+
+    Raspberry Pi; TM1637-Display lokal + Auto-Reconnect per WLAN
+
+  + ELV LSU200 Client (tools/lsu200_client.py): USB-Anbindung der
+
+    ELV LSU200 Lichtschranke (COM-Port, 19200 Baud, Auto-Detect)
+
+  + ZeitnahmeView: automatische Zeituebertragung aus Lichtschranke ins
+
+    Eingabefeld (gruen blinkend); Strafen und Bestaetigung wie gewohnt
+
+  + Lichtschranken-Statusindikator (gruen/grau) in der Zeitnahme
+
+  + Heartbeat-Mechanismus: Backend trackt verbundene Messgeraete
+
+
+
+  Druck & Export
+
+  + Ergebnisliste drucken: A4 quer, ADAC Hessen-Thueringen Standardformat
+
+    (Fahrzeit / Fehlerpunkte / Gesamt pro Lauf, Jahrgang, Summe, Differenz,
+
+    Einspruchfrist-Zeitstempel, Schiedsrichter-Unterschriftszeile)
+
+  + Sprecherliste drucken: A4 hoch, alle Teilnehmer nach Klasse mit
+
+    Startnummer, Name, Verein, Jahrgang, Notiz-Spalte
+
+  + Offizielles ADAC-Nennungsformular: 2-seitiger Ausdruck pro Teilnehmer
+
+    (Nennungsformular + Haftungsausschluss); verfuegbar ab Lizenz + Helm + Geld
+
+  + Urkunden: Clubmeisterschaft-Vorlage (Gestaltung mit Goldrahmen) und
+
+    ADAC-Vordruck (Overlay-Positionierung auf vorgedrucktem Formular)
+
+
+
+  Echtzeit & PWA
+
+  + WebSocket Live-Push: Zeitnahme, Livetiming und Landingpage reagieren
+
+    sofort auf neue Ergebnisse und Statuswechsel
+
+  + PWA-Unterstuetzung: Service Worker (Workbox), Offline-Caching fuer
+
+    Standings und Public-API, Web App Manifest, "Zum Startbildschirm"
+
+  + Offline-Indikator: Amber-Banner bei Netzwerkausfall (alle Views)
+
+  + Veranstaltungstag-Deployment: npm run build einmalig, FastAPI liefert
+
+    gebauetes Frontend direkt aus; kein Node.js am Veranstaltungstag
+
+
+
+  Admin
+
+  + Test-Tab im Admin-Bereich: API-Verbindungstest (JWT-Check) und
+
+    Testdaten-Seeder (Reglement, Klassen, Teilnehmer) mit Live-Fortschrittslog
+
+  + GPL-2.0 Lizenzseite (/lizenz) mit Projektinfo, Bibliotheksuebersicht
+
+    und Link auf gnu.org; Lizenz-Link in der Statusbar
+
+
+
+  Qualitaetssicherung & CI/CD
+
+  + pytest-Integrationstests: auth, events, participants, results, public
+
+    (40+ Tests, In-Memory-SQLite, JWT-Fixtures, Role-Guard-Checks)
+
+  + Vitest-Tests: useNetworkStatus und useRealtimeUpdate (12 Tests)
+
+  + GitHub Actions CI/CD: backend-tests (Python 3.11) + frontend-tests
+
+    (Node 20) + frontend-build; automatisch bei Push/PR auf main
+
+
+
+Technische Aenderungen:
+
+  ~ API-Routing: einheitliches /api-Praefix fuer alle Endpunkte
+
+    (Dev-Proxy und Produktion konsistent)
+
+  ~ ZeitnahmeView nutzt jetzt useRealtimeUpdate-Composable fuer WS
+
+  ~ StatusBar: GPL-2.0 Link neben Versionsanzeige
+
+  + Route /lizenz (public, kein Login erforderlich)
+
+  + tools/ Verzeichnis: externe Geraete-Clients und deren requirements.txt
+
+
+
+
+
+[0.1.0]  2026-04-22
+
+---------------------
+
+Erste vollstaendige Version fuer den Einsatz beim MSC Braach e.V. im ADAC.
+
+
+
+Neu:
+
+  + Oeffentliche Landingpage (/) mit Veranstaltungsinfos, Klassenstatus,
+
+    Zwischenwertung, Sponsoren und Beschreibungstext
+
+  + Online-Selbstanmeldung (/nennen) fuer Teilnehmer vor Ort (kein Login)
+
+    mit Duplikatpruefung nach Lizenznummer und Name/Jahrgang
+
+  + Livetiming (/livetiming) ohne Login
+
+  + Nennbuero: Teilnehmerverwaltung, Abnahme (Nenngeld + Helm),
+
+    Statusworkflow (gemeldet -> eingecheckt -> freigegeben)
+
+  + Startnummernvergabe-Modus nach der Auslosung
+
+  + Nennungsschluss pro Klasse mit Startzeiterfassung
+
+  + Nennliste drucken mit Versicherungshinweis und Elternunterschriftfeld
+
+  + Zeitnahme: Zeiteingabe, Strafbuchung per Button/Tastaturkuerzel,
+
+    DNS/DNF/DSQ, Undo-Funktion, Keyboard-Shortcuts
+
+  + Vorziehen-Funktion in der Zeitnahme: beliebigen Fahrer an die
+
+    Startposition 1 setzen (manuelle Warteschlangen-Umstellung)
+
+  + Schiedsrichterview: Klasse starten, unterbrechen, fortsetzen,
+
+    beenden; 30-Minuten Einspruchfrist-Timer; Ergebniskorrekturen
+
+    mit Pflichtbegruendung und Audit-Log
+
+  + Klassenstatus: geplant / laeuft / unterbrochen / vorlaeufig / offiziell
+
+  + Admin-Bereich: Veranstaltungen (CRUD inkl. Loeschen), Klassen,
+
+    Vereine, Benutzer, Sponsoren, Systemeinstellungen
+
+  + Sponsorenverwaltung mit Logo-URL, Website-Link, Sortierung,
+
+    Aktiv/Inaktiv; erscheinen auf der Landingpage
+
+  + Veranstaltungsbeschreibung (Infotext auf der Landingpage)
+
+  + Systemeinstellungen: Druckvorlage (Veranstalter, Adresse,
+
+    Versicherungshinweis, Einverstaendniserklaerung)
+
+  + Reglementverwaltung: Scoring-Typen, Straf-Definitionen
+
+  + Mannschaftswertung (Teams, bis zu 4 Mitglieder, beste 3 gewertet)
+
+  + Rollenbasierte Zuganskontrolle: admin, nennung, zeitnahme,
+
+    schiedsrichter, viewer
+
+  + JWT-Authentifizierung (HS256), bcrypt-Passwoerter
+
+  + SQLite mit WAL-Modus fuer parallele Zugriffe
+
+  + Automatische Datenbank-Migration beim Start (verlustfrei)
+
+  + Logout leitet auf die oeffentliche Landingpage weiter
+
+
+
+Technische Basis:
+
+  Backend:   Python 3.9+, FastAPI, SQLite, PyJWT, bcrypt
+
+  Frontend:  Vue 3 (Composition API), Vite, Pinia, Vue Router,
+
+             Tailwind CSS, Axios
+
