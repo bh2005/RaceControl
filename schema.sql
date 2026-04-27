@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS Users (
     username        TEXT    NOT NULL UNIQUE,
     password_hash   TEXT    NOT NULL,                  -- bcrypt-Hash
     role            TEXT    NOT NULL
-                    CHECK (role IN ('admin', 'schiedsrichter', 'nennung', 'zeitnahme', 'viewer')),
+                    CHECK (role IN ('admin', 'schiedsrichter', 'nennung', 'zeitnahme', 'marshal', 'viewer')),
     display_name    TEXT,                              -- z.B. "Hans Müller (SRI)"
     is_active       INTEGER NOT NULL DEFAULT 1
                     CHECK (is_active IN (0, 1)),
@@ -227,7 +227,43 @@ INSERT OR IGNORE INTO Settings (key, value) VALUES ('insurance_notice',  'Alle T
 INSERT OR IGNORE INTO Settings (key, value) VALUES ('parent_consent_text', 'Ich bin mit der Teilnahme meines Kindes an dieser Veranstaltung einverstanden und bestätige die Richtigkeit aller Angaben.');
 
 -- ============================================================
--- 9. INDIZES
+-- 9. STRECKENPOSTEN-LOG
+-- ============================================================
+
+
+
+CREATE TABLE IF NOT EXISTS MarshalReports (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id        INTEGER REFERENCES Events(id) ON DELETE CASCADE,
+    ts              TEXT    NOT NULL,
+    station         TEXT    NOT NULL,
+    marshal_user    TEXT    NOT NULL,
+    penalty_seconds REAL    NOT NULL,
+    penalty_label   TEXT,
+    class_id        INTEGER REFERENCES Classes(id) ON DELETE SET NULL,
+    class_name      TEXT,
+    cancelled       INTEGER NOT NULL DEFAULT 0 CHECK (cancelled IN (0, 1)),
+    cancelled_at    TEXT,
+    cancelled_by    TEXT
+);
+
+-- ============================================================
+-- 10. SYSTEM-LOG
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS SystemLog (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts          TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    level       TEXT    NOT NULL DEFAULT 'info'
+                CHECK (level IN ('info', 'warn', 'error')),
+    event_type  TEXT    NOT NULL,   -- 'login_ok' | 'login_fail' | 'server_start' | 'user_created'
+    username    TEXT,               -- betroffener Benutzername (falls bekannt)
+    detail      TEXT,               -- Freitext-Detail
+    ip          TEXT                -- Client-IP-Adresse
+);
+
+-- ============================================================
+-- 11. INDIZES
 -- ============================================================
 
 -- Schnelle Ergebnisabfragen pro Klasse / Veranstaltung
@@ -239,8 +275,14 @@ CREATE INDEX IF NOT EXISTS idx_results_participant ON RaceResults (participant_i
 CREATE INDEX IF NOT EXISTS idx_penalties_result  ON RunPenalties (result_id);
 
 -- Audit-Log schnell nach Ergebnis und Zeit durchsuchen
-CREATE INDEX IF NOT EXISTS idx_audit_result      ON AuditLog (result_id);
-CREATE INDEX IF NOT EXISTS idx_audit_timestamp   ON AuditLog (timestamp);
+CREATE INDEX IF NOT EXISTS idx_audit_result        ON AuditLog (result_id);
+CREATE INDEX IF NOT EXISTS idx_audit_timestamp     ON AuditLog (timestamp);
+
+-- Streckenposten-Log schnell nach Veranstaltung abfragen
+CREATE INDEX IF NOT EXISTS idx_marshal_reports_event ON MarshalReports (event_id);
+
+-- System-Log chronologisch
+CREATE INDEX IF NOT EXISTS idx_system_log_ts ON SystemLog (ts);
 
 -- Teilnehmersuche nach Name / Startnummer
 CREATE INDEX IF NOT EXISTS idx_participants_event        ON Participants (event_id);

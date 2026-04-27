@@ -276,7 +276,7 @@
                 @click="autoNumber(cls.id)"
                 :disabled="autoNumbering[cls.id]"
                 class="text-xs px-2.5 py-1 rounded-lg bg-msc-blue hover:bg-msc-bluedark text-white font-bold transition disabled:opacity-40"
-                title="Startnummern 1, 2, 3 … alphabetisch vergeben"
+                title="Startnummern per Zufallsauslosung vergeben (1, 2, 3 …)"
               >
                 {{ autoNumbering[cls.id] ? '…' : '🎲 Auto ab 1' }}
               </button>
@@ -594,29 +594,39 @@ async function saveNumber(p) {
   }
 }
 
+function shuffled(arr) {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
 async function autoNumber(classId) {
   if (!store.activeEvent) return
-  const ps = participantsByClass(classId)  // alphabetisch nach Nachname
+  const ps = participantsByClass(classId)
   if (!ps.length) return
 
   const hasNumbers = ps.some(p => p.start_number)
   if (hasNumbers && !confirm(
-    `Klasse hat bereits Startnummern.\nAlle Nummern dieser Klasse überschreiben mit 1, 2, 3 … (alphabetisch)?`
+    `Klasse hat bereits Startnummern.\nAlle Nummern neu auslosen (Zufallsreihenfolge)?`
   )) return
 
   autoNumbering[classId] = true
   try {
-    // Erst alle auf null setzen um Konflikte beim Neu-Vergeben zu vermeiden
+    // Erst alle auf null setzen um Unique-Konflikte beim Neu-Vergeben zu vermeiden
     await Promise.all(ps.map(p =>
       api.patch(`/events/${store.activeEvent.id}/participants/${p.id}`, { start_number: null })
     ))
-    // Dann sequenziell 1, 2, 3 …
-    for (let i = 0; i < ps.length; i++) {
-      await api.patch(`/events/${store.activeEvent.id}/participants/${ps[i].id}`, { start_number: i + 1 })
+    // Zufällig mischen, dann 1, 2, 3 …
+    const randomized = shuffled(ps)
+    for (let i = 0; i < randomized.length; i++) {
+      await api.patch(`/events/${store.activeEvent.id}/participants/${randomized[i].id}`, { start_number: i + 1 })
     }
     await load()
   } catch (e) {
-    alert(e.response?.data?.detail || 'Fehler bei der Auto-Nummerierung')
+    alert(e.response?.data?.detail || 'Fehler bei der Auslosung')
     await load()
   } finally {
     delete autoNumbering[classId]

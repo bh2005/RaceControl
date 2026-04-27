@@ -10,8 +10,9 @@ from schemas import EventCreate, EventUpdate, EventResponse, ClassCreate, ClassU
 
 router = APIRouter(prefix="/events", tags=["events"])
 
-AdminOnly = Annotated[sqlite3.Row, Depends(require_roles("admin"))]
-AdminOrSchiri = Annotated[sqlite3.Row, Depends(require_roles("admin", "schiedsrichter"))]
+AdminOnly      = Annotated[sqlite3.Row, Depends(require_roles("admin"))]
+AdminOrSchiri  = Annotated[sqlite3.Row, Depends(require_roles("admin", "schiedsrichter"))]
+ZeitnahmeUp    = Annotated[sqlite3.Row, Depends(require_roles("admin", "schiedsrichter", "zeitnahme"))]
 
 
 @router.get("/", response_model=list[EventResponse])
@@ -147,3 +148,29 @@ def update_class(
         {"type": "classes", "event_id": event_id, "class_id": class_id},
     )
     return dict(db.execute("SELECT * FROM Classes WHERE id = ?", (class_id,)).fetchone())
+
+
+@router.post("/{event_id}/classes/{class_id}/auto-close", status_code=204)
+def auto_close_class(
+    event_id: int,
+    class_id: int,
+    background_tasks: BackgroundTasks,
+    db: Annotated[sqlite3.Connection, Depends(get_db)],
+    _: ZeitnahmeUp,
+):
+    """Setzt Klasse auf 'preliminary' — nur wenn sie gerade läuft/unterbrochen ist."""
+    row = db.execute(
+        "SELECT run_status FROM Classes WHERE id = ? AND event_id = ?",
+        (class_id, event_id),
+    ).fetchone()
+    if not row or row["run_status"] not in ("running", "paused"):
+        return  # Falsche Status — silent no-op
+    db.execute(
+        "UPDATE Classes SET run_status = 'preliminary' WHERE id = ? AND event_id = ?",
+        (class_id, event_id),
+    )
+    db.commit()
+    background_tasks.add_task(
+        manager.broadcast,
+        {"type": "classes", "event_id": event_id, "class_id": class_id},
+    )

@@ -88,7 +88,7 @@ def update_participant(
     db: Annotated[sqlite3.Connection, Depends(get_db)],
     _: AdminOrNennung,
 ):
-    updates = {k: v for k, v in body.model_dump(exclude_none=True).items()}
+    updates = {k: v for k, v in body.model_dump(exclude_unset=True).items()}
     if not updates:
         raise HTTPException(422, "Keine Felder zum Aktualisieren")
     sets = ", ".join(f"{k} = ?" for k in updates)

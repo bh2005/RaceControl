@@ -30,7 +30,22 @@ def init_db() -> None:
     # Apply full schema (CREATE TABLE/VIEW IF NOT EXISTS — safe to re-run)
     conn.execute("PRAGMA foreign_keys=ON")
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+    # Set admin password if still placeholder (fresh DB or Docker first start)
+    _init_admin_password(conn)
     conn.close()
+
+
+def _init_admin_password(conn: sqlite3.Connection) -> None:
+    row = conn.execute(
+        "SELECT password_hash FROM Users WHERE username = 'admin'"
+    ).fetchone()
+    if row and row[0] == "__CHANGE_ON_FIRST_LOGIN__":
+        from auth import hash_password
+        conn.execute(
+            "UPDATE Users SET password_hash = ? WHERE username = 'admin'",
+            (hash_password("admin"),),
+        )
+        conn.commit()
 
 
 def _migrate(conn: sqlite3.Connection) -> None:

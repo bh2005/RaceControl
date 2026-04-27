@@ -5,8 +5,9 @@ import sqlite3
 
 from auth import hash_password
 from database import get_db
-from deps import require_roles
+from deps import require_roles, CurrentUser
 from schemas import UserCreate, UserResponse
+from system_logger import log_event
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -23,7 +24,7 @@ def list_users(db: Annotated[sqlite3.Connection, Depends(get_db)], _: AdminOnly)
 def create_user(
     body: UserCreate,
     db: Annotated[sqlite3.Connection, Depends(get_db)],
-    _: AdminOnly,
+    actor: AdminOnly,
 ):
     try:
         cur = db.execute(
@@ -32,6 +33,11 @@ def create_user(
         )
         db.commit()
         row = db.execute("SELECT * FROM Users WHERE id = ?", (cur.lastrowid,)).fetchone()
+        log_event(
+            "user_created",
+            username=body.username,
+            detail=f"Rolle: {body.role} — angelegt von {actor['username']}",
+        )
         return dict(row)
     except Exception:
         raise HTTPException(status_code=409, detail="Benutzername bereits vergeben")

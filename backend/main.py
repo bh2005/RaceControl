@@ -6,7 +6,8 @@ from fastapi.staticfiles import StaticFiles
 
 from database import init_db
 from broadcast import manager
-from routers import auth, users, reglements, events, participants, results, teams, clubs, public, sponsors, settings, notifications, assets as assets_router, marshal as marshal_router
+from system_logger import log_event
+from routers import auth, users, reglements, events, participants, results, teams, clubs, public, sponsors, settings, notifications, assets as assets_router, marshal as marshal_router, admin_logs as admin_logs_router
 from routers import import_router
 
 app = FastAPI(
@@ -27,6 +28,7 @@ app.add_middleware(
 @app.on_event("startup")
 def startup():
     init_db()
+    log_event("server_start", detail=f"RaceControl Pro v{app.version}")
 
 
 _API = "/api"
@@ -45,6 +47,7 @@ app.include_router(import_router.router,      prefix=_API)
 app.include_router(notifications.router,     prefix=_API)
 app.include_router(assets_router.router,     prefix=_API)
 app.include_router(marshal_router.router,    prefix=_API)
+app.include_router(admin_logs_router.router, prefix=_API)
 
 
 @app.get("/health")

@@ -246,7 +246,7 @@ class RunPenaltyResponse(RunPenaltyCreate):
 class UserCreate(BaseModel):
     username: str
     password: str
-    role: Literal["admin", "schiedsrichter", "nennung", "zeitnahme", "viewer"]
+    role: Literal["admin", "schiedsrichter", "nennung", "zeitnahme", "marshal", "viewer"]
     display_name: Optional[str] = None
 
 

@@ -445,6 +445,197 @@
 
       </div>
 
+      <!-- ═══ LOGS ═══ -->
+      <div v-if="activeTab === 'logs'" class="space-y-5">
+
+        <!-- Toolbar -->
+        <div class="flex items-center gap-3 flex-wrap">
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-500 font-semibold">Veranstaltung</label>
+            <select v-model="logEventId" @change="loadLogs" class="input text-sm py-1.5 w-64">
+              <option :value="null">– alle –</option>
+              <option v-for="e in events" :key="e.id" :value="e.id">{{ e.date }} · {{ e.name }}</option>
+            </select>
+          </div>
+          <button @click="loadLogs" :disabled="logsLoading"
+            class="btn-secondary px-3 py-1.5 text-sm flex items-center gap-1.5 disabled:opacity-40">
+            <span :class="logsLoading ? 'animate-spin' : ''">↺</span> Aktualisieren
+          </button>
+          <span class="ml-auto text-xs text-gray-400">
+            {{ marshalReports.length }} Meldungen · {{ auditLog.length }} Korrekturen
+          </span>
+        </div>
+
+        <!-- Zwei Spalten -->
+        <div class="grid grid-cols-2 gap-5">
+
+          <!-- ── Streckenposten-Meldungen ── -->
+          <div class="card overflow-hidden">
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-yellow-50/60">
+              <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                🚩 Streckenposten-Meldungen
+                <span class="text-xs font-normal text-gray-400">({{ marshalReports.length }})</span>
+              </h3>
+            </div>
+            <div class="overflow-y-auto" style="max-height: 600px">
+              <table class="w-full text-xs">
+                <thead class="sticky top-0 bg-gray-50 z-10">
+                  <tr class="text-gray-500 uppercase tracking-wide border-b border-gray-200">
+                    <th class="py-2 px-3 text-left font-semibold">Zeit</th>
+                    <th class="py-2 px-3 text-left font-semibold">Posten</th>
+                    <th class="py-2 px-3 text-left font-semibold">Benutzer</th>
+                    <th class="py-2 px-3 text-right font-semibold">Punkte</th>
+                    <th class="py-2 px-3 text-center font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                  <tr v-for="r in marshalReports" :key="r.id"
+                    class="hover:bg-gray-50 transition"
+                    :class="r.cancelled ? 'opacity-50' : ''">
+                    <td class="py-2 px-3 font-mono text-gray-500 whitespace-nowrap">
+                      {{ fmtTs(r.ts) }}
+                    </td>
+                    <td class="py-2 px-3 font-semibold text-gray-700">{{ r.station }}</td>
+                    <td class="py-2 px-3 text-gray-500">{{ r.marshal_user }}</td>
+                    <td class="py-2 px-3 text-right font-black tabnum"
+                      :class="r.cancelled ? 'line-through text-gray-400' : 'text-yellow-700'">
+                      +{{ r.penalty_seconds.toFixed(0) }} s
+                    </td>
+                    <td class="py-2 px-3 text-center">
+                      <span v-if="r.cancelled"
+                        class="inline-flex items-center gap-1 bg-red-100 text-red-600 rounded px-1.5 py-0.5 font-semibold">
+                        ✕ Storno
+                      </span>
+                      <span v-else
+                        class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 rounded px-1.5 py-0.5 font-semibold">
+                        ✓ Gesendet
+                      </span>
+                    </td>
+                  </tr>
+                  <tr v-if="!marshalReports.length">
+                    <td colspan="5" class="py-6 text-center text-gray-400">Keine Meldungen</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ── Zeitkorrekturen (AuditLog) ── -->
+          <div class="card overflow-hidden">
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-amber-50/60">
+              <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                ✏️ Zeitkorrekturen
+                <span class="text-xs font-normal text-gray-400">({{ auditLog.length }})</span>
+              </h3>
+            </div>
+            <div class="overflow-y-auto" style="max-height: 600px">
+              <table class="w-full text-xs">
+                <thead class="sticky top-0 bg-gray-50 z-10">
+                  <tr class="text-gray-500 uppercase tracking-wide border-b border-gray-200">
+                    <th class="py-2 px-3 text-left font-semibold">Zeit</th>
+                    <th class="py-2 px-3 text-left font-semibold">Benutzer</th>
+                    <th class="py-2 px-3 text-left font-semibold">Fahrer</th>
+                    <th class="py-2 px-3 text-left font-semibold">Feld</th>
+                    <th class="py-2 px-3 text-left font-semibold">Alt → Neu</th>
+                    <th class="py-2 px-3 text-left font-semibold">Begründung</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                  <tr v-for="entry in auditLog" :key="entry.id"
+                    class="hover:bg-amber-50/40 transition">
+                    <td class="py-2 px-3 font-mono text-gray-500 whitespace-nowrap">
+                      {{ fmtTs(entry.timestamp) }}
+                    </td>
+                    <td class="py-2 px-3 text-gray-600 font-semibold">{{ entry.user_name || '–' }}</td>
+                    <td class="py-2 px-3 text-gray-700 whitespace-nowrap">
+                      <span v-if="entry.start_number" class="font-black text-gray-600">#{{ entry.start_number }}</span>
+                      {{ entry.driver_name || '–' }}
+                    </td>
+                    <td class="py-2 px-3">
+                      <span class="bg-amber-100 text-amber-700 rounded px-1.5 py-0.5 font-mono font-semibold">
+                        {{ entry.field_changed }}
+                      </span>
+                    </td>
+                    <td class="py-2 px-3 font-mono whitespace-nowrap">
+                      <span class="text-red-500">{{ entry.old_value ?? '–' }}</span>
+                      <span class="text-gray-400 mx-1">→</span>
+                      <span class="text-green-600 font-semibold">{{ entry.new_value ?? '–' }}</span>
+                    </td>
+                    <td class="py-2 px-3 text-gray-500 italic max-w-xs truncate" :title="entry.reason">
+                      {{ entry.reason || '–' }}
+                    </td>
+                  </tr>
+                  <tr v-if="!auditLog.length">
+                    <td colspan="6" class="py-6 text-center text-gray-400">Keine Korrekturen</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ── System-Log ── -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50/80">
+            <h3 class="font-bold text-gray-800 flex items-center gap-2">
+              🖥️ System-Log
+              <span class="text-xs font-normal text-gray-400">({{ systemLog.length }})</span>
+            </h3>
+            <select v-model="sysLogFilter" @change="loadLogs"
+              class="border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-msc-blue">
+              <option value="">Alle Einträge</option>
+              <option value="login_ok">Login OK</option>
+              <option value="login_fail">Login fehlgeschlagen</option>
+              <option value="server_start">Server-Start</option>
+              <option value="user_created">Benutzer angelegt</option>
+            </select>
+          </div>
+          <div class="overflow-x-auto overflow-y-auto" style="max-height: 320px">
+            <table class="w-full text-xs">
+              <thead class="sticky top-0 bg-gray-50 z-10">
+                <tr class="text-gray-500 uppercase tracking-wide border-b border-gray-200">
+                  <th class="py-2 px-3 text-left font-semibold">Zeit</th>
+                  <th class="py-2 px-3 text-left font-semibold">Typ</th>
+                  <th class="py-2 px-3 text-left font-semibold">Benutzer</th>
+                  <th class="py-2 px-3 text-left font-semibold">IP</th>
+                  <th class="py-2 px-3 text-left font-semibold">Detail</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-50">
+                <tr v-for="entry in systemLog" :key="entry.id"
+                  class="hover:bg-gray-50 transition"
+                  :class="{
+                    'bg-red-50/40':   entry.level === 'error',
+                    'bg-amber-50/40': entry.level === 'warn',
+                  }">
+                  <td class="py-1.5 px-3 font-mono text-gray-500 whitespace-nowrap">{{ fmtTs(entry.ts) }}</td>
+                  <td class="py-1.5 px-3 whitespace-nowrap">
+                    <span class="inline-flex items-center rounded px-1.5 py-0.5 font-semibold"
+                      :class="{
+                        'bg-green-100 text-green-700':   entry.event_type === 'login_ok',
+                        'bg-red-100 text-red-700':       entry.event_type === 'login_fail',
+                        'bg-blue-100 text-blue-700':     entry.event_type === 'server_start',
+                        'bg-purple-100 text-purple-700': entry.event_type === 'user_created',
+                        'bg-gray-100 text-gray-600':     !['login_ok','login_fail','server_start','user_created'].includes(entry.event_type),
+                      }">
+                      {{ sysLogLabel(entry.event_type) }}
+                    </span>
+                  </td>
+                  <td class="py-1.5 px-3 font-mono text-gray-700">{{ entry.username || '–' }}</td>
+                  <td class="py-1.5 px-3 font-mono text-gray-400">{{ entry.ip || '–' }}</td>
+                  <td class="py-1.5 px-3 text-gray-500">{{ entry.detail || '–' }}</td>
+                </tr>
+                <tr v-if="!systemLog.length">
+                  <td colspan="5" class="py-6 text-center text-gray-400">Keine Einträge</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
       <!-- ═══ TEST ═══ -->
       <div v-if="activeTab === 'test'" class="space-y-4 max-w-2xl">
 
@@ -542,7 +733,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import api from '../api/client'
 import { useEventStore } from '../stores/event'
 
@@ -555,6 +746,7 @@ const tabs = [
   { id: 'users',    label: '👥 Benutzer' },
   { id: 'sponsors', label: '🤝 Sponsoren' },
   { id: 'system',   label: '⚙️ System' },
+  { id: 'logs',     label: '📋 Logs' },
   { id: 'test',     label: '🧪 Test' },
 ]
 
@@ -765,6 +957,64 @@ async function saveSettings() {
     sysMessage.value = { type: 'err', text: e.response?.data?.detail || 'Fehler beim Speichern' }
   }
 }
+
+// ── Logs ──────────────────────────────────────────────────────────────────────
+
+const logEventId     = ref(null)
+const marshalReports = ref([])
+const auditLog       = ref([])
+const systemLog      = ref([])
+const logsLoading    = ref(false)
+const sysLogFilter   = ref('')
+
+async function loadLogs() {
+  logsLoading.value = true
+  try {
+    const eventParams = logEventId.value ? { event_id: logEventId.value } : {}
+    const sysParams   = sysLogFilter.value ? { event_type: sysLogFilter.value } : {}
+    const [marshalRes, auditRes, sysRes] = await Promise.all([
+      api.get('/marshal/reports', { params: eventParams }),
+      logEventId.value
+        ? api.get(`/events/${logEventId.value}/audit-log`, { params: { limit: 200 } })
+        : Promise.resolve({ data: [] }),
+      api.get('/admin/system-log', { params: sysParams }),
+    ])
+    marshalReports.value = marshalRes.data
+    auditLog.value       = auditRes.data
+    systemLog.value      = sysRes.data
+  } finally {
+    logsLoading.value = false
+  }
+}
+
+function fmtTs(iso) {
+  if (!iso) return '–'
+  const d = new Date(iso)
+  return d.toLocaleString('de-DE', {
+    day: '2-digit', month: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  })
+}
+
+function sysLogLabel(type) {
+  return {
+    login_ok:     '✓ Login',
+    login_fail:   '✗ Login',
+    server_start: '▶ Start',
+    user_created: '+ Benutzer',
+  }[type] ?? type
+}
+
+watch(activeTab, (tab) => {
+  if (tab === 'logs') {
+    if (!logEventId.value && events.value.length) {
+      logEventId.value = events.value.find(e => e.status === 'active')?.id
+        ?? events.value[0]?.id
+        ?? null
+    }
+    loadLogs()
+  }
+})
 
 onMounted(async () => {
   await Promise.all([loadEvents(), store.loadReglements(), store.loadClubs(), loadUsers(), loadSponsors(), loadSettings()])

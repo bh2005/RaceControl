@@ -182,7 +182,7 @@
         <!-- Aktuelle Wertung -->
         <div class="bg-gray-900 rounded-2xl border border-gray-700 p-4 flex-1">
           <div class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">
-            Aktuelle Wertung · {{ selectedClass?.name }}
+            {{ selectedRun === 0 ? 'Training' : 'Aktuelle Wertung' }} · {{ selectedClass?.name }}
           </div>
           <div class="space-y-1">
             <div v-for="(row, i) in topStandings" :key="row.participant_id || row.start_number"
@@ -248,6 +248,33 @@ function dismissMarshal(m) {
   marshalNotices.value = marshalNotices.value.filter(x => x._id !== m._id)
 }
 
+// ── Ereignis-Log ─────────────────────────────────────────────────────────────
+const announcementLog = ref([])   // newest first
+let _logSeq = 0
+
+function _fmtTime(iso) {
+  const d = iso ? new Date(iso) : new Date()
+  return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+function addLogEntry(icon, text, level = 'info', isoTs = null) {
+  announcementLog.value.unshift({ _id: ++_logSeq, icon, text, level, timeStr: _fmtTime(isoTs) })
+  if (announcementLog.value.length > 50) announcementLog.value.pop()
+}
+
+function _classStatusIcon(s) {
+  return { running: '🟢', paused: '⏸️', preliminary: '🏁', official: '✅', planned: '🔄' }[s] ?? '📋'
+}
+function _classStatusText(s) {
+  return {
+    running:     'Klasse gestartet',
+    paused:      'Unterbrochen',
+    preliminary: 'Vorläufiges Ergebnis',
+    official:    'Offiziell freigegeben',
+    planned:     'Zurückgesetzt',
+  }[s] ?? s
+}
+
 const runNums = computed(() => {
   const n = currentReglement.value?.runs_per_class ?? 2
   return Array.from({ length: n }, (_, i) => i + 1)
@@ -297,7 +324,16 @@ const driverPartial = computed(() =>
 
 const allRunResults = ref([])  // alle Läufe der Klasse (nicht nur aktueller Lauf)
 
-const topStandings = computed(() => standings.value.slice(0, 10))
+const topStandings = computed(() => {
+  if (selectedRun.value === 0) {
+    return [...allClassResults.value]
+      .filter(r => r.run_number === 0 && r.status === 'valid' && r.raw_time !== null)
+      .sort((a, b) => (a.raw_time ?? 9999) - (b.raw_time ?? 9999))
+      .slice(0, 10)
+      .map((r, i) => ({ ...r, total_time: r.raw_time, rank: i + 1 }))
+  }
+  return standings.value.slice(0, 10)
+})
 
 // Zeitanalyse: welche Zeiten braucht der Fahrer für Pn?
 const timeTargets = computed(() => {
@@ -389,12 +425,39 @@ async function onClassChange() {
 const { connected: wsConnected } = useRealtimeUpdate(async (msg) => {
   if (!store.activeEvent) return
   if (msg.event_id && msg.event_id !== store.activeEvent.id) return
-  if (msg.type === 'results' || msg.type === 'classes') await loadData()
-  if (msg.type === 'marshal_penalty' && msg.class_id === selectedClassId.value) {
-    const entry = { ...msg, _id: ++_marshalSeq }
-    marshalNotices.value.push(entry)
-    const t = setTimeout(() => dismissMarshal(entry), 30_000)
-    _marshalTimers.set(entry._id, t)
+
+  if (msg.type === 'results') {
+    await loadData()
+  }
+
+  if (msg.type === 'classes') {
+    const prevStatus = store.classes.find(c => c.id === msg.class_id)?.run_status
+    await store.selectEvent(store.activeEvent)  // refresh store.classes
+    await loadData()
+    const cls = store.classes.find(c => c.id === msg.class_id)
+    if (cls && prevStatus !== undefined && prevStatus !== cls.run_status) {
+      addLogEntry(_classStatusIcon(cls.run_status), `${cls.name}: ${_classStatusText(cls.run_status)}`, 'important')
+    }
+  }
+
+  if (msg.type === 'notification') {
+    addLogEntry('📢', msg.message, 'important')
+  }
+
+  if (msg.type === 'marshal_penalty') {
+    // Show in real-time notice box only for current/unfiltered class
+    if (msg.class_id == null || msg.class_id === selectedClassId.value) {
+      const entry = { ...msg, _id: ++_marshalSeq }
+      marshalNotices.value.push(entry)
+      const t = setTimeout(() => dismissMarshal(entry), 30_000)
+      _marshalTimers.set(entry._id, t)
+    }
+    const cls = msg.class_name ? ` (${msg.class_name})` : ''
+    addLogEntry('🚩', `Posten ${msg.station}${cls}: ${msg.penalty_label}`, 'warn', msg.ts)
+  }
+
+  if (msg.type === 'marshal_cancel') {
+    addLogEntry('↩️', `Storno – ${msg.marshal}`, 'info', msg.ts)
   }
 })
 

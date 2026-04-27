@@ -67,6 +67,15 @@
     <!-- ── MITTE: Eingabe ── -->
     <section class="col-span-6 space-y-4">
 
+      <!-- Auto-Close Toast -->
+      <Transition name="fade">
+        <div v-if="autoCloseMsg"
+          class="rounded-xl px-4 py-3 flex items-center gap-3 text-sm font-semibold bg-green-100 text-green-800 border border-green-300">
+          <span class="text-xl">✓</span>
+          {{ autoCloseMsg }}
+        </div>
+      </Transition>
+
       <!-- Status-Banner: Klasse noch nicht gestartet / offiziell -->
       <div v-if="classBlockReason" class="rounded-xl px-4 py-3 flex items-center gap-3 text-sm font-semibold"
            :class="selectedClass?.run_status === 'official'
@@ -196,33 +205,51 @@
         </div>
       </div>
 
-      <!-- Marshal-Meldungen -->
-      <div v-if="marshalQueue.length" class="card p-3 border-2 border-yellow-400 bg-yellow-50">
+      <!-- Marshal-Meldungen (immer sichtbar) -->
+      <div
+        class="card p-3 border-2 transition-colors duration-300"
+        :class="marshalQueue.length
+          ? 'border-yellow-400 bg-yellow-50'
+          : 'border-gray-200 bg-gray-50/60'"
+      >
         <div class="flex items-center gap-2 mb-2">
-          <span class="text-yellow-600 font-black text-xs uppercase tracking-widest">🚩 Streckenposten-Meldungen</span>
-          <span class="ml-auto text-xs text-yellow-600">{{ marshalQueue.length }}</span>
+          <span
+            class="font-black text-xs uppercase tracking-widest"
+            :class="marshalQueue.length ? 'text-yellow-600' : 'text-gray-400'"
+          >🚩 Streckenposten-Meldungen</span>
+          <span
+            v-if="marshalQueue.length"
+            class="ml-1 bg-yellow-500 text-white text-xs font-black rounded-full w-5 h-5 flex items-center justify-center"
+          >{{ marshalQueue.length }}</span>
+          <span v-else class="ml-auto text-xs text-gray-400">Keine offenen Meldungen</span>
         </div>
-        <div class="space-y-1.5">
+        <TransitionGroup name="marshal-list" tag="div" class="space-y-1.5">
           <div
             v-for="m in marshalQueue"
             :key="m._id"
-            class="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-yellow-200 text-sm"
+            class="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-yellow-200 text-sm shadow-sm"
           >
-            <span class="font-bold text-gray-700">{{ m.penalty_label }}</span>
-            <span class="text-yellow-600 font-semibold">+{{ m.penalty_seconds.toFixed(0) }} s</span>
-            <span class="text-xs text-gray-400">{{ m.station }}</span>
-            <div class="ml-auto flex gap-1.5 shrink-0">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="font-black text-yellow-600 tabnum text-base">+{{ m.penalty_seconds.toFixed(0) }} s</span>
+                <span class="text-xs font-semibold text-gray-500 truncate">{{ m.station }}</span>
+                <span class="text-xs text-gray-400 ml-auto shrink-0 font-mono">{{ m.marshal }}</span>
+              </div>
+              <div v-if="m.penalty_label && m.penalty_label !== m.penalty_seconds.toFixed(0) + 's'"
+                   class="text-xs text-gray-500 mt-0.5">{{ m.penalty_label }}</div>
+            </div>
+            <div class="flex gap-1.5 shrink-0">
               <button
                 @click="acceptMarshalPenalty(m)"
-                class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold rounded-lg px-2.5 py-1 transition"
-              >Übernehmen</button>
+                class="bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold rounded-lg px-3 py-1.5 transition active:scale-95"
+              >✓ Übernehmen</button>
               <button
                 @click="dismissMarshalPenalty(m)"
-                class="bg-gray-200 hover:bg-gray-300 text-gray-600 text-xs font-bold rounded-lg px-2 py-1 transition"
+                class="bg-gray-200 hover:bg-gray-300 text-gray-600 text-xs font-bold rounded-lg px-2 py-1.5 transition"
               >✕</button>
             </div>
           </div>
-        </div>
+        </TransitionGroup>
       </div>
 
       <!-- Straf-Buttons -->
@@ -358,10 +385,20 @@ const lsConnected  = ref(false)   // Raspi aktuell verbunden
 const lsFlash      = ref(false)   // kurzes Aufleuchten wenn Zeit ankommt
 let lsFlashTimer   = null
 
+// ── Auto-Close ────────────────────────────────────────────────────────────────
+const autoCloseMsg  = ref('')     // Toast-Text wenn Klasse automatisch geschlossen
+
 // ── Marshal-Meldungen ──────────────────────────────────────────────────────────
-const marshalQueue  = ref([])     // eingehende Streckenposten-Meldungen
-let _marshalSeq     = 0
+const marshalQueue   = ref([])    // eingehende Streckenposten-Meldungen
+let _marshalSeq      = 0
 const _marshalTimers = new Map()
+const _seenReportIds = new Set()  // report_id (DB) — einmal gesehen/verworfen, nicht wieder laden
+const _seenReportTs  = new Set()  // ts — Fallback für WS-only-Meldungen ohne report_id
+
+function _markSeen(m) {
+  if (m.report_id != null) _seenReportIds.add(m.report_id)
+  if (m.ts)                _seenReportTs.add(m.ts)
+}
 
 function acceptMarshalPenalty(m) {
   if (m.penalty_id) {
@@ -380,6 +417,67 @@ function dismissMarshalPenalty(m) {
   clearTimeout(_marshalTimers.get(m._id))
   _marshalTimers.delete(m._id)
   marshalQueue.value = marshalQueue.value.filter(x => x._id !== m._id)
+  _markSeen(m)
+}
+
+function isClassComplete() {
+  const reg = currentReglement.value
+  const cls = selectedClass.value
+  if (!reg || !participants.value.length) return false
+  if (!cls || !['running', 'paused'].includes(cls.run_status)) return false
+  for (let rn = 1; rn <= reg.runs_per_class; rn++) {
+    const done = new Set(
+      allClassResults.value.filter(r => r.run_number === rn).map(r => r.participant_id)
+    )
+    if (done.size < participants.value.length) return false
+  }
+  return true
+}
+
+async function tryAutoCloseClass() {
+  if (!isClassComplete() || !store.activeEvent) return
+  try {
+    await api.post(`/events/${store.activeEvent.id}/classes/${selectedClassId.value}/auto-close`)
+    await store.selectEvent(store.activeEvent)
+    const cls = selectedClass.value
+    autoCloseMsg.value = `Klasse "${cls?.name ?? ''}" automatisch auf Vorläufig gesetzt.`
+    setTimeout(() => { autoCloseMsg.value = '' }, 6000)
+  } catch {
+    // Kein Admin/Schiri-Recht oder falscher Status — still ignorieren
+  }
+}
+
+async function loadPendingMarshalReports() {
+  if (!store.activeEvent) return
+  try {
+    const { data } = await api.get('/marshal/reports', {
+      params: { event_id: store.activeEvent.id, cancelled: 0, limit: 20 },
+    })
+    // Nur Reports der letzten 30 Minuten und nur solche die noch nicht in der Queue sind
+    const cutoff = Date.now() - 30 * 60 * 1000
+    for (const r of data) {
+      if (_seenReportIds.has(r.id)) continue
+      if (_seenReportTs.has(r.ts))  continue
+      if (marshalQueue.value.some(m => m.ts === r.ts)) continue  // schon in Queue
+      if (new Date(r.ts).getTime() < cutoff) continue
+      const entry = {
+        _id:             ++_marshalSeq,
+        ts:              r.ts,
+        report_id:       r.id,
+        penalty_seconds: r.penalty_seconds,
+        penalty_label:   r.penalty_label,
+        penalty_id:      null,
+        station:         r.station,
+        class_id:        r.class_id,
+        marshal:         r.marshal_user,
+      }
+      marshalQueue.value.push(entry)
+      const t = setTimeout(() => dismissMarshalPenalty(entry), 60_000)
+      _marshalTimers.set(entry._id, t)
+    }
+  } catch {
+    // Zeitnahme-Rolle hat evtl. keinen Zugriff — still ignorieren
+  }
 }
 
 function handleWsMessage(data) {
@@ -401,13 +499,18 @@ function handleWsMessage(data) {
   if (data.type === 'results' && data.class_id === selectedClassId.value) {
     loadRunResults()
   }
-  // Eingehende Streckenposten-Meldung
-  if (data.type === 'marshal_penalty' && data.class_id === selectedClassId.value) {
+  // Eingehende Streckenposten-Meldung (class_id optional — zeige immer wenn passend oder kein Filter)
+  if (data.type === 'marshal_penalty' &&
+      (data.class_id == null || data.class_id === selectedClassId.value)) {
     const entry = { ...data, _id: ++_marshalSeq }
     marshalQueue.value.push(entry)
-    // Auto-Dismiss nach 60 Sekunden
     const t = setTimeout(() => dismissMarshalPenalty(entry), 60_000)
     _marshalTimers.set(entry._id, t)
+  }
+  // Streckenposten hat Meldung storniert — aus Queue entfernen
+  if (data.type === 'marshal_cancel') {
+    const target = marshalQueue.value.find(m => m.ts === data.ts)
+    if (target) dismissMarshalPenalty(target)
   }
 }
 
@@ -520,6 +623,7 @@ async function loadClass() {
   allClassResults.value = allRes.data
   selectedRun.value = computeAutoRun()
   await loadRunResults()
+  await loadPendingMarshalReports()
   resetInput()
 }
 
@@ -541,6 +645,11 @@ function resetInput() {
   rawTime.value = ''
   resultStatus.value = 'valid'
   activePenalties.value = []
+  // Alle noch offenen Marshal-Meldungen als "gesehen" markieren und Queue leeren
+  marshalQueue.value.forEach(_markSeen)
+  _marshalTimers.forEach(t => clearTimeout(t))
+  _marshalTimers.clear()
+  marshalQueue.value = []
   timeInput.value?.focus()
 }
 
@@ -563,46 +672,65 @@ function setStatus(s) {
 
 async function confirm() {
   if (!currentParticipant.value || !store.activeEvent) return
-  const p  = currentParticipant.value
-  const rt = resultStatus.value === 'valid' ? parseFloat(rawTime.value) : null
+  const p = currentParticipant.value
 
+  // Trenne definierte Strafen (integer ID) von Ad-hoc-Marshal-Strafen (string ID)
+  const definedPenalties = activePenalties.value.filter(pen => typeof pen.id === 'number')
+  const adHocSeconds     = activePenalties.value
+    .filter(pen => typeof pen.id !== 'number')
+    .reduce((s, pen) => s + pen.seconds * pen.count, 0)
+
+  // Ad-hoc-Sekunden in raw_time einrechnen (keine penalty_definition_id vorhanden)
+  const baseTime = resultStatus.value === 'valid' ? parseFloat(rawTime.value) : null
+  const rt = (baseTime !== null && !isNaN(baseTime)) ? baseTime + adHocSeconds : null
+
+  // ── Schritt 1: Ergebnis speichern (kritisch — bei Fehler abbrechen) ──
+  let result
   try {
-    const { data: result } = await api.post(
+    const res = await api.post(
       `/events/${store.activeEvent.id}/results`,
       {
-        event_id: store.activeEvent.id,
+        event_id:       store.activeEvent.id,
         participant_id: p.id,
-        class_id: selectedClassId.value,
-        run_number: selectedRun.value,
-        raw_time: isNaN(rt) ? null : rt,
-        status: resultStatus.value,
+        class_id:       selectedClassId.value,
+        run_number:     selectedRun.value,
+        raw_time:       rt === null ? null : rt,
+        status:         resultStatus.value,
       }
     )
-    // Strafen eintragen
-    for (const pen of activePenalties.value) {
+    result = res.data
+  } catch (e) {
+    alert(e.response?.data?.detail || 'Fehler beim Speichern')
+    return  // Nur hier abbrechen — Ergebnis noch nicht gespeichert
+  }
+
+  // ── Schritt 2: Strafen speichern (unkritisch — Fehler blockieren nicht) ──
+  for (const pen of definedPenalties) {
+    try {
       await api.post(
         `/events/${store.activeEvent.id}/results/${result.id}/penalties`,
         { result_id: result.id, penalty_definition_id: pen.id, count: pen.count }
       )
+    } catch (e) {
+      console.warn('Strafe konnte nicht gespeichert werden:', pen.label, e?.response?.data?.detail)
     }
-    // Undo-Stack
-    history.value.push({ resultId: result.id, participantId: p.id })
-    // Alle Ergebnisse neu laden und ggf. Lauf automatisch wechseln
-    const { data: allRes } = await api.get(
-      `/events/${store.activeEvent.id}/run-results`,
-      { params: { class_id: selectedClassId.value } }
-    )
-    allClassResults.value = allRes
-    const ar = computeAutoRun()
-    if (ar !== selectedRun.value) {
-      selectedRun.value = ar
-      manualOrder.value = []
-    }
-    await loadRunResults()
-    resetInput()
-  } catch (e) {
-    alert(e.response?.data?.detail || 'Fehler beim Speichern')
   }
+
+  // ── Schritt 3: Weiterschalten — läuft immer durch ──
+  history.value.push({ resultId: result.id, participantId: p.id })
+  const { data: allRes } = await api.get(
+    `/events/${store.activeEvent.id}/run-results`,
+    { params: { class_id: selectedClassId.value } }
+  )
+  allClassResults.value = allRes
+  const ar = computeAutoRun()
+  if (ar !== selectedRun.value) {
+    selectedRun.value = ar
+    manualOrder.value = []
+  }
+  await loadRunResults()
+  await tryAutoCloseClass()
+  resetInput()
 }
 
 async function undo() {
@@ -625,8 +753,12 @@ function onKey(e) {
 
 onMounted(async () => {
   if (store.classes.length) {
-    selectedClassId.value = store.classes[0].id
+    const running = store.classes.find(c => c.run_status === 'running')
+    selectedClassId.value = (running ?? store.classes[0]).id
     await loadClass()
+  } else {
+    // Keine Klassen, aber trotzdem offene Reports laden
+    await loadPendingMarshalReports()
   }
   window.addEventListener('keydown', onKey)
 })
@@ -643,7 +775,8 @@ watch(rawTime, (val) => {
 
 watch(() => store.classes, async (v) => {
   if (v.length && !selectedClassId.value) {
-    selectedClassId.value = v[0].id
+    const running = v.find(c => c.run_status === 'running')
+    selectedClassId.value = (running ?? v[0]).id
     await loadClass()
   }
 })
@@ -656,4 +789,9 @@ function statusLabel(s) {
 <style scoped>
 .fade-enter-active, .fade-leave-active { transition: opacity 0.4s ease; }
 .fade-enter-from, .fade-leave-to       { opacity: 0; }
+
+.marshal-list-enter-active { transition: all 0.25s ease; }
+.marshal-list-leave-active { transition: all 0.2s ease; }
+.marshal-list-enter-from   { opacity: 0; transform: translateY(-8px); }
+.marshal-list-leave-to     { opacity: 0; transform: translateX(20px); }
 </style>

@@ -29,6 +29,13 @@
       </div>
     </Transition>
 
+    <!-- Error banner -->
+    <Transition name="slide-down">
+      <div v-if="errorMsg" class="bg-red-600 text-white text-center font-bold py-3 text-base px-4">
+        ⚠ {{ errorMsg }}
+      </div>
+    </Transition>
+
     <!-- Eingabe -->
     <div class="flex-1 flex flex-col items-center justify-center px-8 gap-6">
 
@@ -58,18 +65,40 @@
 
     </div>
 
-    <!-- Log -->
-    <div v-if="log.length" class="bg-gray-900 px-4 py-3 space-y-1 max-h-44 overflow-y-auto">
-      <div class="text-xs text-gray-500 font-semibold uppercase tracking-widest mb-1">Letzte Meldungen</div>
-      <div
-        v-for="(entry, i) in [...log].reverse()"
-        :key="i"
-        class="flex items-center gap-3 text-sm"
-      >
-        <span class="text-gray-500 font-mono text-xs w-16 shrink-0">{{ entry.time }}</span>
-        <span class="font-black text-yellow-400 tabnum">{{ entry.points }} Pkt</span>
-        <span class="text-gray-500 text-xs">{{ entry.station }}</span>
+    <!-- History der letzten 3 Meldungen -->
+    <div v-if="history.length" class="bg-gray-900 px-4 py-3 space-y-2">
+      <div class="text-xs text-gray-500 font-semibold uppercase tracking-widest mb-2">
+        Letzte Meldungen
       </div>
+      <TransitionGroup name="history-list" tag="div" class="space-y-2">
+        <div
+          v-for="entry in historyVisible"
+          :key="entry.ts"
+          class="flex items-center gap-3 rounded-xl px-3 py-2 border transition-all"
+          :class="entry.cancelled
+            ? 'bg-gray-800/40 border-gray-700 opacity-50'
+            : 'bg-gray-800 border-gray-700'"
+        >
+          <span class="text-gray-500 font-mono text-xs w-16 shrink-0">{{ entry.time }}</span>
+          <span
+            class="font-black tabnum text-lg"
+            :class="entry.cancelled ? 'line-through text-gray-500' : 'text-yellow-400'"
+          >{{ entry.points }} Pkt</span>
+          <span class="text-gray-500 text-xs flex-1">{{ entry.station }}</span>
+          <button
+            v-if="!entry.cancelled"
+            @click="storno(entry)"
+            :disabled="entry.cancelling"
+            class="text-xs font-bold rounded-lg px-3 py-1.5 transition active:scale-95 disabled:opacity-40"
+            :class="entry.cancelling
+              ? 'bg-gray-700 text-gray-500'
+              : 'bg-red-900/80 hover:bg-red-800 text-red-300 border border-red-700'"
+          >
+            {{ entry.cancelling ? '…' : '✕ Storno' }}
+          </button>
+          <span v-else class="text-xs text-gray-600 font-semibold">Storniert</span>
+        </div>
+      </TransitionGroup>
     </div>
 
   </div>
@@ -89,9 +118,12 @@ const pointsInput  = ref(null)
 const points       = ref('')
 const sending      = ref(false)
 const sentFlash    = ref(null)
+const errorMsg     = ref(null)
 let sentTimer      = null
-const log          = ref([])
+let errTimer       = null
+const history      = ref([])  // { ts, time, points, station, cancelled, cancelling }
 
+const historyVisible = computed(() => [...history.value].reverse().slice(0, 3))
 const canSend = computed(() => !sending.value && Number(points.value) > 0)
 
 function startEditStation() {
@@ -104,27 +136,48 @@ function saveStation() {
   localStorage.setItem('marshal_station', station.value.trim() || 'Posten 1')
 }
 
+function showError(msg) {
+  errorMsg.value = msg
+  clearTimeout(errTimer)
+  errTimer = setTimeout(() => { errorMsg.value = null }, 4000)
+}
+
 async function send() {
   if (!canSend.value) return
   const pts = Number(points.value)
   sending.value = true
   try {
-    await api.post('/marshal/report', {
+    const { data } = await api.post('/marshal/report', {
       penalty_seconds: pts,
       station:         station.value,
+      event_id:        store.activeEvent?.id ?? null,
     })
     clearTimeout(sentTimer)
     sentFlash.value = pts
     sentTimer = setTimeout(() => { sentFlash.value = null }, 2000)
     const now = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    log.value.push({ time: now, points: pts, station: station.value })
-    if (log.value.length > 20) log.value.shift()
+    history.value.push({ ts: data.ts, id: data.id, time: now, points: pts, station: station.value, cancelled: false, cancelling: false })
     points.value = ''
     nextTick(() => pointsInput.value?.focus())
-  } catch {
-    // silent
+  } catch (e) {
+    const detail = e.response?.data?.detail
+    if (e.response?.status === 401) showError('Nicht angemeldet – bitte neu einloggen')
+    else if (e.response?.status === 403) showError('Keine Berechtigung (Rolle prüfen)')
+    else showError(detail || 'Senden fehlgeschlagen')
   } finally {
     sending.value = false
+  }
+}
+
+async function storno(entry) {
+  entry.cancelling = true
+  try {
+    await api.post('/marshal/cancel', { ts: entry.ts, report_id: entry.id ?? null })
+    entry.cancelled = true
+  } catch (e) {
+    showError('Storno fehlgeschlagen')
+  } finally {
+    entry.cancelling = false
   }
 }
 
@@ -137,4 +190,9 @@ onMounted(() => {
 .tabnum { font-variant-numeric: tabular-nums; }
 .slide-down-enter-active, .slide-down-leave-active { transition: all 0.25s ease; }
 .slide-down-enter-from, .slide-down-leave-to { transform: translateY(-100%); opacity: 0; }
+
+.history-list-enter-active { transition: all 0.3s ease; }
+.history-list-leave-active { transition: all 0.2s ease; }
+.history-list-enter-from   { opacity: 0; transform: translateY(10px); }
+.history-list-leave-to     { opacity: 0; transform: translateX(-20px); }
 </style>

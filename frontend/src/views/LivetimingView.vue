@@ -114,14 +114,16 @@
               </div>
             </div>
             <div class="text-right shrink-0">
-              <div v-if="row.total_time" class="font-black text-2xl tabnum">
+              <div v-if="row.total_time" class="font-black text-2xl tabnum"
+                   :class="row._training ? 'text-cyan-400' : ''">
                 {{ row.total_time.toFixed(2) }}
               </div>
               <div v-else class="text-gray-500 font-mono">–</div>
               <div v-if="i > 0 && row.total_time && (standingsByClass[cls.id]||[])[0]?.total_time" class="text-xs opacity-60">
                 +{{ (row.total_time - (standingsByClass[cls.id]||[])[0].total_time).toFixed(2) }} s
               </div>
-              <div v-if="row.valid_runs < totalRuns" class="text-xs opacity-50 mt-0.5">
+              <div v-if="row._training" class="text-xs opacity-50 mt-0.5">Training</div>
+              <div v-else-if="row.valid_runs < totalRuns" class="text-xs opacity-50 mt-0.5">
                 Lauf {{ row.valid_runs }}/{{ totalRuns }} *
               </div>
             </div>
@@ -181,6 +183,30 @@ async function loadStandings() {
   for (const row of stRes.data) {
     ;(grouped[row.class_id] ??= []).push(row)
   }
+
+  // For classes with no wertungsläufe yet, fall back to training results
+  for (const r of runRes.data) {
+    if (r.run_number !== 0 || r.status !== 'valid' || r.raw_time === null) continue
+    if (grouped[r.class_id]?.length) continue  // already has real standings
+    ;(grouped[r.class_id] ??= []).push({
+      participant_id: r.participant_id,
+      start_number:   r.start_number,
+      first_name:     r.first_name,
+      last_name:      r.last_name,
+      club:           r.club,
+      total_time:     r.raw_time,
+      valid_runs:     0,
+      rank:           0,
+      _training:      true,
+    })
+  }
+  // Sort training-only groups by time
+  for (const cid in grouped) {
+    if (grouped[cid][0]?._training) {
+      grouped[cid].sort((a, b) => (a.total_time ?? 9999) - (b.total_time ?? 9999))
+    }
+  }
+
   standingsByClass.value = grouped
 
   const runMap = {}
