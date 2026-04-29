@@ -3,6 +3,63 @@ RaceControl Pro  Changelog
 ===========================
 
 
+[0.6.0] - 2026-04-29
+---------------------
+Trainingsmodus + Auswertungsseite + Bugfixes
+
+  Trainingsmodus (neu)
+  + Jugendlichen-Datenbank (Trainees): persistente Fahrerdaten unabhaengig
+    von Veranstaltungen (Vorname, Nachname, Jahrgang, Kart-Nummer, Verein,
+    Lizenznummer, Aktiv-Flag, Notizen)
+  + Admin: neues Tab "Jugendliche" zur Verwaltung der Trainings-Stammdaten
+    (Anlegen, Bearbeiten, Suche, Inaktive anzeigen/ausblenden, Vereinszuordnung)
+  + Admin: neues Tab "Training" zur Verwaltung von Trainings-Sessions
+    (Datum, Name, Status: geplant / aktiv / beendet, Notizen)
+  + Nur eine Session kann gleichzeitig aktiv sein (andere werden automatisch
+    auf 'finished' gesetzt beim Aktivieren)
+  + TrainingView (/training): 3-spaltiges Layout fuer Zeitnahme im Training
+    - Links: Session-Auswahl (Auto-Select aktiver Session), aktueller Fahrer
+      (Kart-Nummer, Name, Verein, Laufzaehler, Bestzeit), durchsuchbare
+      Fahrerliste mit Laufzaehler und Bestzeit
+    - Mitte: Lichtschranken-Status-Indikator, grosses Zeitfeld (deaktiviert
+      bei DNS/DNF/DSQ), Straf-Schnelltasten (Pylone 3s, Tor 10s, Gasse 15s,
+      Linie 3s), Lauf-Reset, Speichern-Button, Lauf-History des aktuellen
+      Fahrers mit Loeschen-Button
+    - Rechts: Session-Wertung (Rang, Name, Laufanzahl, Bestzeit), kompakte
+      Liste aller Sessionlaeufe
+  + Lichtschranke: timing_result befuellt Zeitfeld automatisch wenn Fahrer
+    ausgewaehlt ist (gruen blinkendes Feld + 3s "Zeit eingetragen"-Flash)
+  + WS-Broadcast 'training_run' bei neuem Lauf -> alle verbundenen Clients
+    laden Wertung und Laufliste sofort nach
+  + Run_number automatisch hochgezaehlt pro Fahrer/Session (MAX+1-Query)
+  + Kart-Nummer Fallback: fehlt Kart-Nummer im Lauf, wird Trainees.kart_number
+    verwendet
+  + View v_training_standings: Rang, Bestzeit, Durchschnitt pro Session
+  + DB-Tabellen: Trainees, TrainingSessions, TrainingRuns
+  + Migration: _migrate_trainees(), _migrate_training_sessions() fuer
+    bestehende Datenbanken
+  + Navigation: /training in TopBar sichtbar fuer zeitnahme + admin
+
+  Auswertungsseite (neu)
+  + Neue Seite /auswertung (alle angemeldeten Rollen, im "Mehr"-Dropdown)
+  + Veranstaltungs-Selektor (Vorauswahl: aktive Veranstaltung)
+  + Schnellste Wertungslaeufe pro Klasse (Tabelle: Klasse, #, Name, Verein,
+    Lauf-Nr., Bestzeit) - nur Wertungslaeufe (run_number > 0)
+  + Schnellste Dame / Schnellster Herr als Kacheln mit Zeitanzeige, Name,
+    Klasse und Verein; Hinweis wenn Geschlecht nicht hinterlegt
+  + Neuer API-Endpunkt GET /api/events/{id}/statistics (kein Auth erforderlich)
+  + Neues Feld 'gender' (TEXT: 'm' / 'w' / NULL) in Participants
+  + DB-Migration _migrate_participants_gender() fuer bestehende Datenbanken
+    (ALTER TABLE ADD COLUMN gender)
+  + Geschlecht-Auswahlfeld (nicht angegeben / Maennlich / Weiblich) im
+    Nennbuero-Formular und Online-Nennung (SelfRegisterBody)
+
+  Bugfixes
+  ~ TrainingView: Komma als Dezimaltrennzeichen akzeptiert (parseFloat
+    ignorierte Nachkommastellen bei Komma-Eingabe, z.B. 45,32 -> 45)
+  ~ Dockerfile: Port-Mismatch behoben -- uvicorn lief auf 8000, Docker-Compose
+    mappte ${PORT:-1980}:1980; CMD und EXPOSE jetzt korrekt auf 1980
+
 
 [0.5.0] - 2026-04-27
 ---------------------

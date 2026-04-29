@@ -9,6 +9,8 @@ from broadcast import manager
 from system_logger import log_event
 from routers import auth, users, reglements, events, participants, results, teams, clubs, public, sponsors, settings, notifications, assets as assets_router, marshal as marshal_router, admin_logs as admin_logs_router
 from routers import import_router
+from routers import trainees as trainees_router
+from routers import training as training_router
 
 app = FastAPI(
     title="RaceControl Pro",
@@ -48,6 +50,8 @@ app.include_router(notifications.router,     prefix=_API)
 app.include_router(assets_router.router,     prefix=_API)
 app.include_router(marshal_router.router,    prefix=_API)
 app.include_router(admin_logs_router.router, prefix=_API)
+app.include_router(trainees_router.router,  prefix=_API)
+app.include_router(training_router.router,  prefix=_API)
 
 
 @app.get("/health")

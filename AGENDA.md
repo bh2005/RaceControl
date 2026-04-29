@@ -1,7 +1,7 @@
 # Projekt-Agenda: "RaceControl Pro"
 **Konzept:** Modulare Veranstaltungssoftware für Kart-Slalom (JKS & KS2000)  
 **Zielgruppe:** ADAC Hessen-Thüringen (ca. 10 Klassen / 300 Starter)  
-**Stand:** April 2026 (v0.5.0)
+**Stand:** April 2026 (v0.6.0)
 
 ---
 
@@ -63,7 +63,7 @@
 
 ## 7. Datenbank-Design & Datenmodell
 - ✅ **Reglement-Tabellen:** `Reglements`, `PenaltyDefinitions`
-- ✅ **Teilnehmer-Management:** `Participants` mit Jahrgangsmapping, nullable Startnummer
+- ✅ **Teilnehmer-Management:** `Participants` mit Jahrgangsmapping, nullable Startnummer, `gender`-Feld (m/w)
 - ✅ **Ergebnis-Architektur:** `RaceResults` + `RunPenalties` (Rohzeit und Strafen getrennt)
 - ✅ **Audit-Logging:** `AuditLog` mit Pflichtbegründung
 - ✅ **Streckenposten-Log:** `MarshalReports` mit Storno-Tracking (cancelled, cancelled_at, cancelled_by)
@@ -71,6 +71,7 @@
 - ✅ **Sponsoren:** `Sponsors` mit Logo-URL, Sortierung, Aktiv-Flag
 - ✅ **Systemeinstellungen:** `Settings` (Key-Value für Druckvorlagen-Texte)
 - ✅ **Mannschaftswertung:** `Teams`, `TeamMembers` (bis 4 Mitglieder, beste 3 gewertet)
+- ✅ **Trainings-Datenmodell:** `Trainees`, `TrainingSessions`, `TrainingRuns`, View `v_training_standings`
 - ✅ **Automatische Migrationen:** Bestehende DBs werden verlustfrei auf den aktuellen Stand gebracht
 
 ## 8. Sprecher-Dashboard & Ereignis-Log
@@ -89,11 +90,23 @@
 
 ---
 
+## 10. Trainingsmodus & Auswertung
+- ✅ **Trainees:** Persistente Jugendlichen-Datenbank (CRUD, Verein, Kart-Nummer, Aktiv-Flag)
+- ✅ **TrainingSessions:** Anlegen, aktivieren (Single-Active-Lock), beenden
+- ✅ **TrainingRuns:** Zeiterfassung mit Auto-Increment run_number, WS-Broadcast, Löschen
+- ✅ **TrainingView:** 3-spaltiges Layout (Fahrerliste / Zeitnahme / Wertung)
+- ✅ **Lichtschranke im Training:** timing_result auto-befüllt Zeitfeld
+- ✅ **Auswertungsseite:** Schnellste pro Klasse + Schnellste Dame + Schnellster Herr
+- ✅ **gender-Feld:** Participants.gender (m/w/NULL) inkl. Migration und Formular-UI
+
+---
+
 ## Offene Punkte – Zusammenfassung
 
 | Priorität | Thema | Aufwand |
 |-----------|-------|---------|
 | 🟡 Mittel | Urkunden-Seriendruck | mittel |
+| 🟡 Mittel | pytest-Tests für Trainings-Endpunkte (trainees, training) | mittel |
 | ~~🟡 Mittel~~ | ~~pytest-Tests für neue Endpunkte (marshal, admin_logs, auto-close)~~ | ~~mittel~~ |
 | 🟢 Nice-to-have | Stresstest (300 Starter, 50 Clients) | groß |
 | ~~🟢 Nice-to-have~~ | ~~Automatisierte Tests~~ | ~~groß~~ |

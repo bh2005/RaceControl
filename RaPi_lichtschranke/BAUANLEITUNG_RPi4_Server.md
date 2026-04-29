@@ -524,6 +524,71 @@ EOF
 
 > Benötigt Raspberry Pi OS **mit Desktop** (nicht Lite).
 
+### Option D: Werkzeug-Akku als mobile Stromversorgung (12 V / 18 V)
+
+Wer keinen USB-C-PD-fähigen Powerbank zur Hand hat oder eine längere Laufzeit
+benötigt, kann handelsübliche **Akkuschrauber-Akkus (12 V oder 18 V)** nutzen.
+Dafür wird nur ein kleines DC-DC-Wandlermodul (Buck-Converter) benötigt.
+
+#### Schaltungskonzept
+
+```
+ Akku (12 V / 18 V)
+  [B+] ──────────────────────────┐
+                                  ▼
+                      ┌──────────────────────┐
+                      │  DC-DC Buck-Converter │
+                      │  IN:  8–32 V         │
+                      │  OUT: 5 V / 3 A      │
+                      └──────────┬───────────┘
+                                  │ USB-C (5 V, 3 A)
+                                  ▼
+                      ┌──────────────────────┐
+                      │  Raspberry Pi 4      │
+                      │  USB-C Power Input   │
+                      └──────────────────────┘
+  [B-] ──────────────────────────┘ (GND durchverbinden)
+```
+
+#### Benötigte Teile
+
+| Bauteil | Preis ca. | Bezugsquelle |
+|---------|-----------|--------------|
+| **DC-DC Buck-Converter** 8–32 V → 5 V, 3 A *(z.B. XL4016, LM2596 oder Pololu D24V22F5)* | 5–12 € | Amazon, AliExpress, Reichelt |
+| **Akku-Adapter** passend zur eigenen Marke *(Makita, Bosch, DeWalt …)* | 8–18 € | Amazon, AliExpress |
+| USB-C-Kabel (A/barrel → USB-C) oder USB-C-Buchse am Converter-Ausgang | 3–5 € | Amazon |
+| Schraubklemmen oder Lüsterklemmen (für Verdrahtung) | 1 € | Baumarkt |
+
+**Summe Zusatzteile:** ca. **17–36 €**
+
+> **Akku-Adapter:** Für jede Marke gibt es auf AliExpress günstige
+> Kunststoff-Adapter, die auf die Akku-Schiene gesteckt werden und
+> Schraubklemmen für B+ / B- herausführen.  
+> Suchbegriff: "Makita 18V battery holder adapter", "Bosch 18V battery adapter"
+
+#### Laufzeiten (Richtwert)
+
+| Akku | Kapazität | RPi 4 (Ø 8 W inkl. Sensor+Display) | Laufzeit |
+|------|-----------|--------------------------------------|---------|
+| 12 V / 2 Ah | 24 Wh | ~8 W | **~2,5 h** |
+| 18 V / 2 Ah | 36 Wh | ~8 W | **~4 h** |
+| 18 V / 4 Ah | 72 Wh | ~8 W | **~8 h** |
+| 18 V / 5 Ah | 90 Wh | ~8 W | **~10 h** |
+
+> **Wirkungsgrad des Wandlers (~85 %)** ist bereits eingerechnet.
+> Ein halber Wettkampftag ist realistisch mit einem Standard-4-Ah-Akku.
+
+#### Hinweise
+
+- Den Wandler **nicht auf den maximalen Ausgangsstrom (3 A) dauerhaft belasten** —
+  ein Wandler für 5 A ist langlebiger und läuft kühler.
+- Den eingestellten Ausgangsstrom mit einem Multimeter prüfen, **bevor** der RPi
+  angeschlossen wird. Zu hohe Spannung (> 5,25 V) beschädigt den RPi 4 sofort.
+- **Alternative ohne Lötarbeit:** Einige Marken-Akkus (Bosch Professional,
+  Makita 18 V XGT) bieten Akkus mit eingebautem **USB-A-/USB-C-Ausgang** (5 V / 2–3 A).
+  Diese können direkt ohne Wandler verwendet werden — Preis der Akkus mit USB-Ausgang
+  liegt bei 40–80 €.
+
 ### Option C: Datenbank-Backup auf USB-Stick
 
 ```bash

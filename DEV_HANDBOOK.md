@@ -1,7 +1,7 @@
 # RaceControl Pro – Entwickler-Handbuch
 
 **Für Entwickler, die das System erweitern oder warten**  
-Stand: April 2026 · Version 0.4.1
+Stand: April 2026 · Version 0.6.0
 
 ---
 
@@ -116,7 +116,9 @@ RaceControl/
 │   │   ├── auth.py          # POST /api/auth/login
 │   │   ├── events.py        # CRUD Events, Classes, Nennungsschluss, Announce
 │   │   ├── participants.py  # CRUD Teilnehmer, suggest-class
-│   │   ├── results.py       # Ergebnisse, Strafen, Standings, Views
+│   │   ├── results.py       # Ergebnisse, Strafen, Standings, Views, Statistics
+│   │   ├── trainees.py      # CRUD Trainees (Jugendlichen-Stammdaten)
+│   │   ├── training.py      # CRUD TrainingSessions + TrainingRuns, Standings
 │   │   ├── reglements.py    # CRUD Reglements + PenaltyDefinitions
 │   │   ├── users.py         # CRUD Benutzer (admin only)
 │   │   ├── clubs.py         # CRUD Vereine
@@ -148,6 +150,7 @@ RaceControl/
 │   │   │   ├── AppHeader.vue   # Navigation, Live-Uhr, Logout
 │   │   │   └── StatusBar.vue   # Verbindungsstatus, Versionsnummer
 │   │   └── views/           # Eine Datei pro Seite/Rolle
+│   │       # Neu: TrainingView.vue, AuswertungView.vue
 │   ├── vite.config.js       # Vite + PWA + Dev-Proxy-Konfiguration
 │   └── package.json
 ├── RaPi_lichtschranke/      # Raspberry Pi GPIO-Clients
@@ -395,10 +398,11 @@ await manager.broadcast({"type": "results", "event_id": 1, "class_id": 3})
 |---|---|---|
 | `results` | Neues Ergebnis / Korrektur / Strafe | Zeitnahme, Livetiming, Sprecher |
 | `notification` | Nennungsschluss-Announce, `/nachrichten` | Alle Browser-Clients |
-| `timing_result` | Lichtschranke (RaPi oder ELV) | Zeitnahme (→ Zeitfeld) |
+| `timing_result` | Lichtschranke (RaPi oder ELV) | Zeitnahme + TrainingView (→ Zeitfeld auto-befüllen) |
 | `timing_device_heartbeat` | Lichtschranke | Zeitnahme (→ Status-Indikator) |
-| `timing_device_status` | Connect/Disconnect eines Messgeräts | Zeitnahme |
+| `timing_device_status` | Connect/Disconnect eines Messgeräts | Zeitnahme, TrainingView |
 | `marshal_penalty` | Streckenposten (`POST /api/marshal/report`) | Zeitnahme (→ Übernahme-Panel), Sprecher |
+| `training_run` | Neuer Trainingslauf gespeichert | TrainingView (→ Läufe + Wertung neu laden) |
 
 ### Push-Benachrichtigung aus einem Router senden
 
@@ -698,7 +702,7 @@ Drei Jobs laufen bei jedem Push/PR auf `main`:
 ### Versionierung
 
 - Semantic Versioning: `MAJOR.MINOR.PATCH`
-- Changelog: `changelog.txt` (UTF-8) — normales Lesen/Schreiben:
+- `changelog.txt` ist **UTF-8** — normales Lesen/Schreiben:
   ```python
   import pathlib
   p = pathlib.Path("changelog.txt")
@@ -706,8 +710,12 @@ Drei Jobs laufen bei jedem Push/PR auf `main`:
   idx = text.find("[0.")
   p.write_text(text[:idx] + new_entry + text[idx:], encoding="utf-8")
   ```
-- `README.md` ist UTF-16 LE (mit BOM `ÿþ`) — per Python mit `raw.decode('utf-16')` lesen,
-  `b'ÿþ' + text.encode('utf-16-le')` schreiben
+- `README.md` ist **UTF-16 LE** (BOM `FF FE`) — per Python lesen/schreiben:
+  ```python
+  text = pathlib.Path("README.md").read_bytes().decode('utf-16')
+  # ...änderungen...
+  pathlib.Path("README.md").write_bytes(b'\xff\xfe' + text.encode('utf-16-le'))
+  ```
 
 ### Datenbankzugriff
 

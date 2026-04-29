@@ -35,7 +35,7 @@ ENV PYTHONUNBUFFERED=1 \
     DATA_DIR=/app/data \
     ASSETS_DIR=/app/assets
 
-EXPOSE 8000
+EXPOSE 1980
 WORKDIR /app/backend
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "1980"]

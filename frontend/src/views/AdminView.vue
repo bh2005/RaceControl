@@ -231,6 +231,208 @@
         </div>
       </div>
 
+      <!-- ═══ JUGENDLICHE ═══ -->
+      <div v-if="activeTab === 'trainees'" class="grid grid-cols-2 gap-4">
+
+        <!-- Tabelle -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 flex-1">
+              <h3 class="font-bold text-gray-800 shrink-0">Jugendliche</h3>
+              <span class="text-gray-400 font-normal text-sm">({{ traineeFiltered.length }})</span>
+              <input
+                v-model="traineeSearch"
+                type="text"
+                placeholder="Suche Name / Lizenz…"
+                class="input text-xs py-1 px-2 ml-2 flex-1 max-w-xs"
+              />
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <label class="flex items-center gap-1 text-xs text-gray-500 cursor-pointer">
+                <input type="checkbox" v-model="traineeShowInactive" class="accent-msc-blue">
+                Inaktive
+              </label>
+              <button @click="openNewTrainee" class="text-xs btn-primary px-3 py-1.5">+ Neu</button>
+            </div>
+          </div>
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                <th class="py-2 px-3 text-left">Name</th>
+                <th class="py-2 px-3 text-left">Jg.</th>
+                <th class="py-2 px-3 text-left">Verein</th>
+                <th class="py-2 px-3 text-left">Kart</th>
+                <th class="py-2 px-2"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr
+                v-for="t in traineeFiltered"
+                :key="t.id"
+                @click="selectTrainee(t)"
+                class="hover:bg-blue-50 transition cursor-pointer"
+                :class="{
+                  'bg-blue-50': selectedTrainee?.id === t.id,
+                  'opacity-50': !t.is_active
+                }"
+              >
+                <td class="py-2.5 px-3 font-semibold text-gray-800">
+                  {{ t.last_name }}, {{ t.first_name }}
+                  <span v-if="!t.is_active" class="ml-1 text-xs text-gray-400">(inaktiv)</span>
+                </td>
+                <td class="py-2.5 px-3 text-gray-500">{{ t.birth_year || '–' }}</td>
+                <td class="py-2.5 px-3 text-gray-500">{{ t.club_name || '–' }}</td>
+                <td class="py-2.5 px-3 text-gray-500">{{ t.kart_number || '–' }}</td>
+                <td class="py-2 px-2">
+                  <button @click.stop="deleteTrainee(t)" class="text-gray-300 hover:text-msc-red text-xs">✕</button>
+                </td>
+              </tr>
+              <tr v-if="!traineeFiltered.length">
+                <td colspan="5" class="py-4 text-center text-sm text-gray-400">Keine Jugendlichen gefunden</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Formular -->
+        <div v-if="traineeForm" class="card p-4 space-y-3 self-start">
+          <h3 class="font-bold text-gray-800">{{ selectedTrainee ? 'Jugendliche/n bearbeiten' : 'Neue/r Jugendliche/r' }}</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Vorname *</label>
+              <input v-model="traineeForm.first_name" type="text" class="input" placeholder="Max">
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Nachname *</label>
+              <input v-model="traineeForm.last_name" type="text" class="input" placeholder="Mustermann">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Jahrgang</label>
+              <input v-model.number="traineeForm.birth_year" type="number" class="input" placeholder="2015">
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Lizenznummer</label>
+              <input v-model="traineeForm.license_number" type="text" class="input" placeholder="ADAC-Nr.">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Verein</label>
+              <select v-model="traineeForm.club_id" class="input">
+                <option :value="null">– kein Verein –</option>
+                <option v-for="c in store.clubs" :key="c.id" :value="c.id">{{ c.short_name || c.name }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Standard-Kart</label>
+              <input v-model="traineeForm.kart_number" type="text" class="input" placeholder="z.B. 7">
+            </div>
+          </div>
+          <div>
+            <label class="text-xs text-gray-500 font-semibold block mb-1">Notizen</label>
+            <textarea v-model="traineeForm.notes" rows="2" class="input resize-none" placeholder="z.B. Allergien, Besonderheiten…"></textarea>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="checkbox" v-model="traineeForm.is_active" id="traineeActive" class="accent-msc-blue">
+            <label for="traineeActive" class="text-xs text-gray-600">Aktiv (nimmt am Training teil)</label>
+          </div>
+          <div v-if="traineeError" class="text-xs text-red-600 bg-red-50 rounded px-2 py-1">{{ traineeError }}</div>
+          <div class="flex gap-2">
+            <button @click="saveTrainee" class="flex-1 btn-primary py-2">Speichern</button>
+            <button @click="cancelTrainee" class="btn-secondary py-2 px-3 text-sm">Abbrechen</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ═══ TRAINING-SESSIONS ═══ -->
+      <div v-if="activeTab === 'training'" class="grid grid-cols-2 gap-4">
+
+        <!-- Tabelle -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="font-bold text-gray-800">Training-Sessions <span class="text-gray-400 font-normal text-sm">({{ trainingSessions.length }})</span></h3>
+            <button @click="openNewTrainingSession" class="text-xs btn-primary px-3 py-1.5">+ Neu</button>
+          </div>
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                <th class="py-2 px-3 text-left">Datum</th>
+                <th class="py-2 px-3 text-left">Name</th>
+                <th class="py-2 px-3 text-center">Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr
+                v-for="s in trainingSessions"
+                :key="s.id"
+                @click="selectTrainingSession(s)"
+                class="hover:bg-blue-50 transition cursor-pointer"
+                :class="{ 'bg-blue-50': selectedTrainingSession?.id === s.id }"
+              >
+                <td class="py-2.5 px-3 text-gray-500 font-mono text-xs">{{ s.date }}</td>
+                <td class="py-2.5 px-3 font-semibold text-gray-800">{{ s.name }}</td>
+                <td class="py-2.5 px-3 text-center">
+                  <span class="text-xs font-bold rounded px-1.5 py-0.5"
+                    :class="{
+                      'bg-green-100 text-green-700': s.status === 'active',
+                      'bg-amber-100 text-amber-700': s.status === 'planned',
+                      'bg-gray-100 text-gray-500':   s.status === 'finished',
+                    }">
+                    {{ { planned: 'Geplant', active: '▶ Aktiv', finished: 'Beendet' }[s.status] }}
+                  </span>
+                </td>
+                <td class="py-2 px-2">
+                  <button @click.stop="deleteTrainingSession(s)" class="text-gray-300 hover:text-msc-red text-xs">✕</button>
+                </td>
+              </tr>
+              <tr v-if="!trainingSessions.length">
+                <td colspan="4" class="py-4 text-center text-sm text-gray-400">Noch keine Training-Sessions</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Formular -->
+        <div v-if="trainingSessionForm" class="card p-4 space-y-3 self-start">
+          <h3 class="font-bold text-gray-800">{{ selectedTrainingSession ? 'Session bearbeiten' : 'Neue Session' }}</h3>
+          <div>
+            <label class="text-xs text-gray-500 font-semibold block mb-1">Name *</label>
+            <input v-model="trainingSessionForm.name" type="text" class="input" placeholder="z.B. Donnerstagstraining">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Datum *</label>
+              <input v-model="trainingSessionForm.date" type="date" class="input">
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Status</label>
+              <select v-model="trainingSessionForm.status" class="input">
+                <option value="planned">Geplant</option>
+                <option value="active">Aktiv ▶</option>
+                <option value="finished">Beendet</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="text-xs text-gray-500 font-semibold block mb-1">Notizen</label>
+            <textarea v-model="trainingSessionForm.notes" rows="2" class="input resize-none" placeholder="Anmerkungen…"></textarea>
+          </div>
+          <div v-if="trainingSessionError" class="text-xs text-red-600 bg-red-50 rounded px-2 py-1">{{ trainingSessionError }}</div>
+          <div class="flex gap-2">
+            <button @click="saveTrainingSession" class="flex-1 btn-primary py-2">Speichern</button>
+            <button @click="cancelTrainingSession" class="btn-secondary py-2 px-3 text-sm">Abbrechen</button>
+          </div>
+          <div v-if="selectedTrainingSession" class="pt-2 border-t border-gray-100">
+            <a href="/training" class="text-xs text-msc-blue hover:underline font-semibold">→ Zum Training-Modus</a>
+          </div>
+        </div>
+
+      </div>
+
       <!-- ═══ SPONSOREN ═══ -->
       <div v-if="activeTab === 'sponsors'" class="grid grid-cols-2 gap-4">
         <div class="card overflow-hidden">
@@ -733,7 +935,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import api from '../api/client'
 import { useEventStore } from '../stores/event'
 
@@ -741,13 +943,15 @@ const store = useEventStore()
 
 const activeTab  = ref('events')
 const tabs = [
-  { id: 'events',   label: '📅 Veranstaltungen' },
-  { id: 'clubs',    label: '🏁 Vereine' },
-  { id: 'users',    label: '👥 Benutzer' },
-  { id: 'sponsors', label: '🤝 Sponsoren' },
-  { id: 'system',   label: '⚙️ System' },
-  { id: 'logs',     label: '📋 Logs' },
-  { id: 'test',     label: '🧪 Test' },
+  { id: 'events',    label: '📅 Veranstaltungen' },
+  { id: 'clubs',     label: '🏁 Vereine' },
+  { id: 'trainees',  label: '🧒 Jugendliche' },
+  { id: 'training',  label: '🏋 Training' },
+  { id: 'users',     label: '👥 Benutzer' },
+  { id: 'sponsors',  label: '🤝 Sponsoren' },
+  { id: 'system',    label: '⚙️ System' },
+  { id: 'logs',      label: '📋 Logs' },
+  { id: 'test',      label: '🧪 Test' },
 ]
 
 // ── Events ──
@@ -867,6 +1071,141 @@ async function deleteClub(c) {
   if (!confirm(`Verein "${c.name}" löschen?`)) return
   await api.delete(`/clubs/${c.id}`)
   await store.loadClubs()
+}
+
+// ── Trainees ──────────────────────────────────────────────────────────────────
+
+const trainees          = ref([])
+const selectedTrainee   = ref(null)
+const traineeForm       = ref(null)
+const traineeError      = ref('')
+const traineeSearch     = ref('')
+const traineeShowInactive = ref(false)
+
+const traineeFiltered = computed(() => {
+  let list = trainees.value
+  if (!traineeShowInactive.value) list = list.filter(t => t.is_active)
+  const q = traineeSearch.value.trim().toLowerCase()
+  if (q) list = list.filter(t =>
+    t.first_name.toLowerCase().includes(q) ||
+    t.last_name.toLowerCase().includes(q) ||
+    (t.license_number || '').toLowerCase().includes(q)
+  )
+  return list
+})
+
+async function loadTrainees() {
+  const { data } = await api.get('/trainees')
+  trainees.value = data
+}
+
+function openNewTrainee() {
+  selectedTrainee.value = null
+  traineeForm.value = { first_name: '', last_name: '', birth_year: null, license_number: '', club_id: null, kart_number: '', is_active: true, notes: '' }
+  traineeError.value = ''
+}
+
+function selectTrainee(t) {
+  selectedTrainee.value = t
+  traineeForm.value = { ...t }
+  traineeError.value = ''
+}
+
+function cancelTrainee() {
+  selectedTrainee.value = null
+  traineeForm.value = null
+  traineeError.value = ''
+}
+
+async function saveTrainee() {
+  traineeError.value = ''
+  const body = { ...traineeForm.value }
+  if (!body.first_name?.trim() || !body.last_name?.trim()) {
+    traineeError.value = 'Vor- und Nachname sind Pflichtfelder.'
+    return
+  }
+  // clean up empty strings → null
+  if (!body.birth_year) body.birth_year = null
+  if (!body.license_number?.trim()) body.license_number = null
+  if (!body.kart_number?.trim()) body.kart_number = null
+  if (!body.notes?.trim()) body.notes = null
+  try {
+    if (selectedTrainee.value) {
+      await api.patch(`/trainees/${selectedTrainee.value.id}`, body)
+    } else {
+      await api.post('/trainees', body)
+    }
+    await loadTrainees()
+    cancelTrainee()
+  } catch (e) {
+    traineeError.value = e.response?.data?.detail || 'Fehler beim Speichern'
+  }
+}
+
+async function deleteTrainee(t) {
+  if (!confirm(`${t.first_name} ${t.last_name} wirklich löschen?\nAlternativ: im Formular auf "inaktiv" setzen.`)) return
+  await api.delete(`/trainees/${t.id}`)
+  await loadTrainees()
+  if (selectedTrainee.value?.id === t.id) cancelTrainee()
+}
+
+// ── Training-Sessions ─────────────────────────────────────────────────────────
+
+const trainingSessions         = ref([])
+const selectedTrainingSession  = ref(null)
+const trainingSessionForm      = ref(null)
+const trainingSessionError     = ref('')
+
+async function loadTrainingSessions() {
+  const { data } = await api.get('/training/sessions')
+  trainingSessions.value = data
+}
+
+function openNewTrainingSession() {
+  selectedTrainingSession.value = null
+  const today = new Date().toISOString().slice(0, 10)
+  trainingSessionForm.value = { name: `Training ${today}`, date: today, status: 'planned', notes: '' }
+  trainingSessionError.value = ''
+}
+
+function selectTrainingSession(s) {
+  selectedTrainingSession.value = s
+  trainingSessionForm.value = { ...s }
+  trainingSessionError.value = ''
+}
+
+function cancelTrainingSession() {
+  selectedTrainingSession.value = null
+  trainingSessionForm.value = null
+  trainingSessionError.value = ''
+}
+
+async function saveTrainingSession() {
+  trainingSessionError.value = ''
+  const body = { ...trainingSessionForm.value }
+  if (!body.name?.trim() || !body.date) {
+    trainingSessionError.value = 'Name und Datum sind Pflichtfelder.'
+    return
+  }
+  if (!body.notes?.trim()) body.notes = null
+  try {
+    if (selectedTrainingSession.value) {
+      await api.patch(`/training/sessions/${selectedTrainingSession.value.id}`, body)
+    } else {
+      await api.post('/training/sessions', body)
+    }
+    await loadTrainingSessions()
+    cancelTrainingSession()
+  } catch (e) {
+    trainingSessionError.value = e.response?.data?.detail || 'Fehler beim Speichern'
+  }
+}
+
+async function deleteTrainingSession(s) {
+  if (!confirm(`Session "${s.name}" und alle Läufe darin löschen?`)) return
+  await api.delete(`/training/sessions/${s.id}`)
+  await loadTrainingSessions()
+  if (selectedTrainingSession.value?.id === s.id) cancelTrainingSession()
 }
 
 // ── Sponsors ──
@@ -1014,6 +1353,8 @@ watch(activeTab, (tab) => {
     }
     loadLogs()
   }
+  if (tab === 'trainees' && !trainees.value.length) loadTrainees()
+  if (tab === 'training') loadTrainingSessions()
 })
 
 onMounted(async () => {

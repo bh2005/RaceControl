@@ -7,6 +7,7 @@ const routes = [
   { path: '/livetiming',     component: () => import('../views/LivetimingView.vue'),       meta: { public: true } },
   { path: '/nennen',         component: () => import('../views/SelbstnennungView.vue'),    meta: { public: true } },
   { path: '/zeitnahme',      component: () => import('../views/ZeitnahmeView.vue'),        meta: { roles: ['admin', 'zeitnahme'] } },
+  { path: '/training',       component: () => import('../views/TrainingView.vue'),          meta: { roles: ['admin', 'zeitnahme'] } },
   { path: '/nennung',        component: () => import('../views/NennungView.vue'),          meta: { roles: ['admin', 'nennung'] } },
   { path: '/schiedsrichter', component: () => import('../views/SchiedsrichterView.vue'),   meta: { roles: ['admin', 'schiedsrichter'] } },
   { path: '/admin',          component: () => import('../views/AdminView.vue'),            meta: { roles: ['admin'] } },
@@ -15,6 +16,7 @@ const routes = [
   { path: '/nachrichten',   component: () => import('../views/NachrichtenView.vue'),         meta: { roles: ['admin', 'zeitnahme', 'nennung', 'schiedsrichter'] } },
   { path: '/dokumente',     component: () => import('../views/DokumenteView.vue'),            meta: { public: true } },
   { path: '/marshal',       component: () => import('../views/MarshalView.vue'),              meta: { roles: ['marshal', 'admin'] } },
+  { path: '/auswertung',   component: () => import('../views/AuswertungView.vue'),            meta: { roles: ['admin', 'schiedsrichter', 'zeitnahme', 'nennung', 'viewer'] } },
 ]
 
 const roleHome = {

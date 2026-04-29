@@ -56,6 +56,32 @@ def _migrate(conn: sqlite3.Connection) -> None:
     _migrate_classes_exhibition(conn)
     _migrate_events(conn)
     _migrate_participants_unique_per_class(conn)
+    _migrate_trainees(conn)
+    _migrate_training_sessions(conn)
+    _migrate_participants_gender(conn)
+
+
+def _migrate_trainees(conn: sqlite3.Connection) -> None:
+    """Create Trainees table on existing databases (added in training-mode update)."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(Trainees)")}
+    if existing:
+        return  # already present
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS Trainees (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            first_name      TEXT    NOT NULL,
+            last_name       TEXT    NOT NULL,
+            birth_year      INTEGER,
+            license_number  TEXT,
+            club_id         INTEGER REFERENCES Clubs(id) ON DELETE SET NULL,
+            kart_number     TEXT,
+            is_active       INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+            notes           TEXT,
+            created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_trainees_club   ON Trainees (club_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_trainees_active ON Trainees (is_active)")
 
 
 def _migrate_events(conn: sqlite3.Connection) -> None:
@@ -181,6 +207,55 @@ def _migrate_participants_unique_per_class(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_participants_event ON Participants (event_id)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_participants_start_number ON Participants (class_id, start_number)")
     conn.execute("PRAGMA foreign_keys = ON")
+
+
+def _migrate_training_sessions(conn: sqlite3.Connection) -> None:
+    """Create TrainingSessions + TrainingRuns tables on existing databases."""
+    existing_sessions = {row[1] for row in conn.execute("PRAGMA table_info(TrainingSessions)")}
+    if not existing_sessions:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS TrainingSessions (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                name        TEXT    NOT NULL,
+                date        TEXT    NOT NULL,
+                status      TEXT    NOT NULL DEFAULT 'planned'
+                            CHECK (status IN ('planned','active','finished')),
+                notes       TEXT,
+                created_by  INTEGER REFERENCES Users(id) ON DELETE SET NULL,
+                created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+            )
+        """)
+    existing_runs = {row[1] for row in conn.execute("PRAGMA table_info(TrainingRuns)")}
+    if not existing_runs:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS TrainingRuns (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id      INTEGER NOT NULL REFERENCES TrainingSessions(id) ON DELETE CASCADE,
+                trainee_id      INTEGER NOT NULL REFERENCES Trainees(id) ON DELETE CASCADE,
+                kart_number     TEXT,
+                run_number      INTEGER NOT NULL DEFAULT 1,
+                raw_time        REAL,
+                penalty_seconds REAL    NOT NULL DEFAULT 0,
+                status          TEXT    NOT NULL DEFAULT 'valid'
+                                CHECK (status IN ('valid','dns','dnf','dsq')),
+                source          TEXT    NOT NULL DEFAULT 'manual'
+                                CHECK (source IN ('manual','lichtschranke')),
+                entered_by      INTEGER REFERENCES Users(id) ON DELETE SET NULL,
+                created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now')),
+                UNIQUE (session_id, trainee_id, run_number)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_training_runs_session ON TrainingRuns (session_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_training_runs_trainee ON TrainingRuns (trainee_id)")
+
+
+def _migrate_participants_gender(conn: sqlite3.Connection) -> None:
+    """Add gender column to Participants on existing databases."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(Participants)")}
+    if not existing:
+        return  # fresh DB — executescript will create with gender column
+    if "gender" not in existing:
+        conn.execute("ALTER TABLE Participants ADD COLUMN gender TEXT CHECK (gender IN ('m','w'))")
 
 
 def _migrate_classes_status(conn: sqlite3.Connection) -> None:

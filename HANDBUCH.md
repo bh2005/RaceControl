@@ -1,7 +1,7 @@
 # RaceControl Pro – Handbuch
 
 **MSC Braach e.V. im ADAC**  
-Stand: April 2026
+Stand: April 2026 · Version 0.6.0
 
 ---
 
@@ -12,13 +12,15 @@ Stand: April 2026
 3. [Nennbüro – Anmeldung und Abnahme](#3-nennbüro--anmeldung-und-abnahme)
 4. [Online-Nennung (Teilnehmer)](#4-online-nennung-teilnehmer)
 5. [Zeitnahme](#5-zeitnahme)
-6. [Schiedsrichter](#6-schiedsrichter)
-7. [Nachrichten senden](#7-nachrichten-senden)
-8. [Streckenposten](#8-streckenposten)
-9. [Livetiming (Gäste)](#9-livetiming-gäste)
-10. [Admin – Stammdaten und Einstellungen](#10-admin--stammdaten-und-einstellungen)
-11. [Lichtschranken-Clients](#11-lichtschranken-clients)
-12. [Häufige Fragen und Probleme](#12-häufige-fragen-und-probleme)
+6. [Trainingsmodus](#6-trainingsmodus)
+7. [Auswertung](#7-auswertung)
+8. [Schiedsrichter](#8-schiedsrichter)
+9. [Nachrichten senden](#9-nachrichten-senden)
+10. [Streckenposten](#10-streckenposten)
+11. [Livetiming (Gäste)](#11-livetiming-gäste)
+12. [Admin – Stammdaten und Einstellungen](#12-admin--stammdaten-und-einstellungen)
+13. [Lichtschranken-Clients](#13-lichtschranken-clients)
+14. [Häufige Fragen und Probleme](#14-häufige-fragen-und-probleme)
 
 ---
 
@@ -255,7 +257,74 @@ als **gelbes Panel** über den Straf-Buttons:
 
 ---
 
-## 6. Schiedsrichter
+## 6. Trainingsmodus
+
+**URL:** `/training` | **Rolle:** `zeitnahme` oder `admin`
+
+Der Trainingsmodus ermöglicht das Erfassen von Trainingszeiten für Jugendliche **unabhängig von einer Veranstaltung**. Jugendliche (Trainees) werden einmalig im Admin angelegt und stehen dann in jeder Session zur Verfügung.
+
+### Vorbereitung im Admin
+
+1. Admin → **🧒 Jugendliche** → Jugendliche anlegen (Name, Jahrgang, Kart-Nummer, Verein)
+2. Admin → **🏋 Training** → Neue Session anlegen (Datum, Name)
+3. Session aktivieren: Auf **▶ Aktivieren** klicken — alle anderen Sessions werden automatisch beendet
+
+### Trainingsablauf (/training)
+
+Die Seite besteht aus drei Bereichen:
+
+**Linke Spalte — Fahrerwahl**
+1. Gewünschte Session im Dropdown auswählen (aktive Session wird automatisch vorgewählt)
+2. Fahrer in der Liste anklicken → erscheint im blauen Fahrer-Block oben
+3. Suchfeld zum schnellen Finden (Name oder Kart-Nummer)
+4. Laufanzahl und Bestzeit werden direkt angezeigt
+
+**Mittlere Spalte — Zeiteingabe**
+1. Fahrer auswählen (links)
+2. Zeit eintippen: `45.32` oder `45,32` (Komma und Punkt werden akzeptiert)
+3. Bei Bedarf Straf-Schnelltasten klicken: **+3s Pylone**, **+10s Tor**, **+15s Gasse**, **+3s Linie**
+4. Sonderstatus: **DNS** / **DNF** / **DSQ** per Button (Zeitfeld wird deaktiviert)
+5. **Lauf speichern** klicken oder **Enter** drücken
+
+> **Lichtschranke:** Bei verbundener Lichtschranke wird die Zeit automatisch ins Zeitfeld eingetragen, sobald der Fahrer ausgewählt ist (grünes Blinken + „⚡ Zeit eingetragen").
+
+**Rechte Spalte — Wertung**
+- Session-Wertung: aktueller Rang mit Bestzeit und Laufanzahl
+- Alle Läufe der Session kompakt gelistet
+
+### Läufe korrigieren / löschen
+
+In der History-Tabelle (Mitte unten) gibt es pro Lauf ein **✕**-Symbol zum Löschen — nach Bestätigungsabfrage wird der Lauf unwiderruflich entfernt.
+
+---
+
+## 7. Auswertung
+
+**URL:** `/auswertung` | **Rolle:** alle angemeldeten Rollen
+
+Die Auswertungsseite zeigt statistische Highlights pro Veranstaltung.
+
+### Seite aufrufen
+
+Im Navigations-Dropdown **„Mehr ▾"** → **📊 Auswertung** klicken.
+
+Oben rechts die gewünschte Veranstaltung auswählen (Standard: aktive Veranstaltung).
+
+### Anzeige
+
+| Bereich | Inhalt |
+|---------|--------|
+| 🏆 **Schnellste Wertungsläufe pro Klasse** | Tabelle: Klasse · Startnummer · Name · Verein · Lauf-Nr. · Bestzeit |
+| 👑 **Schnellste Dame** | Name, Klasse, Verein und Bestzeit der schnellsten Fahrerin |
+| 👑 **Schnellster Herr** | Name, Klasse, Verein und Bestzeit des schnellsten Fahrers |
+
+> **Hinweis:** Für die Dame/Herr-Auswertung muss das **Geschlecht** beim Teilnehmer hinterlegt sein (Nennbüro → Teilnehmer bearbeiten → Feld „Geschlecht"). Fehlt das Geschlecht, erscheint ein entsprechender Hinweis in der Kachel.
+
+> Es werden nur **Wertungsläufe** (Lauf 1, 2, …) ausgewertet — keine Trainingsläufe.
+
+---
+
+## 8. Schiedsrichter
 
 **URL:** `/schiedsrichter` | **Rolle:** `schiedsrichter` oder `admin`
 
@@ -291,7 +360,7 @@ als **gelbes Panel** über den Straf-Buttons:
 
 ---
 
-## 7. Nachrichten senden
+## 9. Nachrichten senden
 
 **URL:** `/nachrichten` | **Rolle:** alle außer `viewer`
 
@@ -309,7 +378,7 @@ als **gelbes Panel** über den Straf-Buttons:
 
 ---
 
-## 8. Streckenposten
+## 10. Streckenposten
 
 **URL:** `/marshal` | **Rolle:** `marshal` (oder `admin`)
 
@@ -349,7 +418,7 @@ Eingehende Streckenposten-Meldungen erscheinen in der Zeitnahme als **gelbes Pan
 
 ---
 
-## 9. Livetiming (Gäste)
+## 11. Livetiming (Gäste)
 
 **URL:** `/livetiming` | Kein Login erforderlich
 
@@ -359,7 +428,25 @@ Eingehende Streckenposten-Meldungen erscheinen in der Zeitnahme als **gelbes Pan
 
 ---
 
-## 10. Admin – Stammdaten und Einstellungen
+## 12. Admin – Stammdaten und Einstellungen
+
+### Jugendliche (Trainings-Stammdaten)
+
+Admin → **🧒 Jugendliche**
+
+- Jugendliche anlegen und bearbeiten (Vorname, Nachname, Jahrgang, Kart-Nummer, Verein, Lizenznummer)
+- Aktiv/Inaktiv-Schalter: inaktive Jugendliche erscheinen nicht in der Fahrerliste
+- Suche nach Name
+- Inaktive anzeigen/verbergen per Toggle
+
+### Training-Sessions
+
+Admin → **🏋 Training**
+
+- Trainings-Sessions anlegen: Datum, Name, Status und Notizen
+- Status: `geplant` → `aktiv` → `beendet`
+- Nur eine Session kann gleichzeitig aktiv sein — beim Aktivieren werden andere automatisch beendet
+- Abgeschlossene Sessions bleiben mit allen Läufen erhalten
 
 ### Vereine
 
@@ -399,7 +486,7 @@ Hier werden die Texte konfiguriert, die auf der Nennliste gedruckt werden:
 
 ---
 
-## 11. Lichtschranken-Clients
+## 13. Lichtschranken-Clients
 
 ### Raspberry Pi (GPIO-Lichtschranke)
 
@@ -454,7 +541,7 @@ MIN_TIME    = 3.0              # Messungen unter 3 s werden verworfen
 
 ---
 
-## 12. Häufige Fragen und Probleme
+## 14. Häufige Fragen und Probleme
 
 ### Das Backend startet nicht
 

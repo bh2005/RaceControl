@@ -129,11 +129,13 @@ onUnmounted(() => {
 // primary: false → im Mehr-Dropdown
 const allNav = [
   { to: '/zeitnahme',      label: 'Zeitnahme',          roles: ['admin', 'zeitnahme'],                                     primary: true  },
+  { to: '/training',       label: '🏋 Training',        roles: ['admin', 'zeitnahme'],                                     primary: true  },
   { to: '/nennung',        label: 'Nennung',             roles: ['admin', 'nennung'],                                       primary: true  },
   { to: '/schiedsrichter', label: 'Schiedsrichter',      roles: ['admin', 'schiedsrichter'],                                primary: true  },
   { to: '/admin',          label: 'Admin',               roles: ['admin'],                                                  primary: true  },
   { to: '/marshal',        label: '🚩 Streckenposten',   roles: ['marshal'],                                                primary: true  },
   { to: '/livetiming',     label: 'Livetiming',          roles: null,                                                       primary: false },
+  { to: '/auswertung',    label: '📊 Auswertung',       roles: ['admin', 'schiedsrichter', 'zeitnahme', 'nennung', 'viewer'], primary: false },
   { to: '/speaker',        label: '🎙 Sprecher',          roles: ['admin', 'schiedsrichter', 'zeitnahme', 'viewer'],            primary: false },
   { to: '/nachrichten',    label: '📢 Nachrichten',      roles: ['admin', 'zeitnahme', 'nennung', 'schiedsrichter', 'viewer'], primary: false },
   { to: '/marshal',        label: '🚩 Streckenposten',   roles: ['admin'],                                                  primary: false },

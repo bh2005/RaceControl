@@ -258,3 +258,51 @@ def standings(
         params.append(class_id)
     query += " ORDER BY class_id, rank"
     return [dict(r) for r in db.execute(query, params).fetchall()]
+
+
+@router.get("/statistics")
+def statistics(
+    event_id: int,
+    db: Annotated[sqlite3.Connection, Depends(get_db)] = ...,
+):
+    fastest_per_class = [dict(r) for r in db.execute("""
+        SELECT v.class_id, v.class_name, v.participant_id, v.start_number,
+               v.first_name, v.last_name, v.club, v.run_number, v.total_time
+        FROM v_run_results v
+        WHERE v.event_id = ?
+          AND v.run_number > 0
+          AND v.status = 'valid'
+          AND v.total_time IS NOT NULL
+          AND v.total_time = (
+              SELECT MIN(v2.total_time) FROM v_run_results v2
+              WHERE v2.class_id = v.class_id AND v2.event_id = v.event_id
+                AND v2.run_number > 0 AND v2.status = 'valid' AND v2.total_time IS NOT NULL
+          )
+        ORDER BY v.class_id, v.total_time
+    """, (event_id,)).fetchall()]
+
+    fastest_dame = db.execute("""
+        SELECT v.participant_id, v.start_number, v.first_name, v.last_name,
+               v.club, v.class_name, v.run_number, v.total_time
+        FROM v_run_results v
+        JOIN Participants p ON p.id = v.participant_id
+        WHERE v.event_id = ? AND v.run_number > 0 AND v.status = 'valid'
+          AND v.total_time IS NOT NULL AND p.gender = 'w'
+        ORDER BY v.total_time LIMIT 1
+    """, (event_id,)).fetchone()
+
+    fastest_herr = db.execute("""
+        SELECT v.participant_id, v.start_number, v.first_name, v.last_name,
+               v.club, v.class_name, v.run_number, v.total_time
+        FROM v_run_results v
+        JOIN Participants p ON p.id = v.participant_id
+        WHERE v.event_id = ? AND v.run_number > 0 AND v.status = 'valid'
+          AND v.total_time IS NOT NULL AND p.gender = 'm'
+        ORDER BY v.total_time LIMIT 1
+    """, (event_id,)).fetchone()
+
+    return {
+        "fastest_per_class": fastest_per_class,
+        "fastest_dame": dict(fastest_dame) if fastest_dame else None,
+        "fastest_herr": dict(fastest_herr) if fastest_herr else None,
+    }

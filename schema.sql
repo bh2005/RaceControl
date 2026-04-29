@@ -116,6 +116,82 @@ CREATE TABLE IF NOT EXISTS Clubs (
 );
 
 -- ============================================================
+-- 5a. TRAININGS-STAMMDATEN (Jugendliche)
+-- ============================================================
+
+-- Persistente Jugendlichen-Datenbank, unabhängig von Veranstaltungen
+CREATE TABLE IF NOT EXISTS Trainees (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name      TEXT    NOT NULL,
+    last_name       TEXT    NOT NULL,
+    birth_year      INTEGER,
+    license_number  TEXT,                              -- ADAC-Lizenznummer (optional)
+    club_id         INTEGER REFERENCES Clubs(id) ON DELETE SET NULL,
+    kart_number     TEXT,                              -- Standard-Kart-Nummer (kann je Session überschrieben werden)
+    is_active       INTEGER NOT NULL DEFAULT 1
+                    CHECK (is_active IN (0, 1)),
+    notes           TEXT,
+    created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_trainees_club ON Trainees (club_id);
+CREATE INDEX IF NOT EXISTS idx_trainees_active ON Trainees (is_active);
+
+-- ============================================================
+-- 5b. TRAINING-SESSIONS & LÄUFE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS TrainingSessions (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT    NOT NULL,                  -- z.B. "Donnerstagstraining 29.04.2026"
+    date        TEXT    NOT NULL,                  -- ISO-8601 "YYYY-MM-DD"
+    status      TEXT    NOT NULL DEFAULT 'planned'
+                CHECK (status IN ('planned', 'active', 'finished')),
+    notes       TEXT,
+    created_by  INTEGER REFERENCES Users(id) ON DELETE SET NULL,
+    created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS TrainingRuns (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id      INTEGER NOT NULL REFERENCES TrainingSessions(id) ON DELETE CASCADE,
+    trainee_id      INTEGER NOT NULL REFERENCES Trainees(id) ON DELETE CASCADE,
+    kart_number     TEXT,                          -- überschreibt Trainees.kart_number für diesen Lauf
+    run_number      INTEGER NOT NULL DEFAULT 1,    -- Laufzähler pro Fahrer/Session
+    raw_time        REAL,                          -- gestoppte Zeit in Sekunden; NULL bei DNS/DNF
+    penalty_seconds REAL    NOT NULL DEFAULT 0,    -- Summierte Strafzeit (vereinfacht für Training)
+    status          TEXT    NOT NULL DEFAULT 'valid'
+                    CHECK (status IN ('valid', 'dns', 'dnf', 'dsq')),
+    source          TEXT    NOT NULL DEFAULT 'manual'
+                    CHECK (source IN ('manual', 'lichtschranke')),
+    entered_by      INTEGER REFERENCES Users(id) ON DELETE SET NULL,
+    created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now')),
+    UNIQUE (session_id, trainee_id, run_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_training_runs_session  ON TrainingRuns (session_id);
+CREATE INDEX IF NOT EXISTS idx_training_runs_trainee  ON TrainingRuns (trainee_id);
+
+DROP VIEW IF EXISTS v_training_standings;
+CREATE VIEW v_training_standings AS
+SELECT
+    r.session_id,
+    t.id                                            AS trainee_id,
+    t.first_name,
+    t.last_name,
+    t.kart_number                                   AS default_kart,
+    COALESCE(cl.short_name, cl.name)                AS club_name,
+    COUNT(*)                                        AS run_count,
+    MIN(CASE WHEN r.status = 'valid' AND r.raw_time IS NOT NULL
+             THEN r.raw_time + r.penalty_seconds END)  AS best_time,
+    AVG(CASE WHEN r.status = 'valid' AND r.raw_time IS NOT NULL
+             THEN r.raw_time + r.penalty_seconds END)  AS avg_time
+FROM   TrainingRuns r
+JOIN   Trainees t  ON t.id  = r.trainee_id
+LEFT JOIN Clubs cl ON cl.id = t.club_id
+GROUP BY r.session_id, r.trainee_id;
+
+-- ============================================================
 -- 5. TEILNEHMER
 -- ============================================================
 
@@ -131,6 +207,7 @@ CREATE TABLE IF NOT EXISTS Participants (
     license_number  TEXT,                              -- ADAC-Lizenznummer (optional)
     status          TEXT    NOT NULL DEFAULT 'registered'
                     CHECK (status IN ('registered', 'checked_in', 'technical_ok', 'disqualified')),
+    gender          TEXT    CHECK (gender IN ('m', 'w')),  -- m=männlich, w=weiblich
     fee_paid        INTEGER NOT NULL DEFAULT 0
                     CHECK (fee_paid IN (0, 1)),        -- Nenngeld bezahlt
     helmet_ok       INTEGER NOT NULL DEFAULT 0

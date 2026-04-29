@@ -156,6 +156,7 @@ class ParticipantCreate(BaseModel):
     last_name: str
     birth_year: Optional[int] = None
     license_number: Optional[str] = None
+    gender: Optional[Literal["m", "w"]] = None
     status: Literal["registered", "checked_in", "technical_ok", "disqualified"] = "registered"
     fee_paid: bool = False
     helmet_ok: bool = False
@@ -169,6 +170,7 @@ class ParticipantUpdate(BaseModel):
     last_name: Optional[str] = None
     birth_year: Optional[int] = None
     license_number: Optional[str] = None
+    gender: Optional[Literal["m", "w"]] = None
     status: Optional[Literal["registered", "checked_in", "technical_ok", "disqualified"]] = None
     fee_paid: Optional[bool] = None
     helmet_ok: Optional[bool] = None
@@ -184,6 +186,7 @@ class ParticipantResponse(BaseModel):
     last_name: str
     birth_year: Optional[int]
     license_number: Optional[str]
+    gender: Optional[str] = None
     status: str
     fee_paid: bool = False
     helmet_ok: bool = False
@@ -307,6 +310,121 @@ class FastestOfDayRow(BaseModel):
     class_name: str
     run_number: int
     run_time: float
+
+
+# ── Trainees ─────────────────────────────────────────────────────────────────
+
+class TraineeCreate(BaseModel):
+    first_name: str
+    last_name: str
+    birth_year: Optional[int] = None
+    license_number: Optional[str] = None
+    club_id: Optional[int] = None
+    kart_number: Optional[str] = None
+    is_active: bool = True
+    notes: Optional[str] = None
+
+
+class TraineeUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    birth_year: Optional[int] = None
+    license_number: Optional[str] = None
+    club_id: Optional[int] = None
+    kart_number: Optional[str] = None
+    is_active: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+class TraineeResponse(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    birth_year: Optional[int]
+    license_number: Optional[str]
+    club_id: Optional[int]
+    club_name: Optional[str] = None   # aus JOIN
+    kart_number: Optional[str]
+    is_active: bool
+    notes: Optional[str]
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+# ── TrainingSessions ─────────────────────────────────────────────────────────
+
+class TrainingSessionCreate(BaseModel):
+    name: str
+    date: str  # ISO-8601 "YYYY-MM-DD"
+    status: Literal["planned", "active", "finished"] = "planned"
+    notes: Optional[str] = None
+
+
+class TrainingSessionUpdate(BaseModel):
+    name: Optional[str] = None
+    date: Optional[str] = None
+    status: Optional[Literal["planned", "active", "finished"]] = None
+    notes: Optional[str] = None
+
+
+class TrainingSessionResponse(TrainingSessionCreate):
+    id: int
+    created_by: Optional[int]
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+# ── TrainingRuns ──────────────────────────────────────────────────────────────
+
+class TrainingRunCreate(BaseModel):
+    trainee_id: int
+    kart_number: Optional[str] = None
+    raw_time: Optional[float] = None
+    penalty_seconds: float = 0.0
+    status: Literal["valid", "dns", "dnf", "dsq"] = "valid"
+    source: Literal["manual", "lichtschranke"] = "manual"
+
+
+class TrainingRunUpdate(BaseModel):
+    kart_number: Optional[str] = None
+    raw_time: Optional[float] = None
+    penalty_seconds: Optional[float] = None
+    status: Optional[Literal["valid", "dns", "dnf", "dsq"]] = None
+
+
+class TrainingRunResponse(BaseModel):
+    id: int
+    session_id: int
+    trainee_id: int
+    first_name: str
+    last_name: str
+    club_name: Optional[str] = None
+    kart_number: Optional[str]
+    run_number: int
+    raw_time: Optional[float]
+    penalty_seconds: float
+    total_time: Optional[float]
+    status: str
+    source: str
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+class TrainingStandingRow(BaseModel):
+    session_id: int
+    trainee_id: int
+    first_name: str
+    last_name: str
+    club_name: Optional[str]
+    run_count: int
+    best_time: Optional[float]
+    avg_time: Optional[float]
+    rank: int
+
+    model_config = {"from_attributes": True}
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────

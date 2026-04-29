@@ -1,6 +1,6 @@
 # RaceControl Pro – Funktionsübersicht
 
-Stand: April 2026 · Version 0.4.4
+Stand: April 2026 · Version 0.6.0
 
 ---
 
@@ -31,7 +31,7 @@ Stand: April 2026 · Version 0.4.4
 
 ### Online-Nennung `/nennen`
 - Selbstanmeldung vor Ort über Tablet/Smartphone
-- Felder: Vorname, Nachname, Jahrgang, Verein, Lizenznummer, Klasse
+- Felder: Vorname, Nachname, Jahrgang, Geschlecht, Verein, Lizenznummer, Klasse
 - Automatischer Klassenvorschlag anhand des Jahrgangs
 - Duplikatprüfung (nach Lizenznummer oder Name + Jahrgang)
 - Bestätigungsscreen mit Startnummer (falls bereits vergeben)
@@ -48,6 +48,7 @@ Stand: April 2026 · Version 0.4.4
 - Freigabe (→ Starterliste) nur wenn beide Abnahmen bestätigt
 - Nachnennung direkt im Nennbüro
 - Inline-Bearbeitung aller Teilnehmerdaten
+- **Geschlecht** (m/w/nicht angegeben) — Pflichtfeld für Dame/Herr-Auswertung
 
 ### Startnummernvergabe
 - Dedizierter Modus „🎲 Startnummern vergeben" nach der Auslosung
@@ -137,6 +138,47 @@ Stand: April 2026 · Version 0.4.4
 
 ---
 
+## Trainingsmodus `/training`
+
+### Jugendlichen-Datenbank (Trainees)
+- Persistente Fahrerdaten unabhängig von Veranstaltungen
+- Felder: Vorname, Nachname, Jahrgang, Kart-Nummer, Verein, Lizenznummer, Notizen
+- Aktiv/Inaktiv-Schalter (inaktive Fahrer erscheinen nicht in der Session-Liste)
+- Verwaltung im Admin-Bereich (Tab „🧒 Jugendliche")
+
+### Training-Sessions
+- Sessions anlegen: Datum, Name, Status (geplant / aktiv / beendet), Notizen
+- Nur eine Session gleichzeitig aktiv — andere werden automatisch beendet
+- Verwaltung im Admin-Bereich (Tab „🏋 Training")
+
+### Zeitnahme im Training
+- Fahrer-Auswahl aus der Jugendlichen-Datenbank
+- Großes Zeitfeld: `45.32` oder `45,32` (Komma/Punkt akzeptiert)
+- Lichtschranke füllt Zeitfeld automatisch (grüner Flash)
+- Straf-Schnelltasten: Pylone +3s, Tor +10s, Gasse +15s, Linie +3s
+- Sonderstatus: DNS / DNF / DSQ
+- Läufe löschen aus der History-Tabelle
+- run_number automatisch hochgezählt pro Fahrer/Session
+
+### Wertung & Statistik
+- Session-Wertung in Echtzeit (Rang, Bestzeit, Durchschnitt, Laufanzahl)
+- WS-Broadcast bei neuem Lauf → alle Clients aktualisieren sofort
+- View `v_training_standings` (SQLite)
+
+---
+
+## Auswertung `/auswertung`
+
+- Zugänglich für alle angemeldeten Rollen (im „Mehr"-Dropdown)
+- Veranstaltungs-Selektor (Standard: aktive Veranstaltung)
+- **Schnellste Wertungsläufe pro Klasse** — Tabelle: Klasse · # · Name · Verein · Lauf · Bestzeit
+- **Schnellste Dame** — Kachel mit Zeit, Name, Klasse, Verein (nur wenn Geschlecht = 'w' hinterlegt)
+- **Schnellster Herr** — Kachel mit Zeit, Name, Klasse, Verein (nur wenn Geschlecht = 'm' hinterlegt)
+- Nur Wertungsläufe (run_number > 0) — keine Trainingsläufe in der Auswertung
+- API: `GET /api/events/{id}/statistics` (kein Login erforderlich)
+
+---
+
 ## Admin `/admin`
 
 ### Veranstaltungen
@@ -157,6 +199,10 @@ Stand: April 2026 · Version 0.4.4
 - Sponsorenverwaltung: Name, Logo-URL, Website-URL, Reihenfolge, Aktiv/Inaktiv
 - Live-Vorschau des Logos beim Bearbeiten
 - Aktive Sponsoren erscheinen auf der öffentlichen Landingpage
+
+### Jugendliche / Training
+- Tab „🧒 Jugendliche": Trainings-Stammdaten verwalten (Anlegen, Bearbeiten, Suche, Aktiv-Filter)
+- Tab „🏋 Training": Sessions anlegen und aktivieren (Datum, Name, Status, Notizen)
 
 ### Reglements-Vorlagen
 - **KS 2000 Preset**: Ein-Klick-Anlage des KS-2000-Reglements mit allen offiziellen Strafen
@@ -223,7 +269,7 @@ Stand: April 2026 · Version 0.4.4
 
 - **Live-Uhr** in der TopBar (sekundengenau, tabular-nums Darstellung)
 - Rollenbasierte Navigation: nur für die eigene Rolle relevante Menüpunkte sichtbar
-- **„Mehr ▾"-Dropdown** in der TopBar: sekundäre Links (Livetiming, Sprecher, Nachrichten,
+- **„Mehr ▾"-Dropdown** in der TopBar: sekundäre Links (Livetiming, Auswertung, Sprecher, Nachrichten,
   Streckenposten, Dokumente, Online-Nennung) ausgeblendet, damit die Bar nicht überfüllt wird;
   Dropdown zeigt fett wenn eine enthaltene Seite aktiv ist
 - **Push-Benachrichtigungen** als globales cyan Banner (alle Views, 30 s, schließbar)

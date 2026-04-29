@@ -339,6 +339,15 @@
         </div>
 
         <div>
+          <label class="text-xs text-gray-500 font-semibold block mb-1">Geschlecht</label>
+          <select v-model="form.gender" class="input">
+            <option :value="null">– nicht angegeben –</option>
+            <option value="m">Männlich</option>
+            <option value="w">Weiblich</option>
+          </select>
+        </div>
+
+        <div>
           <label class="text-xs text-gray-500 font-semibold block mb-1">Vorname</label>
           <input v-model="form.first_name" type="text" class="input">
         </div>
@@ -538,7 +547,7 @@ function openNew() {
   selected.value = null
   form.value = {
     start_number: null, first_name: '', last_name: '',
-    birth_year: null, club_id: null, class_id: null,
+    birth_year: null, gender: null, club_id: null, class_id: null,
     license_number: '', status: 'registered',
     fee_paid: false, helmet_ok: false,
   }

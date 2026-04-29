@@ -65,12 +65,12 @@ def create_participant(
         cur = db.execute(
             """INSERT INTO Participants
                (event_id, class_id, club_id, start_number, first_name, last_name,
-                birth_year, license_number, status, fee_paid, helmet_ok)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                birth_year, license_number, gender, status, fee_paid, helmet_ok)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (event_id, body.class_id, body.club_id, body.start_number,
              body.first_name, body.last_name,
-             body.birth_year, body.license_number, body.status,
-             int(body.fee_paid), int(body.helmet_ok)),
+             body.birth_year, body.license_number, body.gender,
+             body.status, int(body.fee_paid), int(body.helmet_ok)),
         )
         db.commit()
         return _row_with_club(db, cur.lastrowid)

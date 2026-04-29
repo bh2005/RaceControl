@@ -16,6 +16,7 @@ class SelfRegisterBody(BaseModel):
     birth_year: Optional[int] = None
     club_id: Optional[int] = None
     license_number: Optional[str] = None
+    gender: Optional[str] = None   # 'm' | 'w'
     class_id: Optional[int] = None
 
 
@@ -107,12 +108,12 @@ def self_register(
     cur = db.execute(
         """INSERT INTO Participants
            (event_id, class_id, club_id, start_number, first_name, last_name,
-            birth_year, license_number, status)
-           VALUES (?,?,?,NULL,?,?,?,?,?)""",
+            birth_year, license_number, gender, status)
+           VALUES (?,?,?,NULL,?,?,?,?,?,?)""",
         (
             event_id, class_id, body.club_id,
             body.first_name.strip(), body.last_name.strip(),
-            body.birth_year, body.license_number, "registered",
+            body.birth_year, body.license_number, body.gender, "registered",
         ),
     )
     db.commit()
