@@ -9,7 +9,7 @@
   ![Backend](https://img.shields.io/badge/Backend-FastAPI%20%2B%20SQLite-009688?style=flat-square)
   ![Frontend](https://img.shields.io/badge/Frontend-Vue%203%20%2B%20Tailwind-4FC08D?style=flat-square)
   ![Platform](https://img.shields.io/badge/Platform-WLAN%20offline--first-orange?style=flat-square)
-  [![PayPal Spende](https://img.shields.io/badge/PayPal-Spende-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.com/paypalme/BerndHolzhauer)
+  [![PayPal Spende](https://img.shields.io/badge/PayPal-Spende-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.com/paypalme/AnkeHolzhauer)
 
   *Entwickelt für den ADAC Kart-Slalom des **MSC Braach e.V. im ADAC** (Hessen-Thüringen)*
 </div>
