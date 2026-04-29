@@ -220,6 +220,33 @@ die Jugendarbeit unterstützen möchtest, freut sich der Entwickler über eine k
 
 ---
 
+## Projektumfang (gemessene Fakten)
+Kategorie	Dateien	Zeilen
+Python (Backend + Tests + Tools)	44	~5.900
+Vue / JavaScript (Frontend)	31	~7.800
+SQL, Spec, Iss	3	~500
+Code gesamt	78	~14.200
+Dokumentation (MD + Changelog)	13	~2.000
+Entwicklungszeit (Schätzung)
+Bereich	Stunden
+Backend: 15+ Router, Auth, WebSockets, Migrationen	~70 h
+Frontend: 15 Views, PWA, Print-Layouts, Echtzeit-UI	~90 h
+Tests: 105 pytest + Vitest, CI/CD	~12 h
+Infra: Docker, Windows-Installer, Lichtschranken-Clients	~12 h
+Dokumentation: Handbuch, DEV-HB, FEATURES, DB-Design	~20 h
+Gesamt	~205 Stunden
+
+Was hätte das gekostet?
+Freiberufler (Deutschland, Full-Stack, dieses Niveau): ~90–120 €/h
+
+Szenario	Stunden	Kosten
+Junior (60 €/h)	205 h	~12.300 €
+Mid-Level (90 €/h)	205 h	~18.450 €
+Senior (120 €/h)	205 h	~24.600 €
+Realistisch für diese Komplexität	205 h	~18.000–20.000 €
+
+---
+
 ## Mitmachen
 
 Du bist im Motorsport zu Hause oder einfach ein starker Entwickler?
