@@ -3,6 +3,34 @@ RaceControl Pro  Changelog
 ===========================
 
 
+[0.6.1] - 2026-04-29
+---------------------
+Windows-Installer + Spendenhinweis
+
+  Windows-Paket (neu)
+  + Neues Verzeichnis Windows/ mit vollstaendigem Build-Setup
+  + launcher.py: startet uvicorn im Hintergrund-Thread, oeffnet Browser
+    automatisch sobald Port 1980 antwortet, optionales System-Tray-Icon
+    (pystray + Pillow) mit Kontextmenue "Oeffnen / Beenden"
+  + racecontrol.spec: PyInstaller onedir-Build mit allen Hidden-Imports
+    (uvicorn, fastapi, passlib, jose, aiosqlite, pystray); schema.sql und
+    frontend/dist werden ins Bundle aufgenommen
+  + installer.iss: Inno Setup 6 Skript -- kein Admin erforderlich,
+    Installation in %LocalAppData%\Programs\RaceControl Pro, Desktop-
+    Verknuepfung optional, Autostart-Task optional, Deinstallations-
+    Eintrag, Port-1980-Pruefroutine
+  + build.ps1: vollautomatischer Build-Ablauf (npm run build ->
+    pyinstaller -> iscc), einzelne Schritte ueberspringbar mit Switches
+    -SkipFrontend / -SkipPyInstaller / -SkipInnoSetup
+  + README_BUILD.md: Voraussetzungen, Schnellstart, Fehlerbehebung
+
+  Spendenhinweis
+  + README.md: neuer Abschnitt "## Spenden" vor "## Mitmachen" mit
+    PayPal-Badge und E-Mail bernd.holzhauer@googlemail.com
+  + Admin -> System-Tab: amber-farbige Spendenhinweis-Karte (colspan-2)
+    mit PayPal-Button und Link zu paypal.me/BerndHolzhauer
+
+
 [0.6.0] - 2026-04-29
 ---------------------
 Trainingsmodus + Auswertungsseite + Bugfixes
