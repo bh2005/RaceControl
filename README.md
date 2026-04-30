@@ -1,4 +1,4 @@
-ÿþï»¿<div align="center">
+ï»¿<div align="center">
   <img src="assets/tUNvJ.jpg" alt="RaceControl Pro Logo" width="260">
 
   # RaceControl Pro
