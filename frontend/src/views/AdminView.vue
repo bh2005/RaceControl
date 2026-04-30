@@ -651,13 +651,13 @@
           <div class="space-y-2 text-sm">
             <div class="font-bold text-amber-900">RaceControl Pro – kostenlos & Open Source</div>
             <p class="text-amber-800 text-xs leading-relaxed">
-              Diese Software wird in der Freizeit vom Entwickler gepflegt und ständig weiterentwickelt –
+              Diese Software wird in der Freizeit vom Entwickler BH2005 gepflegt und ständig weiterentwickelt –
               speziell für den Kart-Slalom der Jugend-Gruppe des <strong>MSC Braach e.V. im ADAC</strong>.
               Sie ist kostenlos nutzbar. Wenn dir die Software hilft und du die Weiterentwicklung sowie
               die Jugendarbeit unterstützen möchtest, freut sich der Entwickler sehr über eine kleine Spende.
             </p>
             <a
-              href="https://www.paypal.com/paypalme/BerndHolzhauer"
+              href="https://www.paypal.com/paypalme/AnkeHolzhauer"
               target="_blank"
               rel="noopener"
               class="inline-flex items-center gap-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold px-4 py-2 text-xs transition-colors"
