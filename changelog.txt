@@ -3,6 +3,33 @@ RaceControl Pro  Changelog
 ===========================
 
 
+[0.6.3] - 2026-04-30
+---------------------
+Lichtschranken-API-Key (Timing-Absicherung)
+
+  Backend
+  + Timing-API-Key wird beim ersten Start automatisch generiert und in der
+    Settings-Tabelle gespeichert (secrets.token_hex(24) = 48-Zeichen Hex)
+  + /ws/timing prueft den Key aus dem Query-Parameter ?key=...; ungueltige
+    Verbindungen werden mit Code 4401 abgewiesen und im System-Log protokolliert
+  + Env-Variable TIMING_API_KEY hat Vorrang (fuer SaaS/Docker-Betrieb)
+  + Plausibilitaetspruefung: raw_time muss zwischen 5 s und 999 s liegen;
+    implausible Werte werden mit timing_rejected-Event zurueckgemeldet
+  + Neuer Endpoint POST /api/settings/timing-key/regenerate (admin only):
+    generiert neuen Key und ersetzt den alten
+
+  Admin-UI (System-Tab)
+  + Neue Karte "Lichtschranken-API-Key": zeigt den aktuellen Key im Mono-
+    Font mit Kopieren-Button (Clipboard-API)
+  + Button "Neuen Key generieren" mit Bestaetigungsdialog und Warnhinweis
+
+  Lichtschranken-Clients
+  ~ racecontrol_client.py (RPi TM1637): TIMING_API_KEY-Variable ergaenzt;
+    BACKEND_WS baut URL automatisch mit ?key=... wenn Key gesetzt
+  ~ racecontrol_client_max7219.py (RPi MAX7219): gleiche Aenderung
+  ~ tools/lsu200_client.py (ELV LSU200): gleiche Aenderung
+
+
 [0.6.2] - 2026-04-30
 ---------------------
 CSV/Excel-Export der Ergebnisse

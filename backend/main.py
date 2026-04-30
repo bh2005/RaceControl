@@ -1,10 +1,12 @@
 import os
 import pathlib
+import secrets
+import sqlite3
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from database import init_db
+from database import init_db, DB_PATH
 from broadcast import manager
 from system_logger import log_event
 from routers import auth, users, reglements, events, participants, results, teams, clubs, public, sponsors, settings, notifications, assets as assets_router, marshal as marshal_router, admin_logs as admin_logs_router
@@ -73,9 +75,29 @@ async def websocket_endpoint(ws: WebSocket):
 _timing_devices: set[WebSocket] = set()
 
 
+_TIMING_MIN_TIME =  5.0   # Sekunden – kürzere Läufe werden verworfen
+_TIMING_MAX_TIME = 999.0  # Sekunden – längere Läufe werden verworfen
+
+
+def _get_timing_api_key() -> str:
+    """Liest den aktuellen Timing-API-Key. Env-Variable hat Vorrang (SaaS-Betrieb)."""
+    env_key = os.environ.get("TIMING_API_KEY", "")
+    if env_key:
+        return env_key
+    try:
+        conn = sqlite3.connect(str(DB_PATH))
+        row = conn.execute("SELECT value FROM Settings WHERE key='timing_api_key'").fetchone()
+        conn.close()
+        return row[0] if row else ""
+    except Exception:
+        return ""
+
+
 @app.websocket("/ws/timing")
 async def timing_device_endpoint(ws: WebSocket):
     """WebSocket endpoint for Raspberry Pi / Lichtschranke devices.
+
+    Verbindungsaufbau: wss://<host>/ws/timing?key=<TIMING_API_KEY>
 
     Accepted messages (JSON):
       {"type": "timing_result",       "raw_time": 45.32, "device": "..."}
@@ -84,6 +106,15 @@ async def timing_device_endpoint(ws: WebSocket):
     All messages are forwarded to browser clients on /ws.
     Connect/disconnect events broadcast a timing_device_status message.
     """
+    # ── Schicht 1: API-Key prüfen ─────────────────────────────────────────────
+    expected_key = _get_timing_api_key()
+    provided_key = ws.query_params.get("key", "")
+    if expected_key and not secrets.compare_digest(provided_key, expected_key):
+        await ws.accept()
+        await ws.close(code=4401, reason="Ungültiger API-Key")
+        log_event("timing_auth_failed", detail=f"Verbindungsversuch mit ungültigem Key von {ws.client.host}")
+        return
+
     await ws.accept()
     _timing_devices.add(ws)
     await manager.broadcast({
@@ -95,8 +126,18 @@ async def timing_device_endpoint(ws: WebSocket):
         while True:
             data = await ws.receive_json()
             msg_type = data.get("type")
-            if msg_type in ("timing_result", "timing_device_heartbeat"):
+
+            if msg_type == "timing_result":
+                # ── Schicht 2: Plausibilitätsprüfung ─────────────────────────
+                raw = data.get("raw_time")
+                if not isinstance(raw, (int, float)) or not (_TIMING_MIN_TIME <= raw <= _TIMING_MAX_TIME):
+                    await ws.send_json({"type": "timing_rejected", "reason": "implausible_time", "raw_time": raw})
+                    continue
                 await manager.broadcast(data)
+
+            elif msg_type == "timing_device_heartbeat":
+                await manager.broadcast(data)
+
     except (WebSocketDisconnect, Exception):
         pass
     finally:

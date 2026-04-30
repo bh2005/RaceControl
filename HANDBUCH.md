@@ -1,7 +1,7 @@
 # RaceControl Pro – Handbuch
 
 **MSC Braach e.V. im ADAC**  
-Stand: April 2026 · Version 0.6.1
+Stand: April 2026 · Version 0.6.3
 
 ---
 
@@ -484,6 +484,29 @@ Hier werden die Texte konfiguriert, die auf der Nennliste gedruckt werden:
 
 **Einstellungen speichern** klicken nach Änderungen.
 
+### Lichtschranken-API-Key
+
+Admin → **⚙️ System** → Karte **„⏱ Lichtschranken-API-Key"**
+
+Der API-Key sichert den `/ws/timing`-WebSocket-Endpunkt ab, damit nur autorisierte Messgeräte Zeiten einspielen können.
+
+**Einmalige Einrichtung:**
+
+1. Auf **📋 Kopieren** klicken — der Schlüssel ist jetzt in der Zwischenablage
+2. Auf dem Raspberry Pi die Datei `racecontrol_client.py` öffnen und ganz oben eintragen:
+   ```python
+   TIMING_API_KEY = "<eingefügter Schlüssel>"
+   ```
+3. Beim ELV LSU200 entsprechend in `tools/lsu200_client.py` eintragen
+4. Client neu starten
+
+**Schlüssel neu generieren (falls Sicherheit kompromittiert):**
+
+1. **🔄 Neu generieren** klicken → Warnmeldung bestätigen
+2. Neuen Schlüssel wie oben in alle Client-Scripts eintragen und Clients neu starten
+
+> Der Schlüssel wird beim ersten Start des Backends automatisch erstellt — er muss nur dann eingetragen werden, wenn Lichtschranken-Clients verwendet werden.
+
 ---
 
 ## 13. Lichtschranken-Clients
@@ -502,10 +525,13 @@ python3 racecontrol_client_max7219.py  # MAX7219-LED-Matrix
 
 **Konfiguration** (am Anfang der Datei):
 ```python
-BACKEND_HOST = "192.168.0.100"   # IP des Laptops mit RaceControl
-BACKEND_PORT = 1980
-MIN_TIME     = 5.0               # Läufe unter 5 s werden verworfen
+BACKEND_HOST   = "192.168.0.100"   # IP des Laptops mit RaceControl
+BACKEND_PORT   = 1980
+TIMING_API_KEY = ""                # Admin → System → Lichtschranken-API-Key eintragen
+MIN_TIME       = 5.0               # Läufe unter 5 s werden verworfen
 ```
+
+> Den API-Key im Admin-Bereich (System-Tab → Karte „⏱ Lichtschranken-API-Key") kopieren und hier eintragen.
 
 Detaillierte Verkabelung und Autostart-Anleitung: siehe `RaPi_lichtschranke/notes.md`
 
@@ -532,10 +558,12 @@ python lsu200_client.py
 
 **Konfiguration** (am Anfang der Datei):
 ```python
-SERIAL_PORT = None             # None = automatische Erkennung, oder z.B. "COM3"
-BACKEND_WS  = "ws://localhost:1980/ws/timing"
-MIN_TIME    = 3.0              # Messungen unter 3 s werden verworfen
+SERIAL_PORT    = None    # None = automatische Erkennung, oder z.B. "COM3"
+TIMING_API_KEY = ""      # Admin → System → Lichtschranken-API-Key eintragen
+MIN_TIME       = 3.0     # Messungen unter 3 s werden verworfen
 ```
+
+> Den API-Key im Admin-Bereich (System-Tab → Karte „⏱ Lichtschranken-API-Key") kopieren und hier eintragen.
 
 > Bei erkannter Verbindung erscheint der grüne Lichtschranken-Indikator in der Zeitnahme.
 

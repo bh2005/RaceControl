@@ -645,6 +645,39 @@
           </div>
         </div>
 
+        <!-- Lichtschranken-API-Key -->
+        <div class="col-span-2 card p-4 space-y-3">
+          <h3 class="font-bold text-gray-800">⏱ Lichtschranken-API-Key</h3>
+          <p class="text-xs text-gray-500">
+            Dieser Key muss in der Konfiguration jedes Lichtschranken-Clients eingetragen werden
+            (Raspberry Pi: <code class="bg-gray-100 px-1 rounded">TIMING_API_KEY</code> in
+            <code class="bg-gray-100 px-1 rounded">racecontrol_client.py</code>;
+            LSU200: <code class="bg-gray-100 px-1 rounded">lsu200_client.py</code>).
+            Verbindungen ohne gültigen Key werden abgewiesen.
+          </p>
+          <div class="flex items-center gap-2">
+            <code class="flex-1 font-mono text-xs bg-gray-100 rounded-lg px-3 py-2 select-all break-all text-gray-800 border border-gray-200">
+              {{ sysForm.timing_api_key || '– wird beim Start generiert –' }}
+            </code>
+            <button @click="copyTimingKey" title="In Zwischenablage kopieren"
+              class="shrink-0 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold px-3 py-2 rounded-lg transition">
+              📋
+            </button>
+          </div>
+          <div class="flex items-center gap-3">
+            <button @click="regenerateTimingKey"
+              class="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5">
+              🔄 Neuen Key generieren
+            </button>
+            <span v-if="keyMsg" class="text-xs" :class="keyMsg.ok ? 'text-green-600' : 'text-red-600'">
+              {{ keyMsg.text }}
+            </span>
+          </div>
+          <div class="rounded-xl bg-yellow-50 border border-yellow-200 px-3 py-2 text-xs text-yellow-800">
+            ⚠️ Nach dem Generieren eines neuen Keys müssen alle Lichtschranken-Clients neu konfiguriert werden.
+          </div>
+        </div>
+
         <!-- Spendenhinweis -->
         <div class="col-span-2 rounded-2xl border border-amber-300 bg-amber-50 p-5 flex gap-4 items-start">
           <div class="text-3xl leading-none select-none">💛</div>
@@ -1304,8 +1337,9 @@ async function saveUser() {
 }
 
 // ── System / Settings ──
-const sysForm    = ref({ organizer_name: '', organizer_address: '', insurance_notice: '', parent_consent_text: '' })
+const sysForm    = ref({ organizer_name: '', organizer_address: '', insurance_notice: '', parent_consent_text: '', timing_api_key: '' })
 const sysMessage = ref(null)
+const keyMsg     = ref(null)
 
 async function loadSettings() {
   const { data } = await api.get('/settings/')
@@ -1320,6 +1354,25 @@ async function saveSettings() {
     setTimeout(() => { sysMessage.value = null }, 3000)
   } catch (e) {
     sysMessage.value = { type: 'err', text: e.response?.data?.detail || 'Fehler beim Speichern' }
+  }
+}
+
+async function copyTimingKey() {
+  if (!sysForm.value.timing_api_key) return
+  await navigator.clipboard.writeText(sysForm.value.timing_api_key)
+  keyMsg.value = { ok: true, text: 'Kopiert!' }
+  setTimeout(() => { keyMsg.value = null }, 2000)
+}
+
+async function regenerateTimingKey() {
+  if (!confirm('Neuen API-Key generieren?\n\nAlle Lichtschranken-Clients müssen danach neu konfiguriert werden.')) return
+  try {
+    const { data } = await api.post('/settings/timing-key/regenerate')
+    sysForm.value.timing_api_key = data.timing_api_key
+    keyMsg.value = { ok: true, text: 'Neuer Key generiert — bitte Clients aktualisieren.' }
+    setTimeout(() => { keyMsg.value = null }, 5000)
+  } catch (e) {
+    keyMsg.value = { ok: false, text: 'Fehler beim Generieren.' }
   }
 }
 

@@ -1,6 +1,6 @@
 # RaceControl Pro – Funktionsübersicht
 
-Stand: April 2026 · Version 0.6.2
+Stand: April 2026 · Version 0.6.3
 
 ---
 
@@ -229,6 +229,9 @@ Stand: April 2026 · Version 0.6.2
 ### System
 - Druckvorlage konfigurieren: Veranstalter, Adresse, Versicherungshinweis, Einverständniserklärung
 - Hinweise zu Druckereinstellungen und Elternunterschrift
+- **Lichtschranken-API-Key**: Sicherheitsschlüssel für `/ws/timing` — in der Karte anzeigen, per 📋 kopieren
+  und in das Client-Script als `TIMING_API_KEY` eintragen; Schlüssel kann per 🔄 neu generiert werden
+  (mit Warnhinweis, da bestehende Clients dann manuell aktualisiert werden müssen)
 - **Spendenhinweis**: PayPal-Links für Bernd und Anke Holzhauer zur Unterstützung der Weiterentwicklung
   und der Jugend-Gruppe des MSC Braach e.V. im ADAC
 
@@ -253,7 +256,7 @@ Stand: April 2026 · Version 0.6.2
 - Offline-Betrieb: Messung lokal, Zeit auf Display, Senden wenn Backend verfügbar
 - Auto-Reconnect nach Verbindungsabbruch (3 s)
 - systemd-Autostart-Unit für Produktionsbetrieb
-- Konfiguration: `BACKEND_HOST`, `BACKEND_PORT`, `MIN_TIME`
+- Konfiguration: `BACKEND_HOST`, `BACKEND_PORT`, `MIN_TIME`, `TIMING_API_KEY`
 
 ### ELV LSU200 (`tools/lsu200_client.py`)
 
@@ -261,9 +264,19 @@ Stand: April 2026 · Version 0.6.2
 - **Läuft auf dem gleichen Laptop wie das Backend** — kein Raspberry Pi nötig
 - Automatische COM-Port-Erkennung anhand USB-VID/PID
 - Baudrate 19200 Baud (fest nach LSU200-Protokoll)
-- Konfiguration: `SERIAL_PORT` (None = auto-detect), `BACKEND_WS`, `MIN_TIME`
+- Konfiguration: `SERIAL_PORT` (None = auto-detect), `BACKEND_WS`, `MIN_TIME`, `TIMING_API_KEY`
 - Abhängigkeiten: `pyserial`, `websocket-client`
 - COM-Port ermitteln: Gerätemanager → Anschlüsse (COM & LPT)
+
+### Sicherheit (`/ws/timing`)
+
+- **3-Schichten-Absicherung** gegen Zeithacks:
+  1. **API-Key**: Schlüssel (`secrets.token_hex(24)`) wird beim ersten Backend-Start automatisch generiert und in der `Settings`-Tabelle gespeichert; bei fehlendem oder falschem Key → WebSocket-Close-Code 4401
+  2. **Plausibilitätsprüfung**: Zeiten außerhalb 5.0–999.0 Sekunden werden abgewiesen (`timing_rejected`)
+  3. **Audit-Log**: Jede abgelehnte Verbindung wird als `timing_auth_failed` im System-Log protokolliert
+- Schlüssel im Admin-Bereich (System-Tab) kopieren und als `TIMING_API_KEY` in die Client-Scripts eintragen
+- Schlüssel per Knopfdruck neu generierbar (alle Clients müssen dann aktualisiert werden)
+- Env-Var-Override: `TIMING_API_KEY` Umgebungsvariable hat Vorrang vor der DB (für Docker/SaaS)
 
 ---
 

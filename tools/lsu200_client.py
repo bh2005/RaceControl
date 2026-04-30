@@ -36,7 +36,9 @@ SERIAL_PORT = None          # z.B. "COM3" – None = auto-detect
 
 SERIAL_BAUD = 19200         # fest vorgegeben laut LSU200-Protokoll
 
-BACKEND_WS  = "ws://localhost:1980/ws/timing"
+TIMING_API_KEY = ""   # Admin → System → Lichtschranken-Schlüssel eintragen
+BACKEND_WS     = "ws://localhost:1980/ws/timing" + \
+                 (f"?key={TIMING_API_KEY}" if TIMING_API_KEY else "")
 
 MIN_TIME    = 3.0           # Messungen kürzer als MIN_TIME Sekunden ignorieren
 POLL_MS     = 100           # Abfrageintervall in Millisekunden

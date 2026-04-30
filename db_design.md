@@ -3,7 +3,7 @@
 **Stack:** SQLite (WAL-Modus, Offline-First) · Python 3.9+ / FastAPI  
 **Zielgröße:** ~300 Starter, ~10 Klassen, 50+ simultane WS-Clients  
 **Schema-Datei:** `schema.sql` (Single Source of Truth)  
-*Letzte Aktualisierung: 2026-04-30 · v0.6.1*
+*Letzte Aktualisierung: 2026-04-30 · v0.6.3*
 
 ---
 
@@ -363,12 +363,15 @@ Key-Value-Tabelle für Systemkonfiguration (Druckvorlagen-Texte etc.).
 
 **Vordefinierte Keys:**
 
-| Key | Standardwert |
-|---|---|
-| `organizer_name` | `"MSC Braach e.V. im ADAC"` |
-| `organizer_address` | `""` |
-| `insurance_notice` | Versicherungstext ADAC |
-| `parent_consent_text` | Einverständnistext für Minderjährige |
+| Key | Standardwert | Beschreibung |
+|---|---|---|
+| `organizer_name` | `"MSC Braach e.V. im ADAC"` | Druckvorlage: Veranstalter |
+| `organizer_address` | `""` | Druckvorlage: Adresse |
+| `insurance_notice` | Versicherungstext ADAC | Druckvorlage: Versicherungshinweis |
+| `parent_consent_text` | Einverständnistext für Minderjährige | Druckvorlage: Elternunterschrift |
+| `timing_api_key` | `secrets.token_hex(24)` (auto-generiert) | API-Key für `/ws/timing` WebSocket — schützt vor unautorisierten Zeitmessungen |
+
+> `timing_api_key` wird beim ersten `init_db()`-Aufruf automatisch angelegt (48 Zeichen Hex, 192 bit Entropie). Kann per `POST /api/settings/timing-key/regenerate` neu generiert werden. Override via `TIMING_API_KEY`-Umgebungsvariable (für Docker/SaaS).
 
 ---
 

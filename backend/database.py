@@ -1,4 +1,5 @@
 import os
+import secrets
 import sqlite3
 import pathlib
 
@@ -32,6 +33,8 @@ def init_db() -> None:
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
     # Set admin password if still placeholder (fresh DB or Docker first start)
     _init_admin_password(conn)
+    # Ensure a timing API key exists (generated once, stored in Settings)
+    _init_timing_api_key(conn)
     conn.close()
 
 
@@ -45,6 +48,15 @@ def _init_admin_password(conn: sqlite3.Connection) -> None:
             "UPDATE Users SET password_hash = ? WHERE username = 'admin'",
             (hash_password("admin"),),
         )
+        conn.commit()
+
+
+def _init_timing_api_key(conn: sqlite3.Connection) -> None:
+    """Generates a unique timing API key on first start and stores it in Settings."""
+    row = conn.execute("SELECT value FROM Settings WHERE key = 'timing_api_key'").fetchone()
+    if not row:
+        key = secrets.token_hex(24)   # 48-Zeichen Hex-String
+        conn.execute("INSERT INTO Settings (key, value) VALUES ('timing_api_key', ?)", (key,))
         conn.commit()
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from typing import Annotated, Optional
 from pydantic import BaseModel
+import secrets
 import sqlite3
 
 from database import get_db
@@ -37,3 +38,16 @@ def update_settings(
     db.commit()
     rows = db.execute("SELECT key, value FROM Settings").fetchall()
     return {r["key"]: r["value"] for r in rows}
+
+
+@router.post("/timing-key/regenerate")
+def regenerate_timing_key(
+    db: Annotated[sqlite3.Connection, Depends(get_db)],
+    _: AdminOnly,
+):
+    """Generates a new timing API key and replaces the old one. All connected
+    timing devices must be reconfigured with the new key afterwards."""
+    new_key = secrets.token_hex(24)
+    db.execute("INSERT OR REPLACE INTO Settings (key, value) VALUES ('timing_api_key', ?)", (new_key,))
+    db.commit()
+    return {"timing_api_key": new_key}

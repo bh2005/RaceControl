@@ -1,7 +1,7 @@
 # RaceControl Pro – Entwickler-Handbuch
 
 **Für Entwickler, die das System erweitern oder warten**  
-Stand: April 2026 · Version 0.6.1
+Stand: April 2026 · Version 0.6.3
 
 ---
 
@@ -409,6 +409,60 @@ await manager.broadcast({"type": "results", "event_id": 1, "class_id": 3})
 | `timing_device_status` | Connect/Disconnect eines Messgeräts | Zeitnahme, TrainingView |
 | `marshal_penalty` | Streckenposten (`POST /api/marshal/report`) | Zeitnahme (→ Übernahme-Panel), Sprecher |
 | `training_run` | Neuer Trainingslauf gespeichert | TrainingView (→ Läufe + Wertung neu laden) |
+
+### Timing-Sicherheit (API-Key)
+
+Der `/ws/timing`-Endpunkt ist durch einen automatisch generierten API-Key abgesichert:
+
+**Schlüssel-Erzeugung (beim ersten Backend-Start):**
+```python
+# database.py → init_db() → _init_timing_api_key()
+key = secrets.token_hex(24)   # 48 Zeichen Hex = 192 bit Entropie
+conn.execute("INSERT INTO Settings (key, value) VALUES ('timing_api_key', ?)", (key,))
+```
+
+**Authentifizierung im WebSocket-Endpoint:**
+```python
+# main.py → /ws/timing
+expected_key = _get_timing_api_key()   # DB oder TIMING_API_KEY env-var
+provided_key = ws.query_params.get("key", "")
+if expected_key and not secrets.compare_digest(provided_key, expected_key):
+    await ws.accept()
+    await ws.close(code=4401, reason="Ungültiger API-Key")
+    log_event("timing_auth_failed", ...)
+    return
+```
+
+> `secrets.compare_digest()` verhindert Timing-Angriffe (constant-time comparison).  
+> WebSocket-Close-Code 4401 liegt im privaten Bereich (4000–4999) und ist nicht reserviert.
+
+**3 Sicherheitsschichten:**
+
+| Schicht | Was wird geprüft | Reaktion bei Fehler |
+|---|---|---|
+| 1. Key-Auth | `?key=<hex>` in der WS-URL | Close 4401, Audit-Log |
+| 2. Plausibilität | `_TIMING_MIN_TIME` ≤ raw ≤ `_TIMING_MAX_TIME` (5–999 s) | `timing_rejected`-Nachricht |
+| 3. Typ-Check | `raw_time` muss `int` oder `float` sein | `timing_rejected`-Nachricht |
+
+**Schlüssel neu generieren (Admin-API):**
+```http
+POST /api/settings/timing-key/regenerate
+Authorization: Bearer <admin-jwt>
+→ { "timing_api_key": "<neuer-hex-schlüssel>" }
+```
+
+**Env-Var-Override für Docker/SaaS:**
+```
+TIMING_API_KEY=<schlüssel>   # hat Vorrang vor DB-Eintrag
+```
+
+**Clients konfigurieren** (`RaPi_lichtschranke/racecontrol_client.py`, `tools/lsu200_client.py`):
+```python
+TIMING_API_KEY = "<aus-Admin-System-kopieren>"
+BACKEND_WS = f"ws://host:1980/ws/timing?key={TIMING_API_KEY}"
+```
+
+---
 
 ### Push-Benachrichtigung aus einem Router senden
 

@@ -24,9 +24,11 @@ import websocket
 # ── Konfiguration ─────────────────────────────────────────────────────────────
 
 # IP-Adresse des Laptops, auf dem RaceControl läuft
-BACKEND_HOST = "192.168.0.100"
-BACKEND_PORT = 1980
-BACKEND_WS   = f"ws://{BACKEND_HOST}:{BACKEND_PORT}/ws/timing"
+BACKEND_HOST    = "192.168.0.100"
+BACKEND_PORT    = 1980
+TIMING_API_KEY  = ""   # Admin → System → Lichtschranken-Schlüssel eintragen
+BACKEND_WS      = f"ws://{BACKEND_HOST}:{BACKEND_PORT}/ws/timing" + \
+                  (f"?key={TIMING_API_KEY}" if TIMING_API_KEY else "")
 
 # GPIO-Pins (BCM-Nummerierung)
 LS_START_PIN = 17   # Lichtschranke 1 – Start
