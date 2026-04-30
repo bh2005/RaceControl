@@ -1,7 +1,7 @@
 # RaceControl Pro – Handbuch
 
 **MSC Braach e.V. im ADAC**  
-Stand: April 2026 · Version 0.6.0
+Stand: April 2026 · Version 0.6.1
 
 ---
 

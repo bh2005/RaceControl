@@ -1,6 +1,9 @@
 from __future__ import annotations
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from typing import Annotated, Optional
+import csv
+import io
 import sqlite3
 
 from broadcast import manager
@@ -306,3 +309,170 @@ def statistics(
         "fastest_dame": dict(fastest_dame) if fastest_dame else None,
         "fastest_herr": dict(fastest_herr) if fastest_herr else None,
     }
+
+
+def _fmt(seconds: float | None, zero_as_dash: bool = False) -> str:
+    """Formatiert Sekunden als MM:SS.sss oder SS.sss für CSV-Export."""
+    if seconds is None:
+        return ""
+    if zero_as_dash and seconds == 0.0:
+        return "0.000"
+    if seconds >= 60:
+        m = int(seconds // 60)
+        s = seconds % 60
+        return f"{m}:{s:06.3f}"
+    return f"{seconds:.3f}"
+
+
+@router.get("/results/export")
+def export_results_csv(
+    event_id: int,
+    class_id: Optional[int] = None,
+    db: Annotated[sqlite3.Connection, Depends(get_db)] = ...,
+):
+    """CSV-Export der Ergebnisse. Kein Login erforderlich (Ergebnisse sind öffentlich).
+    Optional ?class_id=N für eine einzelne Klasse."""
+
+    event = db.execute(
+        "SELECT name, date, location FROM Events WHERE id = ?", (event_id,)
+    ).fetchone()
+    if not event:
+        raise HTTPException(404, "Veranstaltung nicht gefunden")
+
+    class_q = "SELECT id, name FROM Classes WHERE event_id = ? ORDER BY sort_order, id"
+    class_p: list = [event_id]
+    if class_id is not None:
+        class_q += " AND id = ?"
+        class_p.append(class_id)
+    classes = db.execute(class_q, class_p).fetchall()
+
+    output = io.StringIO()
+    w = csv.writer(output, delimiter=";", quoting=csv.QUOTE_MINIMAL, lineterminator="\r\n")
+
+    for cls in classes:
+        cid = cls["id"]
+
+        # Alle Teilnehmer der Klasse
+        participants = db.execute("""
+            SELECT p.id, p.start_number, p.first_name, p.last_name, p.birth_year, p.gender,
+                   COALESCE(cl.short_name, cl.name, 'n.N.') AS club
+            FROM   Participants p
+            LEFT JOIN Clubs cl ON cl.id = p.club_id
+            WHERE  p.event_id = ? AND p.class_id = ?
+            ORDER  BY p.start_number
+        """, (event_id, cid)).fetchall()
+
+        if not participants:
+            continue
+
+        # Alle Laufergebnisse der Klasse
+        run_rows = db.execute("""
+            SELECT v.participant_id, v.run_number, v.raw_time,
+                   v.total_penalties, v.total_time, v.status
+            FROM   v_run_results v
+            WHERE  v.event_id = ? AND v.class_id = ?
+            ORDER  BY v.participant_id, v.run_number
+        """, (event_id, cid)).fetchall()
+
+        # Pivot: {participant_id: {run_number: row}}
+        pivot: dict[int, dict[int, dict]] = {}
+        for r in run_rows:
+            pid = r["participant_id"]
+            pivot.setdefault(pid, {})[r["run_number"]] = dict(r)
+
+        run_numbers = sorted({r["run_number"] for r in run_rows})
+
+        # Gesamtzeiten und Rang in Python berechnen
+        def _total(pid: int) -> float | None:
+            runs = pivot.get(pid, {})
+            times = [
+                runs[rn]["total_time"]
+                for rn in runs
+                if rn > 0
+                and runs[rn].get("status") == "valid"
+                and runs[rn].get("total_time") is not None
+            ]
+            return sum(times) if times else None
+
+        totals = {p["id"]: _total(p["id"]) for p in participants}
+
+        def _rank_key(pid: int):
+            t = totals[pid]
+            return (t is None, t or 0.0)
+
+        sorted_pids = sorted([p["id"] for p in participants], key=_rank_key)
+        ranks: dict[int, int | str] = {}
+        counter = 1
+        for i, pid in enumerate(sorted_pids):
+            if totals[pid] is None:
+                ranks[pid] = "–"
+            else:
+                # gleiche Zeit → gleicher Rang
+                if i > 0 and totals[pid] == totals[sorted_pids[i - 1]]:
+                    ranks[pid] = ranks[sorted_pids[i - 1]]
+                else:
+                    ranks[pid] = counter
+            counter = i + 2
+
+        p_by_id = {p["id"]: dict(p) for p in participants}
+        best_time = next((totals[pid] for pid in sorted_pids if totals[pid] is not None), None)
+
+        # Klassen-Header
+        loc = event["location"] or ""
+        w.writerow([f"Veranstaltung: {event['name']} · {event['date']}" + (f" · {loc}" if loc else "")])
+        w.writerow([f"Klasse: {cls['name']}"])
+        w.writerow([])
+
+        # Spaltenköpfe
+        header = ["Rang", "Startnr.", "Nachname", "Vorname", "Verein", "Jg."]
+        for rn in run_numbers:
+            lbl = "Training" if rn == 0 else f"Lauf {rn}"
+            header += [f"{lbl} Rohzeit", f"{lbl} Strafen", f"{lbl} Gesamt", f"{lbl} Status"]
+        header += ["Summe", "Differenz"]
+        w.writerow(header)
+
+        # Datenzeilen (nach Rang sortiert)
+        for pid in sorted_pids:
+            p = p_by_id[pid]
+            row: list = [
+                ranks[pid],
+                p["start_number"] or "",
+                p["last_name"],
+                p["first_name"],
+                p["club"],
+                p["birth_year"] or "",
+            ]
+            for rn in run_numbers:
+                run = pivot.get(pid, {}).get(rn)
+                if run:
+                    status = run.get("status") or ""
+                    row += [
+                        _fmt(run.get("raw_time")),
+                        _fmt(run.get("total_penalties"), zero_as_dash=True),
+                        _fmt(run.get("total_time")),
+                        "" if status == "valid" else status.upper(),
+                    ]
+                else:
+                    row += ["", "", "", ""]
+
+            total = totals[pid]
+            row.append(_fmt(total))
+            if total is not None and best_time is not None:
+                diff = total - best_time
+                row.append("+0.000" if diff == 0 else f"+{diff:.3f}")
+            else:
+                row.append("")
+
+            w.writerow(row)
+
+        w.writerow([])  # Leerzeile zwischen Klassen
+
+    event_name = event["name"].replace(" ", "_")
+    filename = f"Ergebnisse_{event_name}_{event['date']}.csv"
+    content = "﻿" + output.getvalue()  # UTF-8 BOM → Excel öffnet korrekt
+
+    return StreamingResponse(
+        iter([content.encode("utf-8")]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

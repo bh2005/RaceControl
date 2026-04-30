@@ -4,11 +4,21 @@
     <!-- Header / Event-Auswahl -->
     <div class="flex items-center justify-between flex-wrap gap-3">
       <h1 class="text-2xl font-black text-gray-900">Auswertung</h1>
-      <select v-model.number="selectedEventId" @change="load" class="input max-w-xs">
-        <option v-for="ev in events" :key="ev.id" :value="ev.id">
-          {{ ev.name }} ({{ ev.date }})
-        </option>
-      </select>
+      <div class="flex items-center gap-2 flex-wrap">
+        <select v-model.number="selectedEventId" @change="load" class="input max-w-xs">
+          <option v-for="ev in events" :key="ev.id" :value="ev.id">
+            {{ ev.name }} ({{ ev.date }})
+          </option>
+        </select>
+        <button
+          v-if="selectedEventId"
+          @click="exportCsv"
+          class="btn-secondary px-3 py-2 text-sm flex items-center gap-1.5 whitespace-nowrap"
+          title="Alle Klassen als CSV exportieren (öffnet in Excel)"
+        >
+          📥 CSV / Excel
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="text-center py-12 text-gray-400">Lade Daten…</div>
@@ -139,6 +149,20 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+async function exportCsv() {
+  if (!selectedEventId.value) return
+  const { data } = await api.get(`/events/${selectedEventId.value}/results/export`, {
+    responseType: 'blob',
+  })
+  const ev  = events.value.find(e => e.id === selectedEventId.value)
+  const url = URL.createObjectURL(new Blob([data], { type: 'text/csv;charset=utf-8' }))
+  const a   = document.createElement('a')
+  a.download = `Ergebnisse_${ev ? ev.name : selectedEventId.value}.csv`
+  a.href = url
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 onMounted(async () => {

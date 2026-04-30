@@ -297,6 +297,16 @@
             🖨 ADAC-Vordruck Overlay
           </button>
         </div>
+        <div class="border-t border-gray-700 pt-2 space-y-1.5">
+          <div class="text-xs text-gray-500 font-semibold uppercase tracking-widest">Export</div>
+          <button @click="exportCsv(filterClass || null)"
+            class="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg transition flex items-center justify-center gap-1.5">
+            📥 CSV / Excel
+          </button>
+          <div class="text-xs text-gray-500 text-center leading-tight">
+            {{ filterClass ? 'Gewählte Klasse' : 'Alle Klassen' }} · öffnet in Excel
+          </div>
+        </div>
       </div>
 
       <h2 class="text-xs font-bold uppercase tracking-widest text-gray-500 px-1">Audit-Log</h2>
@@ -582,6 +592,23 @@ function printOpen(title, html) {
 </head><body>${html}</body></html>`)
   w.document.close()
   setTimeout(() => w.print(), 400)
+}
+
+async function exportCsv(classId = null) {
+  if (!store.activeEvent) return
+  const eventId = store.activeEvent.id
+  const params  = classId ? { class_id: classId } : {}
+  const { data } = await api.get(`/events/${eventId}/results/export`, {
+    params,
+    responseType: 'blob',
+  })
+  const url = URL.createObjectURL(new Blob([data], { type: 'text/csv;charset=utf-8' }))
+  const a   = document.createElement('a')
+  const cls = classId ? store.classes.find(c => c.id === Number(classId)) : null
+  a.download = `Ergebnisse_${store.activeEvent.name}${cls ? '_' + cls.name : ''}.csv`
+  a.href = url
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 async function printErgebnisliste() {

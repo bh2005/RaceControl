@@ -1,7 +1,7 @@
 # RaceControl Pro – Entwickler-Handbuch
 
 **Für Entwickler, die das System erweitern oder warten**  
-Stand: April 2026 · Version 0.6.0
+Stand: April 2026 · Version 0.6.1
 
 ---
 
@@ -155,6 +155,12 @@ RaceControl/
 │   └── package.json
 ├── RaPi_lichtschranke/      # Raspberry Pi GPIO-Clients
 ├── tools/                   # ELV LSU200 USB-Client
+├── Windows/                 # Windows-Installer-Paket
+│   ├── launcher.py          # Einstiegspunkt: Server + Browser + Tray-Icon
+│   ├── racecontrol.spec     # PyInstaller-Konfiguration (onedir)
+│   ├── installer.iss        # Inno Setup 6 Skript
+│   ├── build.ps1            # Vollautomatischer Build (npm → pyinstaller → iscc)
+│   └── README_BUILD.md      # Build-Anleitung + Voraussetzungen
 ├── assets/                  # Dokumente (Reglements, Vorlagen, Logos) – per Volume mount
 ├── data/                    # SQLite-DB-Ablage (Docker-Volume, lokal .gitkeep)
 ├── schema.sql               # SQLite-Schema (direkt im Root — Backend und Tests lesen hier)
@@ -726,6 +732,56 @@ Drei Jobs laufen bei jedem Push/PR auf `main`:
 
 ---
 
+## 12. Windows-Installer bauen
+
+Das Verzeichnis `Windows/` enthält alles für einen professionellen Windows-Installer ohne
+Admin-Rechte (Installation in `%LocalAppData%\Programs\RaceControl Pro`).
+
+### Voraussetzungen
+
+```
+Python 3.12+    pip install pyinstaller pystray pillow
+Node.js 18+     (für npm run build)
+Inno Setup 6    https://jrsoftware.org/isdl.php
+```
+
+### Vollständiger Build
+
+```powershell
+cd Windows
+.\build.ps1                          # npm build + pyinstaller + inno setup
+.\build.ps1 -SkipFrontend            # PyInstaller + Installer neu, dist/ schon aktuell
+.\build.ps1 -SkipFrontend -SkipPyInstaller   # nur Installer neu kompilieren
+```
+
+Ausgabe: `Windows\output\RaceControl-Pro-Setup-0.6.1.exe`
+
+### Wie der Launcher funktioniert (`Windows/launcher.py`)
+
+1. Setzt `DATA_DIR` und `ASSETS_DIR` auf Ordner **neben der `.exe`** (persistent, nicht im Temp-Verzeichnis)
+2. Fügt `sys._MEIPASS/backend` zum Python-Pfad hinzu (PyInstaller-Bundle)
+3. Importiert `main` explizit (damit PyInstaller alle Abhängigkeiten trackt)
+4. Startet `uvicorn` in einem Daemon-Thread
+5. Öffnet den Browser sobald Port 1980 antwortet (Socket-Polling)
+6. Zeigt System-Tray-Icon (pystray + Pillow) oder Konsolenfenster als Fallback
+
+### PyInstaller-Besonderheiten (`racecontrol.spec`)
+
+- `pathex=[backend/]` → PyInstaller analysiert alle Router-Imports
+- `datas`: `frontend/dist/` → `frontend/dist/`, `schema.sql` → `.` (Projekt-Root im Bundle)
+- `hiddenimports`: uvicorn lädt viele Teile dynamisch (Protokoll-Handler, Loops)
+- `console=True` für Entwicklung; auf `False` setzen für Release (dann pystray Pflicht)
+
+### Neue Version releassen
+
+```powershell
+# 1. AppVersion in installer.iss und racecontrol.spec anpassen
+# 2. Build ausführen
+.\build.ps1 -Version "0.7.0"
+```
+
+---
+
 ## Schnellreferenz: Wichtige Dateien
 
 | Datei | Wofür |
@@ -742,4 +798,7 @@ Drei Jobs laufen bei jedem Push/PR auf `main`:
 | `frontend/src/stores/event.js` | Globale Veranstaltungsdaten |
 | `frontend/src/api/client.js` | Axios-Basis-URL, JWT-Header, 401-Handler |
 | `frontend/vite.config.js` | Dev-Proxy, PWA-Manifest, Build-Konfiguration |
+| `Windows/launcher.py` | Einstiegspunkt für Windows-Bundle |
+| `Windows/racecontrol.spec` | PyInstaller-Konfiguration |
+| `Windows/installer.iss` | Inno Setup Installer-Skript |
 | `.github/workflows/ci.yml` | CI/CD anpassen |

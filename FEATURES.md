@@ -1,6 +1,6 @@
 # RaceControl Pro – Funktionsübersicht
 
-Stand: April 2026 · Version 0.6.0
+Stand: April 2026 · Version 0.6.2
 
 ---
 
@@ -136,6 +136,11 @@ Stand: April 2026 · Version 0.6.0
 - Training: nur Rohzeit und Status korrigierbar (keine Straffelder)
 - Audit-Log aller Korrekturen (Feld, Alter Wert, Neuer Wert, Begründung, Zeitstempel)
 
+### Drucken & Export
+- Ergebnisliste drucken: A4 quer, ADAC-Format, Laufdetails, Jahrgang, Summe, Differenz, Einspruchfrist-Zeitstempel, Unterschriftszeile
+- Sprecherliste drucken: A4 hoch, alle Teilnehmer mit Startnummer, Name, Verein, Jahrgang, Notiz-Spalte
+- **CSV/Excel-Export**: Button „📥 CSV / Excel" im Drucken-Panel; exportiert die gewählte Klasse oder alle Klassen als CSV-Datei (UTF-8 BOM, Semikolon-getrennt); öffnet direkt in Excel ohne Konvertierung
+
 ---
 
 ## Trainingsmodus `/training`
@@ -176,6 +181,7 @@ Stand: April 2026 · Version 0.6.0
 - **Schnellster Herr** — Kachel mit Zeit, Name, Klasse, Verein (nur wenn Geschlecht = 'm' hinterlegt)
 - Nur Wertungsläufe (run_number > 0) — keine Trainingsläufe in der Auswertung
 - API: `GET /api/events/{id}/statistics` (kein Login erforderlich)
+- **CSV/Excel-Export**: Button „📥 CSV / Excel" im Header; exportiert alle Klassen der gewählten Veranstaltung als CSV
 
 ---
 
@@ -208,9 +214,23 @@ Stand: April 2026 · Version 0.6.0
 - **KS 2000 Preset**: Ein-Klick-Anlage des KS-2000-Reglements mit allen offiziellen Strafen
   (Pylone 3 s, Tore 10 s, Gasse 15 s, Linie/Klötzchen 3 s, Fahrtrichtung 10 s, Verhalten 20 s)
 
+### Logs
+- Vollständige Log-Ansicht über drei Bereiche in einem Tab:
+  - **Streckenposten-Meldungen**: alle `MarshalReports` der Veranstaltung, inkl. Storno-Status
+  - **Zeitkorrekturen (Audit-Log)**: jede Korrektur mit Feld, Alter/Neuer Wert, Begründung, Zeitstempel
+  - **System-Log**: Server-Start, Login-Ereignisse (OK/Fehlschlag, IP-Adresse), User-Erstellung
+- Filter nach Veranstaltung; Echtzeit-Aktualisierung per Button
+
+### Test
+- Nur für `admin`-Rolle sichtbar
+- **API-Verbindungscheck**: testet ob Backend erreichbar ist
+- **Testdaten-Seeder**: legt Reglement, Klassen und Teilnehmer per Klick an; Progress-Log zeigt jeden Schritt
+
 ### System
 - Druckvorlage konfigurieren: Veranstalter, Adresse, Versicherungshinweis, Einverständniserklärung
 - Hinweise zu Druckereinstellungen und Elternunterschrift
+- **Spendenhinweis**: PayPal-Links für Bernd und Anke Holzhauer zur Unterstützung der Weiterentwicklung
+  und der Jugend-Gruppe des MSC Braach e.V. im ADAC
 
 ---
 
@@ -283,6 +303,19 @@ Stand: April 2026 · Version 0.6.0
 - `SECRET_KEY` per Umgebungsvariable (`.env`-Datei)
 - Healthcheck auf `/health` eingebaut
 - Pfade (DB, Assets) über `DATA_DIR` / `ASSETS_DIR` Env-Vars konfigurierbar
+
+## Windows-Installer
+
+- **Kein Admin-Setup nötig**: Installation in `%LocalAppData%\Programs\RaceControl Pro` ohne Administrator-Rechte
+- **PyInstaller-Bundle** (`Windows/racecontrol.spec`): packt Python 3.12, FastAPI, uvicorn und alle Abhängigkeiten
+  in ein einziges `racecontrol.exe` — kein Python auf dem Ziel-PC erforderlich
+- **Inno Setup Installer** (`Windows/installer.iss`): professioneller Ein-Klick-Installer mit Start-Menü-Eintrag,
+  optionaler Desktop-Verknüpfung und Autostart-Option; erzeugt `RaceControl-Pro-Setup-0.6.1.exe`
+- **Launcher** (`Windows/launcher.py`): startet den Server im Hintergrund, öffnet Browser automatisch sobald
+  Port 1980 antwortet; optionales System-Tray-Icon (pystray + Pillow) mit „Öffnen / Beenden"
+- **Build-Skript** (`Windows/build.ps1`): automatisiert den kompletten Build-Ablauf in einem Schritt
+  (`npm run build` → PyInstaller → Inno Setup); einzelne Schritte überspringbar
+- **Datenpersistenz**: `data\` (SQLite-DB) und `assets\` (Dokumente) liegen neben der `.exe` im Installationsordner
 
 ---
 

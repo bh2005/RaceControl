@@ -1,6 +1,6 @@
 -- ============================================================
 -- RaceControl Pro – SQLite Schema
--- Version: 0.1.0
+-- Version: 0.6.1
 -- ============================================================
 
 PRAGMA journal_mode = WAL;       -- simultane Lese-/Schreibzugriffe (50+ WS-Clients)

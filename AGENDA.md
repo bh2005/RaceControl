@@ -1,7 +1,7 @@
 # Projekt-Agenda: "RaceControl Pro"
 **Konzept:** Modulare Veranstaltungssoftware für Kart-Slalom (JKS & KS2000)  
 **Zielgruppe:** ADAC Hessen-Thüringen (ca. 10 Klassen / 300 Starter)  
-**Stand:** April 2026 (v0.6.0)
+**Stand:** April 2026 (v0.6.2)
 
 ---
 
@@ -106,6 +106,7 @@
 | Priorität | Thema | Aufwand |
 |-----------|-------|---------|
 | 🟡 Mittel | Urkunden-Seriendruck | mittel |
+| ~~🟡 Mittel~~ | ~~CSV/Excel-Export der Ergebnisse~~ | ~~mittel~~ |
 | 🟡 Mittel | pytest-Tests für Trainings-Endpunkte (trainees, training) | mittel |
 | ~~🟡 Mittel~~ | ~~pytest-Tests für neue Endpunkte (marshal, admin_logs, auto-close)~~ | ~~mittel~~ |
 | 🟢 Nice-to-have | Stresstest (300 Starter, 50 Clients) | groß |

@@ -3,7 +3,7 @@
 **Stack:** SQLite (WAL-Modus, Offline-First) · Python 3.9+ / FastAPI  
 **Zielgröße:** ~300 Starter, ~10 Klassen, 50+ simultane WS-Clients  
 **Schema-Datei:** `schema.sql` (Single Source of Truth)  
-*Letzte Aktualisierung: 2026-04-29 · v0.6.0*
+*Letzte Aktualisierung: 2026-04-30 · v0.6.1*
 
 ---
 

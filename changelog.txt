@@ -3,6 +3,29 @@ RaceControl Pro  Changelog
 ===========================
 
 
+[0.6.2] - 2026-04-30
+---------------------
+CSV/Excel-Export der Ergebnisse
+
+  + Neuer API-Endpunkt GET /api/events/{id}/results/export
+    (kein Login erforderlich; optionaler Query-Parameter ?class_id=N)
+  + Export aller Klassen einer Veranstaltung in einer einzigen CSV-Datei
+    mit UTF-8 BOM (Excel oeffnet korrekt mit deutschen Umlauten)
+  + Semikolon als Trennzeichen (Standard fuer deutsches Excel)
+  + Spalten pro Klasse: Rang, Startnr., Nachname, Vorname, Verein,
+    Jahrgang; je Lauf: Rohzeit, Strafen, Gesamt, Status;
+    abschliessend: Summe, Differenz zur Fuehrungszeit
+  + Dynamisch: Anzahl der Laeufe (Training, Lauf 1, Lauf 2 ...) wird
+    automatisch erkannt; Trainingslaeufe werden als 'Training' beschriftet
+  + Rangspalte mit korrekter Gleichstandsbehandlung (gleiche Zeit
+    = gleicher Rang)
+  + Teilnehmer ohne Ergebnisse werden am Ende der Klasse ausgefuehrt
+  + Schiedsrichter-View: Button "CSV / Excel" im Drucken-Panel
+    (exportiert gewaehlte Klasse oder alle Klassen falls kein Filter)
+  + Auswertungs-View: Button "CSV / Excel" im Header neben
+    Veranstaltungs-Selektor (exportiert alle Klassen)
+
+
 [0.6.1] - 2026-04-29
 ---------------------
 Windows-Installer + Spendenhinweis
@@ -28,7 +51,8 @@ Windows-Installer + Spendenhinweis
   + README.md: neuer Abschnitt "## Spenden" vor "## Mitmachen" mit
     PayPal-Badge und E-Mail bernd.holzhauer@googlemail.com
   + Admin -> System-Tab: amber-farbige Spendenhinweis-Karte (colspan-2)
-    mit PayPal-Button und Link zu paypal.me/BerndHolzhauer
+    mit zwei PayPal-Buttons: paypal.me/BerndHolzhauer und
+    paypal.me/AnkeHolzhauer
 
 
 [0.6.0] - 2026-04-29

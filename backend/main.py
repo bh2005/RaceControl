@@ -14,8 +14,8 @@ from routers import training as training_router
 
 app = FastAPI(
     title="RaceControl Pro",
-    description="Kart-Slalom Veranstaltungssoftware – ADAC Hessen-Thüringen",
-    version="0.1.0",
+    description="Kart-Slalom Veranstaltungssoftware – MSC Braach 1980 e.V.",
+    version="0.6.1",
 )
 
 app.add_middleware(
