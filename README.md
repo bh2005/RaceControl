@@ -38,7 +38,7 @@ Das System läuft komplett **lokal auf einem Laptop**, braucht kein Internet und
 | **Livetiming** | Echtzeit-Ergebnisse für Zuschauer – Gesamtrang + Lauf-Detailzeilen, Trainingszeiten als Fallback |
 | **Auswertung** | Statistikseite pro Veranstaltung: Schnellster Wertungslauf je Klasse, Schnellste Dame, Schnellster Herr |
 | **Sprecher** | 3-spaltiges Dashboard: aktueller Fahrer, Zeitanalyse (Was braucht er für P1/P3/P10?, Pylonen-Budget), Ereignis-Log (Streckenposten-Meldungen, Klassenänderungen, Ankündigungen) |
-| **Lichtschranke** | Raspberry Pi Client (TM1637 oder MAX7219 Display), ELV LSU200 per USB (Windows) |
+| **Lichtschranke** | Raspberry Pi Client (TM1637 oder MAX7219 Display), ELV LSU200 per USB (Windows), ALGE Timy2/3 per RS232 (Windows) |
 | **Nachrichten** | Push-Nachrichten an alle Clients senden (Ankündigungen, Infos) |
 | **Streckenposten** | Eigene Rolle `marshal`; Fehlerpunkte per Eingabefeld sofort an Zeitnahme + Sprecher melden |
 | **Dokumente** | Öffentliche Seite für Reglemente, Vorlagen & Formulare aus dem `assets/`-Ordner |
@@ -129,6 +129,8 @@ RaceControl/
 │
 ├── tools/                      # Externe Geräte-Clients (laufen auf dem Laptop)
 │   ├── lsu200_client.py                # ELV LSU200 USB-Lichtschranke (COM-Port)
+│   ├── alge_timy_client.py             # ALGE Timy RS232-Lichtschranke (COM-Port)
+│   ├── alge_multi_timy_client.py       # ALGE Multi-Timy (mehrere Geräte gleichzeitig)
 │   └── requirements.txt
 │
 ├── Windows/                    # Windows-Installer-Paket
