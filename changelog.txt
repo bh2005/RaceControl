@@ -3,6 +3,46 @@ RaceControl Pro  Changelog
 ===========================
 
 
+[0.7.0] - 2026-05-01
+---------------------
+Downhill-Timing-Modus (Seifenkiste / Downhill MTB / Ski-Abfahrt)
+
+  Backend
+  + Events.timing_mode: neues Feld 'slalom' (default) | 'downhill'
+  + Neue Tabelle StartSchedule: Starterliste mit festen Planstarts
+    (event_id, participant_id, lane NULL|A|B, scheduled_start HH:MM:SS)
+  + Neuer Router /api/events/{id}/schedule mit 6 Endpoints:
+    GET (Liste), GET /next (naechster Starter), POST (anlegen),
+    POST /bulk (Massenimport, upsert), PATCH (aendern), DELETE
+  + Lane optional: NULL = Single-Lane (matcht jede RPi-Meldung),
+    'A'/'B' = Zwei-Spur-Betrieb (Seifenkiste)
+  + WebSocket-Handler timing_finish:
+    - Empfaengt {type, clock, lane} vom Ziel-RPi (absoluter Zeitstempel)
+    - Findet naechsten unbeendeten Starter in dieser Spur
+    - Berechnet raw_time = finish_clock - scheduled_start
+    - Schreibt RaceResult automatisch (run_number auto-increment)
+    - Sendet timing_result_display zurueck ans Geraet (TM1637-Anzeige)
+    - Broadcast timing_finish_result an alle Browser-Clients
+  + Migration _migrate_downhill(): erstellt StartSchedule auf
+    bestehenden Datenbanken ohne Datenverlust
+  + Schema-Migration Events: timing_mode-Spalte mit DEFAULT 'slalom'
+
+  Neue Lichtschranken-Hardware-Dokumentation
+  + BAUANLEITUNG_DCF_Zieleinheit.md: RPi-Zieleinheit mit DCF77/NTP
+  + BAUANLEITUNG_GPS_Zieleinheit.md: RPi-Zieleinheit mit GPS-Maus
+    (USB ublox, Variante A einfach; NEO-M8N + PPS, Variante B Profi)
+  + BAUANLEITUNG_GPS_NTP_Server.md: GPS an Server, RPis via LAN-NTP
+    (eine GPS-Maus fuer beliebig viele Ziel-RPis, Genauigkeit +-1-5 ms)
+  + racecontrol_downhill_finish.py: fertiger RPi-Client (nur Ziel,
+    kein Start-GPIO, DIP-Schalter fuer Spur A/B, NTP-Sync-Warnung)
+
+  Tests
+  + test_trainees.py: 18 Tests (CRUD, Filter, Rollen-Guards)
+  + test_training.py: 40 Tests (Sessions, Runs, auto-increment,
+    Single-Active-Lock, Standings, DNS-Ausschluss)
+  ~ CI: pytest-cov ergaenzt, --cov-fail-under=70
+
+
 [0.6.3] - 2026-04-30
 ---------------------
 Lichtschranken-API-Key (Timing-Absicherung)

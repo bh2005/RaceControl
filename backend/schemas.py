@@ -89,6 +89,7 @@ class EventCreate(BaseModel):
     location: Optional[str] = None
     reglement_id: Optional[int] = None
     status: Literal["planned", "active", "finished", "official"] = "planned"
+    timing_mode: Literal["slalom", "downhill"] = "slalom"
     description: Optional[str] = None
 
 
@@ -98,12 +99,40 @@ class EventUpdate(BaseModel):
     location: Optional[str] = None
     reglement_id: Optional[int] = None
     status: Optional[Literal["planned", "active", "finished", "official"]] = None
+    timing_mode: Optional[Literal["slalom", "downhill"]] = None
     description: Optional[str] = None
 
 
 class EventResponse(EventCreate):
     id: int
     created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+# ── StartSchedule (Downhill / Seifenkiste) ────────────────────────────────────
+
+class StartScheduleCreate(BaseModel):
+    participant_id: int
+    scheduled_start: str                        # "HH:MM:SS"
+    lane: Optional[Literal["A", "B"]] = None   # None = Single-Lane (kein Spurfilter)
+
+
+class StartScheduleUpdate(BaseModel):
+    scheduled_start: Optional[str] = None
+    lane: Optional[Literal["A", "B"]] = None
+
+
+class StartScheduleResponse(BaseModel):
+    id: int
+    event_id: int
+    participant_id: int
+    lane: Optional[str] = None
+    scheduled_start: str
+    first_name: str
+    last_name: str
+    start_number: Optional[int] = None
+    finished: bool = False        # True sobald ein RaceResult für run_number>=1 existiert
 
     model_config = {"from_attributes": True}
 

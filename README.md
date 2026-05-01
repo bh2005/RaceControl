@@ -5,7 +5,7 @@
 
   **Professionelle Kart-Slalom Veranstaltungssoftware**
 
-  ![Version](https://img.shields.io/badge/Version-0.6.3-cyan?style=flat-square)
+  ![Version](https://img.shields.io/badge/Version-0.7.0-cyan?style=flat-square)
   ![Backend](https://img.shields.io/badge/Backend-FastAPI%20%2B%20SQLite-009688?style=flat-square)
   ![Frontend](https://img.shields.io/badge/Frontend-Vue%203%20%2B%20Tailwind-4FC08D?style=flat-square)
   ![Platform](https://img.shields.io/badge/Platform-WLAN%20offline--first-orange?style=flat-square)

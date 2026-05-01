@@ -3,7 +3,7 @@
 **Stack:** SQLite (WAL-Modus, Offline-First) · Python 3.9+ / FastAPI  
 **Zielgröße:** ~300 Starter, ~10 Klassen, 50+ simultane WS-Clients  
 **Schema-Datei:** `schema.sql` (Single Source of Truth)  
-*Letzte Aktualisierung: 2026-04-30 · v0.6.3*
+*Letzte Aktualisierung: 2026-05-01 · v0.7.0*
 
 ---
 
@@ -14,12 +14,13 @@ Reglements
   └── PenaltyDefinitions
 
 Events
-  └── Classes ──────────────────────────────┐
-        └── RaceResults                      │
-              ├── RunPenalties               │
-              └── AuditLog ──── Users        │
-Participants ────────────────────────────────┘
-  └── Clubs (FK)
+  ├── Classes ──────────────────────────────┐
+  │     └── RaceResults                     │
+  │           ├── RunPenalties              │
+  │           └── AuditLog ──── Users       │
+  ├── Participants ───────────────────────── ┘
+  │     └── Clubs (FK)
+  └── StartSchedule ── Participants         ← Downhill-Starterliste
 
 Teams
   └── TeamMembers ── Participants
@@ -75,6 +76,7 @@ Settings
 | `location` | TEXT | Austragungsort |
 | `reglement_id` | INTEGER FK → Reglements SET NULL | Standard-Reglement (überschreibbar pro Klasse) |
 | `status` | TEXT DEFAULT `'planned'` | `"planned"` · `"active"` · `"finished"` · `"official"` |
+| `timing_mode` | TEXT DEFAULT `'slalom'` | `"slalom"` (Standard) · `"downhill"` (Planstart-Zeitnahme) |
 | `description` | TEXT | Infotext für die Landingpage (HTML/Freitext) |
 | `created_at` | TEXT | ISO-8601-Timestamp |
 
@@ -112,6 +114,32 @@ planned → running → paused ↔ running
 | `paused` | Unterbrochen (z.B. Regen, Vorfall) |
 | `preliminary` | Vorläufig beendet — Einspruchsfrist läuft |
 | `official` | Offiziell — freigegeben durch Schiedsrichter |
+
+### `StartSchedule` *(Downhill / Seifenkiste)*
+
+Starterliste mit festen Planstarts. Wird nur bei `Events.timing_mode = 'downhill'` genutzt.
+
+| Spalte | Typ | Beschreibung |
+|---|---|---|
+| `id` | INTEGER PK AUTOINCREMENT | |
+| `event_id` | INTEGER FK → Events CASCADE | |
+| `participant_id` | INTEGER FK → Participants CASCADE | |
+| `lane` | TEXT ∈ `{'A','B'}` nullable | `NULL` = Single-Lane · `'A'`/`'B'` = Zwei-Spur (Seifenkiste) |
+| `scheduled_start` | TEXT NOT NULL | Planstart `"HH:MM:SS"` |
+
+> UNIQUE: `(event_id, participant_id)` — jeder Teilnehmer nur einmal pro Event  
+> INDEX: `(event_id, lane, scheduled_start)` — schnelle Queue-Abfrage
+
+**Timing-Logik:**
+```
+RPi sendet:  { type: "timing_finish", clock: "12:03:47.412", lane: "A" }
+Backend:     raw_time = clock_to_s("12:03:47.412") − clock_to_s(scheduled_start)
+             → RaceResult anlegen, timing_result_display zurücksenden
+```
+
+Lane-Matching im Backend:
+- `ss.lane IS NULL` → matcht jede RPi-Meldung (Single-Lane, kein Spurfilter)
+- `ss.lane = 'A'` → matcht nur RPi mit `lane = 'A'`
 
 ---
 

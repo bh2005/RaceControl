@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS Events (
     reglement_id    INTEGER REFERENCES Reglements(id) ON DELETE SET NULL,
     status          TEXT    NOT NULL DEFAULT 'planned'
                     CHECK (status IN ('planned', 'active', 'finished', 'official')),
+    timing_mode     TEXT    NOT NULL DEFAULT 'slalom'
+                    CHECK (timing_mode IN ('slalom', 'downhill')),
     description     TEXT,                              -- Infoseite: Freitext/HTML
     created_at      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
 );
@@ -338,6 +340,23 @@ CREATE TABLE IF NOT EXISTS SystemLog (
     detail      TEXT,               -- Freitext-Detail
     ip          TEXT                -- Client-IP-Adresse
 );
+
+-- ============================================================
+-- 11a. DOWNHILL-STARTERLISTE
+-- ============================================================
+
+-- Planstarts für Downhill / Seifenkiste / Rally-Ziel
+-- Jeder Eintrag = ein Fahrer mit fester Startzeit
+CREATE TABLE IF NOT EXISTS StartSchedule (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id        INTEGER NOT NULL REFERENCES Events(id) ON DELETE CASCADE,
+    participant_id  INTEGER NOT NULL REFERENCES Participants(id) ON DELETE CASCADE,
+    lane            TEXT    CHECK (lane IN ('A', 'B')), -- NULL = Single-Lane, 'A'/'B' = Zwei-Spur
+    scheduled_start TEXT    NOT NULL,                  -- "HH:MM:SS"
+    UNIQUE (event_id, participant_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_schedule_event ON StartSchedule (event_id, lane, scheduled_start);
 
 -- ============================================================
 -- 11. INDIZES

@@ -71,6 +71,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
     _migrate_trainees(conn)
     _migrate_training_sessions(conn)
     _migrate_participants_gender(conn)
+    _migrate_downhill(conn)
 
 
 def _migrate_trainees(conn: sqlite3.Connection) -> None:
@@ -102,6 +103,28 @@ def _migrate_events(conn: sqlite3.Connection) -> None:
         return
     if "description" not in existing:
         conn.execute("ALTER TABLE Events ADD COLUMN description TEXT")
+    if "timing_mode" not in existing:
+        conn.execute("ALTER TABLE Events ADD COLUMN timing_mode TEXT NOT NULL DEFAULT 'slalom'")
+
+
+def _migrate_downhill(conn: sqlite3.Connection) -> None:
+    """Create StartSchedule table on existing databases (added for downhill timing mode)."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(StartSchedule)")}
+    if existing:
+        return
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS StartSchedule (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id        INTEGER NOT NULL REFERENCES Events(id) ON DELETE CASCADE,
+            participant_id  INTEGER NOT NULL REFERENCES Participants(id) ON DELETE CASCADE,
+            lane            TEXT    CHECK (lane IN ('A', 'B')),
+            scheduled_start TEXT    NOT NULL,
+            UNIQUE (event_id, participant_id)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_schedule_event ON StartSchedule (event_id, lane, scheduled_start)"
+    )
 
 
 def _migrate_participants(conn: sqlite3.Connection) -> None:

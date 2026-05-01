@@ -1,6 +1,6 @@
 # RaceControl Pro – Funktionsübersicht
 
-Stand: April 2026 · Version 0.6.3
+Stand: Mai 2026 · Version 0.7.0
 
 ---
 
@@ -247,9 +247,10 @@ Stand: April 2026 · Version 0.6.3
 
 ## Lichtschranken-Integration
 
-### Raspberry Pi (`RaPi_lichtschranke/`)
+### Raspberry Pi – Standard (`racecontrol_client.py` / `racecontrol_client_max7219.py`)
 
-- Zwei GPIO-Lichtschranken (Start GPIO 17, Stop GPIO 27, Reset GPIO 22)
+- **Einsatz:** Kart-Slalom, Loop-Kurse — Start und Ziel am selben Gerät
+- Zwei GPIO-Lichtschranken (Start GPIO 17, Ziel GPIO 27, Reset GPIO 22)
 - **Client TM1637**: 7-Segment-Anzeige über I²C (CLK GPIO 21, DIO GPIO 20)
 - **Client MAX7219**: LED-Matrix-Anzeige über SPI (CLK GPIO 11, MOSI GPIO 10, CS GPIO 8)
 - Standalone-Testskripte ohne Backend (TM1637 und MAX7219)
@@ -257,6 +258,19 @@ Stand: April 2026 · Version 0.6.3
 - Auto-Reconnect nach Verbindungsabbruch (3 s)
 - systemd-Autostart-Unit für Produktionsbetrieb
 - Konfiguration: `BACKEND_HOST`, `BACKEND_PORT`, `MIN_TIME`, `TIMING_API_KEY`
+
+### Raspberry Pi – Zieleinheit Downhill (`racecontrol_downhill_finish.py`)
+
+- **Einsatz:** Downhill MTB · Ski-Abfahrt · Seifenkistenrennen — nur Ziel, Start im Backend
+- Nur ein GPIO-Sensor (Ziel GPIO 27) — kein Start-GPIO
+- Sendet absoluten Zeitstempel `{type: "timing_finish", clock: "HH:MM:SS.mmm", lane: "A"|"B"}`
+- Backend berechnet Laufzeit: `finish_clock − scheduled_start` aus der Starterliste
+- **Spurwahl per DIP-Schalter** (GPIO 5): OFF = Spur A, ON = Spur B (Seifenkiste mit zwei Bahnen)
+- Lane optional: `NULL` im Schedule = Single-Lane (kein DIP-Schalter nötig)
+- Zeitsynchronisation: NTP via LTE/WLAN (empfohlen) oder DCF77-Modul oder GPS-Maus
+- Leerlauf-Anzeige: aktuelle Uhrzeit auf TM1637 (Sync-Kontrolle)
+- Sync-Warnung `nSYn` wenn Systemuhr nicht synchronisiert
+- Bauanleitungen: `BAUANLEITUNG_DCF_Zieleinheit.md`, `BAUANLEITUNG_GPS_Zieleinheit.md`, `BAUANLEITUNG_GPS_NTP_Server.md`
 
 ### ELV LSU200 (`tools/lsu200_client.py`)
 
@@ -267,6 +281,16 @@ Stand: April 2026 · Version 0.6.3
 - Konfiguration: `SERIAL_PORT` (None = auto-detect), `BACKEND_WS`, `MIN_TIME`, `TIMING_API_KEY`
 - Abhängigkeiten: `pyserial`, `websocket-client`
 - COM-Port ermitteln: Gerätemanager → Anschlüsse (COM & LPT)
+
+### ALGE Timy (`tools/alge_timy_client.py` / `tools/alge_multi_timy_client.py`)
+
+- **Einsatz:** Professionelle Zeitnahme mit ALGE Timy2/3 über RS232
+- **Single-Timy** (`alge_timy_client.py`): ein Gerät, misst Start und Ziel über Kanäle
+- **Multi-Timy** (`alge_multi_timy_client.py`): mehrere Geräte gleichzeitig (z.B. Start-Timy + Finish-Timy + Intermediate), je ein Thread pro COM-Port
+- RS232-Protokoll: automatische Kanal-Zuordnung (`start`/`finish`/`intermediate`) konfigurierbar
+- Baudrate: 9600 Baud (Timy3-Standard), 19200 Baud für ältere Modelle
+- Automatische COM-Port-Erkennung (FTDI/CP210x USB-Adapter)
+- Vollständige Dokumentation in `LICHTSCHRANKE_SETUP.md`
 
 ### Sicherheit (`/ws/timing`)
 

@@ -1,7 +1,7 @@
 # RaceControl Pro – Handbuch
 
 **MSC Braach e.V. im ADAC**  
-Stand: April 2026 · Version 0.6.3
+Stand: Mai 2026 · Version 0.7.0
 
 ---
 
@@ -20,7 +20,8 @@ Stand: April 2026 · Version 0.6.3
 11. [Livetiming (Gäste)](#11-livetiming-gäste)
 12. [Admin – Stammdaten und Einstellungen](#12-admin--stammdaten-und-einstellungen)
 13. [Lichtschranken-Clients](#13-lichtschranken-clients)
-14. [Häufige Fragen und Probleme](#14-häufige-fragen-und-probleme)
+14. [Downhill- und Seifenkisten-Zeitnahme](#14-downhill--und-seifenkisten-zeitnahme)
+15. [Häufige Fragen und Probleme](#15-häufige-fragen-und-probleme)
 
 ---
 
@@ -569,7 +570,87 @@ MIN_TIME       = 3.0     # Messungen unter 3 s werden verworfen
 
 ---
 
-## 14. Häufige Fragen und Probleme
+## 14. Downhill- und Seifenkisten-Zeitnahme
+
+Downhill MTB, Ski-Abfahrt und Seifenkistenrennen nutzen den **Downhill-Timing-Modus**:
+Start und Ziel sind weit voneinander entfernt — die Laufzeit ergibt sich aus
+`Ziel-Zeitstempel − geplantem Start`.
+
+### Veranstaltung als Downhill-Event anlegen
+
+1. Admin → Veranstaltungen → Neue Veranstaltung anlegen
+2. Feld **Timing-Modus** auf `downhill` setzen
+3. Klassen anlegen wie gewohnt (eine Klasse pro Wertungsgruppe)
+4. Teilnehmer anmelden (Nennbüro oder Online-Nennung)
+
+### Starterliste (Planstarts) eintragen
+
+1. Admin → Veranstaltung → **Starterliste** (Tab erscheint nur bei `timing_mode = downhill`)
+2. Pro Teilnehmer: Planstart-Zeit `HH:MM:SS` eintragen
+3. **Spur** (optional): leer lassen für Single-Lane, `A` oder `B` für Zwei-Spur-Betrieb
+
+**Massenimport** (API): `POST /api/events/{id}/schedule/bulk` mit JSON-Array:
+```json
+[
+  { "participant_id": 1, "scheduled_start": "12:00:00" },
+  { "participant_id": 2, "scheduled_start": "12:01:00" },
+  { "participant_id": 3, "scheduled_start": "12:02:00" }
+]
+```
+
+### Zieleinheit (Raspberry Pi) einrichten
+
+Für die Ziel-Lichtschranke wird `racecontrol_downhill_finish.py` verwendet — **nicht** der Standard-Client.
+
+**Unterschied zum Standard-Client:**
+
+| Merkmal | Standard | Downhill-Zieleinheit |
+|---|---|---|
+| GPIO-Sensoren | Start + Ziel | Nur Ziel (GPIO 27) |
+| Zeiterfassung | Δt lokal (RPi) | Absoluter Zeitstempel → Backend |
+| Spurwahl | — | DIP-Schalter GPIO 5 (A/B) |
+| Zeitsync | beliebig | NTP/DCF77/GPS zwingend nötig |
+
+Konfiguration in `racecontrol_downhill_finish.py`:
+```python
+BACKEND_HOST   = "192.168.0.100"   # IP des Laptops
+TIMING_API_KEY = ""                # Admin → System → Lichtschranken-API-Key
+MIN_TIME_S     = 10.0              # Kürzeste erlaubte Laufzeit (Fehlauslösung-Schutz)
+```
+
+Zeitsynchronisation (Genauigkeit):
+- **NTP via LTE/WLAN** (empfohlen): ±10–50 ms — ausreichend für alle Praxis-Szenarien
+- **GPS-Maus am Server**: ±1–5 ms für alle RPis via LAN-NTP — optimal bei mehreren Einheiten
+- **DCF77-Modul am RPi**: ±1–10 ms offline — für Standorte ohne Mobilfunk
+- Bauanleitungen: `RaPi_lichtschranke/BAUANLEITUNG_*.md`
+
+### Zwei-Spur-Betrieb (Seifenkiste)
+
+Für zwei parallele Bahnen werden zwei identische Zieleinheiten aufgebaut:
+
+| DIP 1 (GPIO 5) | Spur | Planstarts |
+|---|---|---|
+| OFF | **A** | Teilnehmer mit `lane = 'A'` oder `lane = NULL` |
+| ON | **B** | Teilnehmer mit `lane = 'B'` |
+
+Beide RPis verbinden sich gleichzeitig mit dem Backend. Jede Auslösung wird
+der richtigen Spur-Queue zugeordnet — keine Verwechslungen möglich.
+
+### Ablauf am Veranstaltungstag
+
+1. Veranstaltung auf `active` setzen (Admin → Status ändern)
+2. Zieleinheit einschalten — Display zeigt aktuelle Uhrzeit (= Uhr synchronisiert ✓)
+3. Starter loslassen — RPi empfängt Lichtschranken-Auslösung
+4. Display zeigt berechnete Laufzeit (z.B. `0247 4` = 2:47.4)
+5. Zeitnahme-View im Browser zeigt Ergebnis sofort mit Name und Zeit
+6. Reset-Taster (GPIO 22) für nächsten Starter drücken
+
+> **Hinweis:** Zeigt das Display `nSYn` nach dem Start, ist die Systemuhr nicht
+> synchronisiert. Keine Zeiten messen bis `nSYn` verschwindet und die Uhrzeit angezeigt wird.
+
+---
+
+## 15. Häufige Fragen und Probleme
 
 ### Das Backend startet nicht
 

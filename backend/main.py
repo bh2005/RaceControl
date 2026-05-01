@@ -13,6 +13,7 @@ from routers import auth, users, reglements, events, participants, results, team
 from routers import import_router
 from routers import trainees as trainees_router
 from routers import training as training_router
+from routers import downhill as downhill_router
 
 app = FastAPI(
     title="RaceControl Pro",
@@ -54,6 +55,7 @@ app.include_router(marshal_router.router,    prefix=_API)
 app.include_router(admin_logs_router.router, prefix=_API)
 app.include_router(trainees_router.router,  prefix=_API)
 app.include_router(training_router.router,  prefix=_API)
+app.include_router(downhill_router.router,  prefix=_API)
 
 
 @app.get("/health")
@@ -91,6 +93,111 @@ def _get_timing_api_key() -> str:
         return row[0] if row else ""
     except Exception:
         return ""
+
+
+def _clock_to_seconds(clock: str) -> float:
+    """Parse 'HH:MM:SS.mmm' or 'HH:MM:SS' → total seconds since midnight."""
+    parts = clock.split(":")
+    return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+
+
+async def _handle_timing_finish(ws: WebSocket, data: dict) -> None:
+    """Handle timing_finish message from a downhill finish-only RPi.
+
+    Finds the next unfinished participant in the active downhill event on the
+    given lane, calculates raw_time = finish_clock − scheduled_start, writes a
+    RaceResult, and sends timing_result_display back to the device.
+    """
+    clock = data.get("clock", "")
+    lane  = data.get("lane", "A")
+
+    try:
+        finish_s = _clock_to_seconds(clock)
+    except Exception:
+        await ws.send_json({"type": "timing_rejected", "reason": "invalid_clock", "clock": clock})
+        return
+
+    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys=ON")
+    try:
+        # Active downhill event
+        event = conn.execute(
+            "SELECT id FROM Events WHERE status = 'active' AND timing_mode = 'downhill' LIMIT 1"
+        ).fetchone()
+        if not event:
+            await ws.send_json({"type": "timing_rejected", "reason": "no_active_downhill_event"})
+            return
+        event_id = event["id"]
+
+        # Next unfinished participant — lane=NULL in schedule means single-lane (always matches)
+        row = conn.execute(
+            """SELECT ss.id AS schedule_id, ss.participant_id, ss.scheduled_start,
+                      p.class_id, p.first_name, p.last_name, p.start_number
+               FROM   StartSchedule ss
+               JOIN   Participants p ON p.id = ss.participant_id
+               LEFT JOIN RaceResults rr
+                      ON rr.participant_id = ss.participant_id
+                     AND rr.event_id = ss.event_id
+                     AND rr.run_number >= 1
+               WHERE  ss.event_id = ?
+                 AND  (ss.lane IS NULL OR ss.lane = ?)
+                 AND  rr.id IS NULL
+               ORDER  BY ss.scheduled_start
+               LIMIT  1""",
+            (event_id, lane),
+        ).fetchone()
+        if not row:
+            await ws.send_json({"type": "timing_rejected", "reason": "no_starter_found", "lane": lane})
+            return
+
+        start_s  = _clock_to_seconds(row["scheduled_start"])
+        raw_time = round(finish_s - start_s, 3)
+        if raw_time < 0:
+            await ws.send_json({"type": "timing_rejected", "reason": "negative_time",
+                                "raw_time": raw_time, "clock": clock,
+                                "scheduled_start": row["scheduled_start"]})
+            return
+
+        # Nächste run_number für diesen Teilnehmer in diesem Event
+        nr = conn.execute(
+            "SELECT COALESCE(MAX(run_number), 0) + 1 AS next FROM RaceResults WHERE participant_id = ? AND event_id = ?",
+            (row["participant_id"], event_id),
+        ).fetchone()["next"]
+
+        conn.execute(
+            """INSERT INTO RaceResults
+               (event_id, participant_id, class_id, run_number, raw_time, status, is_official)
+               VALUES (?,?,?,?,?,'valid',0)""",
+            (event_id, row["participant_id"], row["class_id"], nr, raw_time),
+        )
+        conn.commit()
+
+        await ws.send_json({
+            "type": "timing_result_display",
+            "raw_time": raw_time,
+            "participant_id": row["participant_id"],
+            "first_name": row["first_name"],
+            "last_name": row["last_name"],
+            "start_number": row["start_number"],
+            "lane": lane,
+        })
+        await manager.broadcast({
+            "type":           "timing_finish_result",
+            "event_id":       event_id,
+            "participant_id": row["participant_id"],
+            "first_name":     row["first_name"],
+            "last_name":      row["last_name"],
+            "start_number":   row["start_number"],
+            "raw_time":       raw_time,
+            "lane":           lane,
+            "clock":          clock,
+            "scheduled_start": row["scheduled_start"],
+        })
+    except Exception as exc:
+        await ws.send_json({"type": "timing_rejected", "reason": "internal_error", "detail": str(exc)})
+    finally:
+        conn.close()
 
 
 @app.websocket("/ws/timing")
@@ -134,6 +241,9 @@ async def timing_device_endpoint(ws: WebSocket):
                     await ws.send_json({"type": "timing_rejected", "reason": "implausible_time", "raw_time": raw})
                     continue
                 await manager.broadcast(data)
+
+            elif msg_type == "timing_finish":
+                await _handle_timing_finish(ws, data)
 
             elif msg_type == "timing_device_heartbeat":
                 await manager.broadcast(data)

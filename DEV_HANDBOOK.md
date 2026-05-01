@@ -1,7 +1,7 @@
 # RaceControl Pro – Entwickler-Handbuch
 
 **Für Entwickler, die das System erweitern oder warten**  
-Stand: April 2026 · Version 0.6.3
+Stand: Mai 2026 · Version 0.7.0
 
 ---
 
@@ -405,6 +405,7 @@ await manager.broadcast({"type": "results", "event_id": 1, "class_id": 3})
 | `results` | Neues Ergebnis / Korrektur / Strafe | Zeitnahme, Livetiming, Sprecher |
 | `notification` | Nennungsschluss-Announce, `/nachrichten` | Alle Browser-Clients |
 | `timing_result` | Lichtschranke (RaPi oder ELV) | Zeitnahme + TrainingView (→ Zeitfeld auto-befüllen) |
+| `timing_finish_result` | Downhill-Ziel-RPi (nach Berechnung im Backend) | Zeitnahme (→ Laufzeit + Starter anzeigen) |
 | `timing_device_heartbeat` | Lichtschranke | Zeitnahme (→ Status-Indikator) |
 | `timing_device_status` | Connect/Disconnect eines Messgeräts | Zeitnahme, TrainingView |
 | `marshal_penalty` | Streckenposten (`POST /api/marshal/report`) | Zeitnahme (→ Übernahme-Panel), Sprecher |
@@ -461,6 +462,49 @@ TIMING_API_KEY=<schlüssel>   # hat Vorrang vor DB-Eintrag
 TIMING_API_KEY = "<aus-Admin-System-kopieren>"
 BACKEND_WS = f"ws://host:1980/ws/timing?key={TIMING_API_KEY}"
 ```
+
+---
+
+### Downhill-Timing (`timing_finish`)
+
+Für Events mit `timing_mode = 'downhill'` sendet die Zieleinheit keinen `raw_time`,
+sondern einen absoluten Zeitstempel. Das Backend berechnet die Laufzeit serverseitig:
+
+```
+RPi → WS: { "type": "timing_finish", "clock": "12:03:47.412", "lane": "A" }
+
+Backend (_handle_timing_finish in main.py):
+  1. clock → Sekunden seit Mitternacht
+  2. Aktives Downhill-Event suchen (Events WHERE status='active' AND timing_mode='downhill')
+  3. Nächster unbeendeter Starter dieser Spur:
+     SELECT ss.* FROM StartSchedule ss
+     LEFT JOIN RaceResults rr ON ...
+     WHERE ss.event_id=? AND (ss.lane IS NULL OR ss.lane=?) AND rr.id IS NULL
+     ORDER BY ss.scheduled_start LIMIT 1
+  4. raw_time = finish_s - start_s
+  5. INSERT INTO RaceResults (run_number auto-increment)
+  6. timing_result_display → zurück ans RPi (TM1637 zeigt Zeit)
+  7. timing_finish_result → broadcast an Browser-Clients
+```
+
+**Wichtig:** `_handle_timing_finish` öffnet eine eigene DB-Verbindung (wie `_get_timing_api_key`),
+da WebSocket-Endpoints keine FastAPI-Dependency-Injection nutzen.
+
+**Lane-Logik:**
+- `lane IS NULL` im Schedule → matcht jede RPi-Meldung (Single-Lane-Event)
+- `lane = 'A'` → matcht nur wenn RPi `lane='A'` sendet
+- Separate Queues pro Spur ermöglichen Zwei-Spur-Betrieb (Seifenkiste)
+
+**Neue API-Endpunkte** (`routers/downhill.py`, prefix `/api/events/{id}/schedule`):
+
+| Methode | Pfad | Rollen | Funktion |
+|---|---|---|---|
+| GET | `/schedule` | admin, zeitnahme | Starterliste (optional `?lane=A`) |
+| GET | `/schedule/next` | admin, zeitnahme | Nächster unbeendeter Starter |
+| POST | `/schedule` | admin | Einzelnen Eintrag anlegen |
+| POST | `/schedule/bulk` | admin | Massenimport (upsert) |
+| PATCH | `/schedule/{id}` | admin | Zeit oder Spur korrigieren |
+| DELETE | `/schedule/{id}` | admin | Eintrag löschen |
 
 ---
 

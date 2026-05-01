@@ -136,3 +136,22 @@ def participant_id(client, nennung_headers, event_id, class_id):
     }, headers=nennung_headers)
     assert r.status_code == 201, r.text
     return r.json()["id"]
+
+
+@pytest.fixture()
+def trainee_id(client, admin_headers):
+    r = client.post("/api/trainees", json={
+        "first_name": "Anna", "last_name": "Testfahrerin",
+        "birth_year": 2012, "kart_number": "42", "is_active": True,
+    }, headers=admin_headers)
+    assert r.status_code == 201, r.text
+    return r.json()["id"]
+
+
+@pytest.fixture()
+def session_id(client, admin_headers):
+    r = client.post("/api/training/sessions", json={
+        "name": "Testsession", "date": "2026-06-01", "status": "planned",
+    }, headers=admin_headers)
+    assert r.status_code == 201, r.text
+    return r.json()["id"]
