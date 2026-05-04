@@ -18,13 +18,22 @@ AdminOrZeit = Annotated[sqlite3.Row, Depends(require_roles("admin", "zeitnahme")
 AdminOnly   = Annotated[sqlite3.Row, Depends(require_roles("admin"))]
 
 
+_SESSION_SELECT = """
+    SELECT s.*, d.name AS discipline_name
+    FROM   TrainingSessions s
+    LEFT JOIN Disciplines d ON d.id = s.discipline_id
+"""
+
+
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
-def _session_or_404(db: sqlite3.Connection, session_id: int) -> sqlite3.Row:
-    row = db.execute("SELECT * FROM TrainingSessions WHERE id = ?", (session_id,)).fetchone()
+def _session_or_404(db: sqlite3.Connection, session_id: int) -> dict:
+    row = db.execute(
+        _SESSION_SELECT + " WHERE s.id = ?", (session_id,)
+    ).fetchone()
     if not row:
         raise HTTPException(404, "Training-Session nicht gefunden")
-    return row
+    return dict(row)
 
 
 def _run_row(db: sqlite3.Connection, run_id: int) -> dict:
@@ -50,7 +59,7 @@ def _run_row(db: sqlite3.Connection, run_id: int) -> dict:
 @router.get("/sessions", response_model=list[TrainingSessionResponse])
 def list_sessions(db: Annotated[sqlite3.Connection, Depends(get_db)], _: AdminOrZeit):
     rows = db.execute(
-        "SELECT * FROM TrainingSessions ORDER BY date DESC, id DESC"
+        _SESSION_SELECT + " ORDER BY s.date DESC, s.id DESC"
     ).fetchall()
     return [dict(r) for r in rows]
 
@@ -58,7 +67,7 @@ def list_sessions(db: Annotated[sqlite3.Connection, Depends(get_db)], _: AdminOr
 @router.get("/sessions/active", response_model=TrainingSessionResponse)
 def get_active_session(db: Annotated[sqlite3.Connection, Depends(get_db)], _: AdminOrZeit):
     row = db.execute(
-        "SELECT * FROM TrainingSessions WHERE status = 'active' ORDER BY id DESC LIMIT 1"
+        _SESSION_SELECT + " WHERE s.status = 'active' ORDER BY s.id DESC LIMIT 1"
     ).fetchone()
     if not row:
         raise HTTPException(404, "Keine aktive Training-Session")
@@ -67,7 +76,7 @@ def get_active_session(db: Annotated[sqlite3.Connection, Depends(get_db)], _: Ad
 
 @router.get("/sessions/{session_id}", response_model=TrainingSessionResponse)
 def get_session(session_id: int, db: Annotated[sqlite3.Connection, Depends(get_db)], _: AdminOrZeit):
-    return dict(_session_or_404(db, session_id))
+    return _session_or_404(db, session_id)
 
 
 @router.post("/sessions", response_model=TrainingSessionResponse, status_code=201)
@@ -77,11 +86,11 @@ def create_session(
     user: AdminOnly,
 ):
     cur = db.execute(
-        "INSERT INTO TrainingSessions (name, date, status, notes, created_by) VALUES (?,?,?,?,?)",
-        (body.name, body.date, body.status, body.notes, user["id"]),
+        "INSERT INTO TrainingSessions (name, date, status, discipline_id, notes, created_by) VALUES (?,?,?,?,?,?)",
+        (body.name, body.date, body.status, body.discipline_id, body.notes, user["id"]),
     )
     db.commit()
-    return dict(db.execute("SELECT * FROM TrainingSessions WHERE id = ?", (cur.lastrowid,)).fetchone())
+    return _session_or_404(db, cur.lastrowid)
 
 
 @router.patch("/sessions/{session_id}", response_model=TrainingSessionResponse)
@@ -104,7 +113,7 @@ def update_session(
     sets = ", ".join(f"{k} = ?" for k in updates)
     db.execute(f"UPDATE TrainingSessions SET {sets} WHERE id = ?", (*updates.values(), session_id))
     db.commit()
-    return dict(db.execute("SELECT * FROM TrainingSessions WHERE id = ?", (session_id,)).fetchone())
+    return _session_or_404(db, session_id)
 
 
 @router.delete("/sessions/{session_id}", status_code=204)

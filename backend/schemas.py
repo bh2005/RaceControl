@@ -381,12 +381,36 @@ class TraineeResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Disciplines ───────────────────────────────────────────────────────────────
+
+class DisciplineCreate(BaseModel):
+    name: str
+    sort_order: int = 0
+    is_active: bool = True
+
+
+class DisciplineUpdate(BaseModel):
+    name: Optional[str] = None
+    sort_order: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class DisciplineResponse(BaseModel):
+    id: int
+    name: str
+    sort_order: int
+    is_active: bool
+
+    model_config = {"from_attributes": True}
+
+
 # ── TrainingSessions ─────────────────────────────────────────────────────────
 
 class TrainingSessionCreate(BaseModel):
     name: str
     date: str  # ISO-8601 "YYYY-MM-DD"
     status: Literal["planned", "active", "finished"] = "planned"
+    discipline_id: Optional[int] = None
     notes: Optional[str] = None
 
 
@@ -394,6 +418,7 @@ class TrainingSessionUpdate(BaseModel):
     name: Optional[str] = None
     date: Optional[str] = None
     status: Optional[Literal["planned", "active", "finished"]] = None
+    discipline_id: Optional[int] = None
     notes: Optional[str] = None
 
 
@@ -401,6 +426,7 @@ class TrainingSessionResponse(TrainingSessionCreate):
     id: int
     created_by: Optional[int]
     created_at: str
+    discipline_name: Optional[str] = None  # aus JOIN mit Disciplines
 
     model_config = {"from_attributes": True}
 

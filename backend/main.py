@@ -14,6 +14,7 @@ from routers import import_router
 from routers import trainees as trainees_router
 from routers import training as training_router
 from routers import downhill as downhill_router
+from routers import disciplines as disciplines_router
 
 app = FastAPI(
     title="RaceControl Pro",
@@ -55,7 +56,8 @@ app.include_router(marshal_router.router,    prefix=_API)
 app.include_router(admin_logs_router.router, prefix=_API)
 app.include_router(trainees_router.router,  prefix=_API)
 app.include_router(training_router.router,  prefix=_API)
-app.include_router(downhill_router.router,  prefix=_API)
+app.include_router(downhill_router.router,    prefix=_API)
+app.include_router(disciplines_router.router, prefix=_API)
 
 
 @app.get("/health")

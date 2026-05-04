@@ -140,18 +140,37 @@ CREATE INDEX IF NOT EXISTS idx_trainees_club ON Trainees (club_id);
 CREATE INDEX IF NOT EXISTS idx_trainees_active ON Trainees (is_active);
 
 -- ============================================================
--- 5b. TRAINING-SESSIONS & LÄUFE
+-- 5b. TRAININGS-DISZIPLINEN
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS Disciplines (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT    NOT NULL UNIQUE,
+    sort_order  INTEGER NOT NULL DEFAULT 0,
+    is_active   INTEGER NOT NULL DEFAULT 1
+                CHECK (is_active IN (0, 1))
+);
+
+-- Standard-Disziplinen (nur einmalig; IF NOT EXISTS via INSERT OR IGNORE)
+INSERT OR IGNORE INTO Disciplines (name, sort_order) VALUES
+    ('JKS',         1),
+    ('KS2000',      2),
+    ('Auto Slalom', 3);
+
+-- ============================================================
+-- 5c. TRAINING-SESSIONS & LÄUFE
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS TrainingSessions (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    name        TEXT    NOT NULL,                  -- z.B. "Donnerstagstraining 29.04.2026"
-    date        TEXT    NOT NULL,                  -- ISO-8601 "YYYY-MM-DD"
-    status      TEXT    NOT NULL DEFAULT 'planned'
-                CHECK (status IN ('planned', 'active', 'finished')),
-    notes       TEXT,
-    created_by  INTEGER REFERENCES Users(id) ON DELETE SET NULL,
-    created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    name           TEXT    NOT NULL,               -- z.B. "Donnerstagstraining 29.04.2026"
+    date           TEXT    NOT NULL,               -- ISO-8601 "YYYY-MM-DD"
+    status         TEXT    NOT NULL DEFAULT 'planned'
+                   CHECK (status IN ('planned', 'active', 'finished')),
+    discipline_id  INTEGER REFERENCES Disciplines(id) ON DELETE SET NULL,
+    notes          TEXT,
+    created_by     INTEGER REFERENCES Users(id) ON DELETE SET NULL,
+    created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
 );
 
 CREATE TABLE IF NOT EXISTS TrainingRuns (

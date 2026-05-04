@@ -72,6 +72,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
     _migrate_training_sessions(conn)
     _migrate_participants_gender(conn)
     _migrate_downhill(conn)
+    _migrate_disciplines(conn)
+    _migrate_training_sessions_discipline(conn)
 
 
 def _migrate_trainees(conn: sqlite3.Connection) -> None:
@@ -282,6 +284,37 @@ def _migrate_training_sessions(conn: sqlite3.Connection) -> None:
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_training_runs_session ON TrainingRuns (session_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_training_runs_trainee ON TrainingRuns (trainee_id)")
+
+
+def _migrate_disciplines(conn: sqlite3.Connection) -> None:
+    """Create Disciplines table on existing databases (added for training discipline feature)."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(Disciplines)")}
+    if existing:
+        return
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS Disciplines (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            name        TEXT    NOT NULL UNIQUE,
+            sort_order  INTEGER NOT NULL DEFAULT 0,
+            is_active   INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1))
+        )
+    """)
+    conn.executemany(
+        "INSERT OR IGNORE INTO Disciplines (name, sort_order) VALUES (?,?)",
+        [("JKS", 1), ("KS2000", 2), ("Auto Slalom", 3)],
+    )
+
+
+def _migrate_training_sessions_discipline(conn: sqlite3.Connection) -> None:
+    """Add discipline_id column to TrainingSessions on existing databases."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(TrainingSessions)")}
+    if not existing:
+        return  # fresh DB — executescript handles it
+    if "discipline_id" not in existing:
+        conn.execute(
+            "ALTER TABLE TrainingSessions ADD COLUMN discipline_id INTEGER "
+            "REFERENCES Disciplines(id) ON DELETE SET NULL"
+        )
 
 
 def _migrate_participants_gender(conn: sqlite3.Connection) -> None:

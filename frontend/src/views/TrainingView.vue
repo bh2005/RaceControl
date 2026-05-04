@@ -11,9 +11,16 @@
           <option :value="null" disabled>– Session wählen –</option>
           <option v-for="s in sessions" :key="s.id" :value="s.id">
             {{ s.date }} · {{ s.name }}
+            <template v-if="s.discipline_name"> [{{ s.discipline_name }}]</template>
             <template v-if="s.status === 'active'"> ▶</template>
           </option>
         </select>
+        <div v-if="selectedSession?.discipline_name"
+             class="mt-1.5 flex items-center gap-1.5">
+          <span class="text-xs font-semibold bg-blue-100 text-blue-700 rounded px-2 py-0.5">
+            {{ selectedSession.discipline_name }}
+          </span>
+        </div>
       </div>
 
       <!-- Kein aktiver Fahrer -->

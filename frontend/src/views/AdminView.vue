@@ -348,87 +348,146 @@
       </div>
 
       <!-- ═══ TRAINING-SESSIONS ═══ -->
-      <div v-if="activeTab === 'training'" class="grid grid-cols-2 gap-4">
+      <div v-if="activeTab === 'training'" class="space-y-4">
 
-        <!-- Tabelle -->
-        <div class="card overflow-hidden">
-          <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-            <h3 class="font-bold text-gray-800">Training-Sessions <span class="text-gray-400 font-normal text-sm">({{ trainingSessions.length }})</span></h3>
-            <button @click="openNewTrainingSession" class="text-xs btn-primary px-3 py-1.5">+ Neu</button>
-          </div>
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                <th class="py-2 px-3 text-left">Datum</th>
-                <th class="py-2 px-3 text-left">Name</th>
-                <th class="py-2 px-3 text-center">Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-              <tr
-                v-for="s in trainingSessions"
-                :key="s.id"
-                @click="selectTrainingSession(s)"
-                class="hover:bg-blue-50 transition cursor-pointer"
-                :class="{ 'bg-blue-50': selectedTrainingSession?.id === s.id }"
-              >
-                <td class="py-2.5 px-3 text-gray-500 font-mono text-xs">{{ s.date }}</td>
-                <td class="py-2.5 px-3 font-semibold text-gray-800">{{ s.name }}</td>
-                <td class="py-2.5 px-3 text-center">
-                  <span class="text-xs font-bold rounded px-1.5 py-0.5"
-                    :class="{
-                      'bg-green-100 text-green-700': s.status === 'active',
-                      'bg-amber-100 text-amber-700': s.status === 'planned',
-                      'bg-gray-100 text-gray-500':   s.status === 'finished',
-                    }">
-                    {{ { planned: 'Geplant', active: '▶ Aktiv', finished: 'Beendet' }[s.status] }}
-                  </span>
-                </td>
-                <td class="py-2 px-2">
-                  <button @click.stop="deleteTrainingSession(s)" class="text-gray-300 hover:text-msc-red text-xs">✕</button>
-                </td>
-              </tr>
-              <tr v-if="!trainingSessions.length">
-                <td colspan="4" class="py-4 text-center text-sm text-gray-400">Noch keine Training-Sessions</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <div class="grid grid-cols-2 gap-4">
 
-        <!-- Formular -->
-        <div v-if="trainingSessionForm" class="card p-4 space-y-3 self-start">
-          <h3 class="font-bold text-gray-800">{{ selectedTrainingSession ? 'Session bearbeiten' : 'Neue Session' }}</h3>
-          <div>
-            <label class="text-xs text-gray-500 font-semibold block mb-1">Name *</label>
-            <input v-model="trainingSessionForm.name" type="text" class="input" placeholder="z.B. Donnerstagstraining">
+          <!-- Tabelle -->
+          <div class="card overflow-hidden">
+            <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+              <h3 class="font-bold text-gray-800">Training-Sessions <span class="text-gray-400 font-normal text-sm">({{ trainingSessions.length }})</span></h3>
+              <button @click="openNewTrainingSession" class="text-xs btn-primary px-3 py-1.5">+ Neu</button>
+            </div>
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                  <th class="py-2 px-3 text-left">Datum</th>
+                  <th class="py-2 px-3 text-left">Name</th>
+                  <th class="py-2 px-2 text-left">Disziplin</th>
+                  <th class="py-2 px-3 text-center">Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr
+                  v-for="s in trainingSessions"
+                  :key="s.id"
+                  @click="selectTrainingSession(s)"
+                  class="hover:bg-blue-50 transition cursor-pointer"
+                  :class="{ 'bg-blue-50': selectedTrainingSession?.id === s.id }"
+                >
+                  <td class="py-2.5 px-3 text-gray-500 font-mono text-xs">{{ s.date }}</td>
+                  <td class="py-2.5 px-3 font-semibold text-gray-800">{{ s.name }}</td>
+                  <td class="py-2.5 px-2">
+                    <span v-if="s.discipline_name"
+                          class="text-xs font-semibold bg-blue-50 text-blue-700 rounded px-1.5 py-0.5">
+                      {{ s.discipline_name }}
+                    </span>
+                    <span v-else class="text-xs text-gray-300">–</span>
+                  </td>
+                  <td class="py-2.5 px-3 text-center">
+                    <span class="text-xs font-bold rounded px-1.5 py-0.5"
+                      :class="{
+                        'bg-green-100 text-green-700': s.status === 'active',
+                        'bg-amber-100 text-amber-700': s.status === 'planned',
+                        'bg-gray-100 text-gray-500':   s.status === 'finished',
+                      }">
+                      {{ { planned: 'Geplant', active: '▶ Aktiv', finished: 'Beendet' }[s.status] }}
+                    </span>
+                  </td>
+                  <td class="py-2 px-2">
+                    <button @click.stop="deleteTrainingSession(s)" class="text-gray-300 hover:text-msc-red text-xs">✕</button>
+                  </td>
+                </tr>
+                <tr v-if="!trainingSessions.length">
+                  <td colspan="5" class="py-4 text-center text-sm text-gray-400">Noch keine Training-Sessions</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div class="grid grid-cols-2 gap-3">
+
+          <!-- Formular -->
+          <div v-if="trainingSessionForm" class="card p-4 space-y-3 self-start">
+            <h3 class="font-bold text-gray-800">{{ selectedTrainingSession ? 'Session bearbeiten' : 'Neue Session' }}</h3>
             <div>
-              <label class="text-xs text-gray-500 font-semibold block mb-1">Datum *</label>
-              <input v-model="trainingSessionForm.date" type="date" class="input">
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Name *</label>
+              <input v-model="trainingSessionForm.name" type="text" class="input" placeholder="z.B. Donnerstagstraining">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs text-gray-500 font-semibold block mb-1">Datum *</label>
+                <input v-model="trainingSessionForm.date" type="date" class="input">
+              </div>
+              <div>
+                <label class="text-xs text-gray-500 font-semibold block mb-1">Status</label>
+                <select v-model="trainingSessionForm.status" class="input">
+                  <option value="planned">Geplant</option>
+                  <option value="active">Aktiv ▶</option>
+                  <option value="finished">Beendet</option>
+                </select>
+              </div>
             </div>
             <div>
-              <label class="text-xs text-gray-500 font-semibold block mb-1">Status</label>
-              <select v-model="trainingSessionForm.status" class="input">
-                <option value="planned">Geplant</option>
-                <option value="active">Aktiv ▶</option>
-                <option value="finished">Beendet</option>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Disziplin</label>
+              <select v-model="trainingSessionForm.discipline_id" class="input">
+                <option :value="null">– keine –</option>
+                <option v-for="d in disciplines" :key="d.id" :value="d.id">{{ d.name }}</option>
               </select>
             </div>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Notizen</label>
+              <textarea v-model="trainingSessionForm.notes" rows="2" class="input resize-none" placeholder="Anmerkungen…"></textarea>
+            </div>
+            <div v-if="trainingSessionError" class="text-xs text-red-600 bg-red-50 rounded px-2 py-1">{{ trainingSessionError }}</div>
+            <div class="flex gap-2">
+              <button @click="saveTrainingSession" class="flex-1 btn-primary py-2">Speichern</button>
+              <button @click="cancelTrainingSession" class="btn-secondary py-2 px-3 text-sm">Abbrechen</button>
+            </div>
+            <div v-if="selectedTrainingSession" class="pt-2 border-t border-gray-100">
+              <a href="/training" class="text-xs text-msc-blue hover:underline font-semibold">→ Zum Training-Modus</a>
+            </div>
           </div>
-          <div>
-            <label class="text-xs text-gray-500 font-semibold block mb-1">Notizen</label>
-            <textarea v-model="trainingSessionForm.notes" rows="2" class="input resize-none" placeholder="Anmerkungen…"></textarea>
+
+        </div>
+
+        <!-- Disziplinen-Verwaltung -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="font-bold text-gray-800">Disziplinen <span class="text-gray-400 font-normal text-sm">({{ disciplines.length }})</span></h3>
+            <button @click="openNewDiscipline" class="text-xs btn-primary px-3 py-1.5">+ Neu</button>
           </div>
-          <div v-if="trainingSessionError" class="text-xs text-red-600 bg-red-50 rounded px-2 py-1">{{ trainingSessionError }}</div>
-          <div class="flex gap-2">
-            <button @click="saveTrainingSession" class="flex-1 btn-primary py-2">Speichern</button>
-            <button @click="cancelTrainingSession" class="btn-secondary py-2 px-3 text-sm">Abbrechen</button>
+          <div class="p-4 flex flex-wrap gap-2 items-center">
+            <div
+              v-for="d in disciplines"
+              :key="d.id"
+              class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 border text-sm"
+              :class="d.is_active ? 'border-blue-200 bg-blue-50 text-blue-800' : 'border-gray-200 bg-gray-50 text-gray-400'"
+            >
+              <span class="font-semibold">{{ d.name }}</span>
+              <span class="text-xs text-gray-400">#{{ d.sort_order }}</span>
+              <button @click="toggleDisciplineActive(d)" class="text-xs ml-1 hover:text-msc-blue transition"
+                      :title="d.is_active ? 'Deaktivieren' : 'Aktivieren'">
+                {{ d.is_active ? '✓' : '○' }}
+              </button>
+              <button @click="deleteDiscipline(d)" class="text-xs text-gray-300 hover:text-msc-red transition">✕</button>
+            </div>
+            <div v-if="!disciplines.length" class="text-sm text-gray-400">Noch keine Disziplinen</div>
           </div>
-          <div v-if="selectedTrainingSession" class="pt-2 border-t border-gray-100">
-            <a href="/training" class="text-xs text-msc-blue hover:underline font-semibold">→ Zum Training-Modus</a>
+          <!-- Neue Disziplin Eingabe -->
+          <div v-if="disciplineForm" class="px-4 pb-4 flex items-end gap-2">
+            <div class="flex-1">
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Name *</label>
+              <input v-model="disciplineForm.name" type="text" class="input" placeholder="z.B. Downhill"
+                     @keydown.enter.prevent="saveDiscipline">
+            </div>
+            <div class="w-24">
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Reihenf.</label>
+              <input v-model.number="disciplineForm.sort_order" type="number" class="input" placeholder="0">
+            </div>
+            <button @click="saveDiscipline" class="btn-primary px-4 py-2 text-sm">Speichern</button>
+            <button @click="disciplineForm = null" class="btn-secondary px-3 py-2 text-sm">✕</button>
           </div>
+          <div v-if="disciplineError" class="px-4 pb-3 text-xs text-red-600 bg-red-50 mx-4 mb-2 rounded px-2 py-1">{{ disciplineError }}</div>
         </div>
 
       </div>
@@ -1208,6 +1267,52 @@ async function deleteTrainee(t) {
   if (selectedTrainee.value?.id === t.id) cancelTrainee()
 }
 
+// ── Disciplines ───────────────────────────────────────────────────────────────
+
+const disciplines    = ref([])
+const disciplineForm = ref(null)
+const disciplineError = ref('')
+
+async function loadDisciplines() {
+  const { data } = await api.get('/disciplines')
+  disciplines.value = data
+}
+
+function openNewDiscipline() {
+  disciplineForm.value = { name: '', sort_order: disciplines.value.length + 1 }
+  disciplineError.value = ''
+}
+
+async function saveDiscipline() {
+  disciplineError.value = ''
+  if (!disciplineForm.value.name?.trim()) {
+    disciplineError.value = 'Name ist ein Pflichtfeld.'
+    return
+  }
+  try {
+    await api.post('/disciplines', disciplineForm.value)
+    await loadDisciplines()
+    disciplineForm.value = null
+  } catch (e) {
+    disciplineError.value = e.response?.data?.detail || 'Fehler beim Speichern'
+  }
+}
+
+async function toggleDisciplineActive(d) {
+  await api.patch(`/disciplines/${d.id}`, { is_active: !d.is_active })
+  await loadDisciplines()
+}
+
+async function deleteDiscipline(d) {
+  if (!confirm(`Disziplin "${d.name}" löschen?`)) return
+  try {
+    await api.delete(`/disciplines/${d.id}`)
+    await loadDisciplines()
+  } catch (e) {
+    alert(e.response?.data?.detail || 'Fehler beim Löschen')
+  }
+}
+
 // ── Training-Sessions ─────────────────────────────────────────────────────────
 
 const trainingSessions         = ref([])
@@ -1223,7 +1328,7 @@ async function loadTrainingSessions() {
 function openNewTrainingSession() {
   selectedTrainingSession.value = null
   const today = new Date().toISOString().slice(0, 10)
-  trainingSessionForm.value = { name: `Training ${today}`, date: today, status: 'planned', notes: '' }
+  trainingSessionForm.value = { name: `Training ${today}`, date: today, status: 'planned', discipline_id: null, notes: '' }
   trainingSessionError.value = ''
 }
 
@@ -1433,7 +1538,7 @@ watch(activeTab, (tab) => {
     loadLogs()
   }
   if (tab === 'trainees' && !trainees.value.length) loadTrainees()
-  if (tab === 'training') loadTrainingSessions()
+  if (tab === 'training') { loadTrainingSessions(); loadDisciplines() }
 })
 
 onMounted(async () => {
