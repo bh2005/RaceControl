@@ -34,7 +34,7 @@ unabhängig über LTE/WLAN an `live-race.de`. Kein Funkkabel, kein Peer-to-Peer.
 |---------|------------|---------|----------------|
 | **NTP via Internet** (systemd-timesyncd) | ±10–50 ms | Kein Hardware-Aufwand | LTE-Verbindung vorhanden (SaaS-Betrieb) |
 | **NTP via LAN** (lokaler Zeitserver) | ±1–5 ms | Sehr präzise, kein Internet | Festes WLAN am Veranstaltungsort |
-| **GPS-Maus (ublox) via USB** | ±100–500 ms | Plug & Play, kein SIM, kein Funkkabel | Kein LTE, aber GPS-Empfang vorhanden |
+| **GPS-Maus (u-blox M8) via USB** | ±50–150 ms | Plug & Play, kein SIM, kein Funkkabel | Kein LTE, aber GPS-Empfang vorhanden |
 | **GPS-Modul (ublox) mit PPS** | ±1 µs | Höchste Präzision, offline | Profi-Einsatz, Wald/Berg ohne Mobilfunk |
 | **DCF77 Hardware-Empfänger** | ±1–10 ms | Komplett offline, kein GPS nötig | Tunnel, Tieflagen, schlechter GPS-Empfang |
 
@@ -68,14 +68,24 @@ unabhängig über LTE/WLAN an `live-race.de`. Kein Funkkabel, kein Peer-to-Peer.
 
 | # | Bauteil | Menge | Preis ca. | Quelle |
 |---|---------|-------|-----------|--------|
-| 11 | **USB-GPS-Maus mit ublox-Chip** (z.B. GlobalSat BU-353S4, oder generisch „ublox 7/8 USB") | 1 | 15–25 € | Amazon |
+| 11 | **USB-GPS-Maus mit u-blox M8030-KT** (u-blox 8, Multi-GNSS) | 1 | 8–15 € | Amazon, AliExpress |
 | 12 | Micro-USB OTG-Adapter (für Pi Zero) | 1 | 2 € | Amazon |
-| | **Summe GPS-Maus-Variante** | | **~104–115 €** | |
+| | **Summe GPS-Maus-Variante** | | **~97–104 €** | |
 
-> **Empfohlene Geräte:**  
-> - GlobalSat BU-353S4 (SiRF Star IV, NMEA, sehr zuverlässig, ~20 €)  
-> - Geräte mit ublox 7 oder ublox 8 Chip (NMEA-kompatibel, ~15–20 €)  
-> - Jede GPS-Maus die unter Linux als `/dev/ttyUSB0` oder `/dev/ttyACM0` erscheint
+> **Chip-Empfehlung: u-blox M8030-KT (u-blox 8)**
+>
+> | Chip | NMEA-Genauigkeit | Konstellationen | USB-ID |
+> |------|-----------------|-----------------|--------|
+> | G7020-KT (u-blox 7) | ±200–500 ms | GPS only | `1546:01a7` |
+> | **M8030-KT (u-blox 8)** | **±50–150 ms** | GPS + GLONASS + Galileo | `1546:01a8` |
+>
+> **Empfohlene Geräte mit M8030-KT:**
+> - „VK-162G-2" (generisch, ~8 €, weit verbreitet)
+> - „GlobalSat BU-353-S4" (neue Version, ~20 €, sehr zuverlässig)
+> - Jedes Gerät mit Aufschrift „u-blox 8" oder USB-ID `1546:01a8`
+>
+> Chip nach dem Einstecken prüfen: `lsusb | grep -i u-blox`  
+> Jede GPS-Maus die unter Linux als `/dev/ttyUSB0` oder `/dev/ttyACM0` erscheint funktioniert.
 
 ### Zusatzteile – GPS-Variante B: ublox-Modul mit PPS (Profi)
 
@@ -130,7 +140,7 @@ unabhängig über LTE/WLAN an `live-race.de`. Kein Funkkabel, kein Peer-to-Peer.
                    │  Pin 29 (GPIO 5) ──────────── DIP 1 Spurwahl
                    │  Pin 38 (GPIO20) ──────────── TM1637 DIO
                    │  Pin 40 (GPIO21) ──────────── TM1637 CLK
-                   │  USB (OTG)       ──────────── GPS-Maus (ublox)
+                   │  USB (OTG)       ──────────── GPS-Maus (u-blox M8, M8030-KT)
                    └──────────────────────────┘
 ```
 

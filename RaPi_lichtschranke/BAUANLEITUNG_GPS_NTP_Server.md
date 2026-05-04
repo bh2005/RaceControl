@@ -14,7 +14,7 @@ Der Server läuft als lokaler NTP-Zeitgeber im WLAN des Veranstaltungsorts.
 Alle Raspberry Pis synchronisieren automatisch von ihm.
 
 ```
-                     GPS-Maus (ublox)
+                     GPS-Maus (u-blox M8, M8030-KT)
                           │
                     [Server / Laptop]
                     chrony + gpsd
@@ -71,12 +71,32 @@ Servers erreichbar sind. Faustregel:
 
 | # | Bauteil | Menge | Preis ca. | Quelle |
 |---|---------|-------|-----------|--------|
-| 1 | USB-GPS-Maus mit ublox-Chip (z.B. GlobalSat BU-353S4) | 1 | 15–25 € | Amazon |
+| 1 | **USB-GPS-Maus mit u-blox M8030-KT** (u-blox 8, Multi-GNSS) | 1 | 10–20 € | Amazon, AliExpress |
 | 2 | WLAN-Router (z.B. TP-Link TL-WR841N oder GL.iNet) | 1 | 20–35 € | Amazon |
-| | **Summe Server-Seite** | | **~35–60 €** | |
+| | **Summe Server-Seite** | | **~30–55 €** | |
 
 > Der WLAN-Router ist oft bereits vorhanden (FritzBox, altes Gerät).  
 > Die GPS-Maus ist eine einmalige Anschaffung für alle zukünftigen Veranstaltungen.
+
+### Welcher u-blox Chip?
+
+| Chip | Generation | Konstellationen | NMEA-Genauigkeit | USB-ID |
+|------|-----------|-----------------|-----------------|--------|
+| G7020-KT | u-blox 7 | GPS only | ±200–500 ms | `1546:01a7` |
+| **M8030-KT** | **u-blox 8** | **GPS + GLONASS + Galileo + BeiDou** | **±50–150 ms** | `1546:01a8` |
+
+**Empfehlung: M8030-KT (u-blox 8)** — mehr Satelliten sichtbar = stabilerer Fix,
+besonders unter Zelten oder bei bewölktem Himmel. Preis-Unterschied: ~2–5 €.
+
+Chip nach dem Einstecken prüfen:
+```bash
+lsusb | grep -i u-blox
+# 1546:01a8 = u-blox 8 (M8030-KT) ✓
+# 1546:01a7 = u-blox 7 (G7020-KT)
+```
+
+Typische Produkte mit M8030-KT: „VK-162G-2", „GlobalSat BU-353-S4 (neu)", viele
+generische „u-blox 8 USB GPS" auf Amazon/AliExpress (~8–15 €).
 
 ### Ziel-RPis (normal, ohne GPS)
 
@@ -143,7 +163,8 @@ sudo nano /etc/chrony/chrony.conf
 ```
 
 ```
-# GPS via gpsd (USB-Maus, NMEA, ±100-500ms)
+# GPS via gpsd (USB-Maus, NMEA)
+# u-blox 8 (M8030-KT): ±50-150ms / u-blox 7 (G7020-KT): ±200-500ms
 refclock SHM 0 refid GPS precision 1e-1 offset 0.9999 delay 0.2
 
 # Fallback: Internet-NTP wenn verfügbar

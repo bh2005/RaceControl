@@ -45,10 +45,10 @@
     </header>
 
     <!-- Main Content -->
-    <div class="flex-1 grid grid-cols-12 gap-4 p-6 max-w-screen-2xl mx-auto w-full">
+    <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 lg:p-6 max-w-screen-2xl mx-auto w-full">
 
       <!-- ── Linke Spalte: Aktueller Fahrer ── -->
-      <div class="col-span-4 flex flex-col gap-4">
+      <div class="col-span-full lg:col-span-4 flex flex-col gap-4">
 
         <!-- Aktueller Fahrer - Hauptbox -->
         <div class="bg-gray-900 rounded-2xl border border-gray-700 p-6 flex flex-col gap-2">
@@ -127,7 +127,7 @@
       </div>
 
       <!-- ── Mittlere Spalte: Zeitanalyse + Wertung ── -->
-      <div class="col-span-5 flex flex-col gap-4">
+      <div class="col-span-full lg:col-span-5 flex flex-col gap-4">
 
         <!-- Zeitanalyse -->
         <div class="bg-gray-900 rounded-2xl border border-gray-700 p-6" v-if="currentDriver && selectedRun > 0">
@@ -216,7 +216,7 @@
       </div>
 
       <!-- ── Rechte Spalte: Ereignis-Log ── -->
-      <div class="col-span-3 flex flex-col">
+      <div class="col-span-full lg:col-span-3 flex flex-col">
         <div class="bg-gray-900 rounded-2xl border border-gray-700 p-4 flex flex-col flex-1">
           <div class="flex items-center justify-between mb-3 shrink-0">
             <div class="text-xs font-bold uppercase tracking-widest text-gray-500">Ereignis-Log</div>
@@ -368,18 +368,23 @@ const topStandings = computed(() => {
 
 // Zeitanalyse: welche Zeiten braucht der Fahrer für Pn?
 const timeTargets = computed(() => {
-  if (!currentDriver.value || standings.value.length === 0) return []
+  if (!currentDriver.value || selectedRun.value === 0) return []
+
+  // Nur gegen Fahrer vergleichen, die den aktuellen Lauf bereits beendet haben.
+  // runResults enthält exakt diese Fahrer (gefiltert nach run_number === selectedRun).
+  const doneNums = new Set(runResults.value.map(r => r.start_number))
+  const completedStandings = standings.value
+    .filter(s => doneNums.has(s.start_number) && s.total_time != null)
+    .sort((a, b) => a.total_time - b.total_time)
+
+  if (completedStandings.length === 0) return []
+
   const partial = driverPartial.value
-  const targets = [1, 3, 10]
-  return targets
+  return [1, 3, 10]
     .map(rank => {
       const idx = rank - 1
-      if (idx >= standings.value.length) return null
-      const holder = standings.value[idx]
-      if (!holder.total_time) return null
-      const isCurrentDriver = holder.start_number === currentDriver.value.start_number
-      // Wenn der Fahrer selbst diese Position hat: zeige nicht doppelt
-      if (isCurrentDriver && driverPrevRuns.value.length > 0) return null
+      if (idx >= completedStandings.length) return null
+      const holder = completedStandings[idx]
       const needed = holder.total_time - partial
       return {
         rank,

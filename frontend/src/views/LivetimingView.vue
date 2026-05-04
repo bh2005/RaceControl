@@ -26,29 +26,120 @@
       <!-- Klassen-Tabs -->
       <div class="max-w-lg mx-auto px-4 pb-2 flex gap-2 overflow-x-auto">
         <button
-          @click="selectedClassId = null"
+          @click="showTraining = false; selectedClassId = null"
           class="shrink-0 text-xs font-bold rounded-full px-3 py-1 transition"
-          :class="selectedClassId === null ? 'bg-white text-msc-blue' : 'bg-white/10 text-white border border-white/20'"
+          :class="!showTraining && selectedClassId === null ? 'bg-white text-msc-blue' : 'bg-white/10 text-white border border-white/20'"
         >
           Alle
         </button>
         <button
           v-for="c in store.classes"
           :key="c.id"
-          @click="selectedClassId = c.id"
+          @click="showTraining = false; selectedClassId = c.id"
           class="shrink-0 text-xs font-semibold rounded-full px-3 py-1 transition border"
-          :class="selectedClassId === c.id
+          :class="!showTraining && selectedClassId === c.id
             ? 'bg-msc-red text-white border-msc-red font-bold'
             : 'bg-white/10 text-white border-white/20'"
         >
           {{ c.short_name || c.name }}
           <span v-if="c.run_status === 'running'" class="ml-1">▶</span>
         </button>
+        <!-- Training-Tab (nur anzeigen wenn Daten vorhanden) -->
+        <button
+          v-if="trainingData"
+          @click="showTraining = true; selectedClassId = null"
+          class="shrink-0 text-xs font-semibold rounded-full px-3 py-1 transition border"
+          :class="showTraining
+            ? 'bg-cyan-400 text-gray-900 border-cyan-400 font-bold'
+            : 'bg-white/10 text-white border-white/20'"
+        >
+          🏋 Training
+        </button>
       </div>
     </header>
 
     <div class="max-w-lg mx-auto px-4 pt-4 space-y-6">
 
+      <!-- ── TRAINING-ANSICHT ── -->
+      <template v-if="showTraining && trainingData">
+        <!-- Session-Header -->
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-xs font-bold uppercase tracking-widest text-gray-400">
+            {{ trainingData.session.name }}
+          </span>
+          <span v-if="trainingData.session.discipline_name"
+                class="text-xs font-bold rounded px-1.5 py-0.5 bg-cyan-900/60 text-cyan-300 border border-cyan-700">
+            {{ trainingData.session.discipline_name }}
+          </span>
+          <span class="text-xs font-bold rounded px-1.5 py-0.5 bg-green-900/50 text-green-400 border border-green-800">
+            Läuft ▶
+          </span>
+        </div>
+
+        <!-- Wertungs-Cards -->
+        <div class="space-y-2">
+          <div
+            v-for="(row, i) in trainingData.standings"
+            :key="row.trainee_id"
+            class="rounded-2xl p-4 flex items-center gap-4"
+            :class="rankClass(i + 1)"
+          >
+            <div class="h-12 w-12 rounded-full flex items-center justify-center font-black text-2xl shrink-0"
+                 :class="i < 3 ? 'bg-black/15' : 'bg-white/5'">
+              {{ i + 1 }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-bold text-lg truncate">
+                {{ row.first_name }} {{ row.last_name }}
+              </div>
+              <div class="text-sm opacity-70">{{ row.club_name || 'n.N.' }}</div>
+              <div class="text-xs font-mono opacity-50 mt-0.5">{{ row.run_count }}× Lauf</div>
+            </div>
+            <div class="text-right shrink-0">
+              <div v-if="row.best_time" class="font-black text-2xl tabnum text-cyan-400">
+                {{ row.best_time.toFixed(3) }} s
+              </div>
+              <div v-else class="text-gray-500 font-mono">–</div>
+              <div v-if="i > 0 && row.best_time && trainingData.standings[0]?.best_time"
+                   class="text-xs opacity-60">
+                +{{ (row.best_time - trainingData.standings[0].best_time).toFixed(3) }} s
+              </div>
+              <div v-if="row.avg_time" class="text-xs opacity-40">
+                Ø {{ row.avg_time.toFixed(3) }} s
+              </div>
+            </div>
+          </div>
+
+          <div v-if="!trainingData.standings.length"
+               class="text-center text-gray-600 text-sm py-4">
+            Noch keine Läufe
+          </div>
+        </div>
+
+        <!-- Letzte Läufe -->
+        <div v-if="trainingData.recent_runs.length" class="mt-4">
+          <div class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">
+            Letzte Läufe
+          </div>
+          <div class="space-y-1">
+            <div v-for="r in trainingData.recent_runs.slice(0, 8)" :key="r.id"
+                 class="bg-gray-800 rounded-lg px-3 py-2 flex items-center gap-3 text-sm">
+              <span class="font-semibold text-gray-200 flex-1 truncate">
+                {{ r.first_name }} {{ r.last_name }}
+              </span>
+              <span class="font-mono text-xs text-gray-400">#{{ r.run_number }}</span>
+              <span v-if="r.status === 'valid' && r.total_time != null"
+                    class="font-black tabnum text-cyan-400">
+                {{ r.total_time.toFixed(3) }} s
+              </span>
+              <span v-else class="text-gray-500 text-xs">{{ r.status.toUpperCase() }}</span>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- ── RENNERGEBNISSE ── -->
+      <template v-else>
       <div v-for="cls in visibleClasses" :key="cls.id">
 
         <!-- Klassen-Header -->
@@ -138,6 +229,8 @@
       <div v-if="visibleClasses.length === 0" class="text-center text-gray-600 py-12">
         Keine Veranstaltung aktiv
       </div>
+      </template> <!-- end v-else (race) -->
+
     </div>
 
     <!-- Footer -->
@@ -160,7 +253,9 @@ const store = useEventStore()
 const selectedClassId  = ref(null)
 const standingsByClass = ref({})
 const runsByKey        = ref({})   // `${class_id}_${start_number}` → runs[]
-const totalRuns = ref(2)
+const totalRuns        = ref(2)
+const showTraining     = ref(false)
+const trainingData     = ref(null)   // { session, standings, recent_runs } | null
 
 const visibleClasses = computed(() => {
   const cls = store.classes
@@ -170,6 +265,16 @@ const visibleClasses = computed(() => {
 
 function runsFor(classId, startNumber) {
   return runsByKey.value[`${classId}_${startNumber}`] || []
+}
+
+async function loadTrainingData() {
+  try {
+    const { data } = await api.get('/public/training/active')
+    trainingData.value = data
+  } catch {
+    trainingData.value = null
+    if (showTraining.value) showTraining.value = false
+  }
 }
 
 async function loadStandings() {
@@ -223,6 +328,10 @@ async function loadStandings() {
 
 // WebSocket — sofortige Updates bei neuen Ergebnissen oder Statuswechseln
 const { connected: wsConnected } = useRealtimeUpdate(async (msg) => {
+  if (msg.type === 'training_run') {
+    await loadTrainingData()
+    return
+  }
   if (!store.activeEvent) return
   if (msg.event_id && msg.event_id !== store.activeEvent.id) return
   if (msg.type === 'results') await loadStandings()
@@ -233,10 +342,10 @@ const { connected: wsConnected } = useRealtimeUpdate(async (msg) => {
 let fallback = null
 onMounted(async () => {
   if (!store.classes.length) await store.loadEvents()
-  await loadStandings()
+  await Promise.all([loadStandings(), loadTrainingData()])
   fallback = setInterval(async () => {
     await store.loadEvents()
-    await loadStandings()
+    await Promise.all([loadStandings(), loadTrainingData()])
   }, 30000)
 })
 onUnmounted(() => clearInterval(fallback))

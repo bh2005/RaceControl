@@ -74,6 +74,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
     _migrate_downhill(conn)
     _migrate_disciplines(conn)
     _migrate_training_sessions_discipline(conn)
+    _migrate_trainee_disciplines(conn)
 
 
 def _migrate_trainees(conn: sqlite3.Connection) -> None:
@@ -315,6 +316,28 @@ def _migrate_training_sessions_discipline(conn: sqlite3.Connection) -> None:
             "ALTER TABLE TrainingSessions ADD COLUMN discipline_id INTEGER "
             "REFERENCES Disciplines(id) ON DELETE SET NULL"
         )
+
+
+def _migrate_trainee_disciplines(conn: sqlite3.Connection) -> None:
+    """Create TraineeDisciplines junction table (many-to-many: trainees ↔ disciplines)."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(TraineeDisciplines)")}
+    if existing:
+        return
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS TraineeDisciplines (
+            trainee_id    INTEGER NOT NULL REFERENCES Trainees(id) ON DELETE CASCADE,
+            discipline_id INTEGER NOT NULL REFERENCES Disciplines(id) ON DELETE CASCADE,
+            PRIMARY KEY (trainee_id, discipline_id)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_trainee_disc_trainee "
+        "ON TraineeDisciplines (trainee_id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_trainee_disc_discipline "
+        "ON TraineeDisciplines (discipline_id)"
+    )
 
 
 def _migrate_participants_gender(conn: sqlite3.Connection) -> None:

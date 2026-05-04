@@ -1,8 +1,157 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 py-4 pb-12 grid grid-cols-12 gap-4">
+
+  <!-- ══════════ DOWNHILL-MODUS ══════════ -->
+  <div v-if="isDownhill" class="max-w-7xl mx-auto px-4 py-4 pb-12 space-y-4">
+
+    <!-- Titelleiste: Uhr + Verbindung -->
+    <div class="flex items-center gap-4 flex-wrap">
+      <div class="card px-5 py-3 flex items-center gap-4 flex-1 min-w-[200px]">
+        <div class="font-mono text-4xl font-black text-msc-blue tabnum select-none">{{ dhClock }}</div>
+        <div class="text-xs text-gray-400 leading-tight">
+          <div class="font-semibold text-gray-600">Downhill-Modus</div>
+          <div>{{ store.activeEvent?.name || '–' }}</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 text-xs">
+        <span class="h-2.5 w-2.5 rounded-full shrink-0 transition-colors duration-500"
+              :class="lsConnected ? 'bg-green-500' : 'bg-gray-300'"></span>
+        <span :class="lsConnected ? 'text-green-700 font-semibold' : 'text-gray-400'">
+          {{ lsConnected ? 'Zielkamera verbunden' : 'Zielkamera nicht verbunden' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Flash: Zieldurchfahrt -->
+    <Transition name="fade">
+      <div v-if="dhFinishFlash"
+        class="rounded-xl px-4 py-3 flex items-center gap-3 text-sm font-semibold bg-green-100 text-green-800 border border-green-300">
+        <span class="text-xl">⚡</span> Zieldurchfahrt registriert
+      </div>
+    </Transition>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+      <!-- ── LINKS: Nächster Starter + Upcoming ── -->
+      <aside class="col-span-full lg:col-span-4 space-y-3">
+        <h2 class="text-xs font-bold uppercase tracking-widest text-gray-500 px-1">Nächster Starter</h2>
+
+        <div v-if="dhNext" class="bg-msc-blue text-white rounded-xl p-4 shadow-md space-y-3">
+          <div class="flex items-start justify-between">
+            <span class="text-5xl font-black leading-none">#{{ dhNext.start_number }}</span>
+            <div class="text-right">
+              <div class="text-blue-200 text-xs mb-0.5">Startzeit</div>
+              <div class="font-mono text-xl font-black">{{ dhNext.scheduled_start?.slice(11, 19) }}</div>
+            </div>
+          </div>
+          <div class="font-bold text-xl leading-tight">{{ dhNext.first_name }} {{ dhNext.last_name }}</div>
+
+          <div class="bg-white/10 rounded-lg p-3 text-center">
+            <div class="text-blue-200 text-xs uppercase tracking-wider mb-1">Start in</div>
+            <div class="font-mono font-black leading-none"
+                 :class="[
+                   dhCountdownSec !== null && dhCountdownSec <= 0
+                     ? 'text-4xl text-green-300 animate-pulse'
+                     : dhCountdownSec !== null && dhCountdownSec <= 10
+                       ? 'text-4xl text-yellow-300 animate-pulse'
+                       : 'text-3xl text-white'
+                 ]">
+              {{ dhCountdownSec !== null && dhCountdownSec <= 0 ? '🚦 START!' : (dhCountdown || '–') }}
+            </div>
+          </div>
+        </div>
+        <div v-else class="bg-gray-100 rounded-xl p-6 text-center text-gray-400 text-sm">
+          {{ dhSchedule.length ? 'Alle Starter abgeschlossen ✓' : 'Keine Starterliste vorhanden' }}
+        </div>
+
+        <h3 class="text-xs font-bold uppercase tracking-widest text-gray-500 px-1">Weitere Starter</h3>
+        <div v-for="s in dhUpcoming.slice(1, 6)" :key="s.id"
+             class="bg-white rounded-lg px-3 py-2 flex items-center gap-3 shadow-sm border border-gray-100">
+          <span class="text-2xl font-black text-gray-700 w-10 shrink-0">#{{ s.start_number }}</span>
+          <div class="flex-1 min-w-0">
+            <div class="font-semibold text-sm text-gray-800 truncate">{{ s.first_name }} {{ s.last_name }}</div>
+          </div>
+          <div class="font-mono text-xs text-gray-500 shrink-0">{{ s.scheduled_start?.slice(11, 16) }}</div>
+        </div>
+        <div v-if="dhUpcoming.length === 0 && dhSchedule.length > 0" class="text-xs text-gray-400 text-center py-2">
+          Alle Fahrer abgeschlossen
+        </div>
+      </aside>
+
+      <!-- ── MITTE: Ergebnisse ── -->
+      <section class="col-span-full lg:col-span-4 space-y-3">
+        <div class="flex items-center justify-between px-1">
+          <h2 class="text-xs font-bold uppercase tracking-widest text-gray-500">Zieldurchfahrten</h2>
+          <span class="text-xs text-gray-400">{{ dhFinishResults.length }}</span>
+        </div>
+        <div class="card overflow-hidden">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-msc-blue text-white text-xs">
+                <th class="py-2 px-3 text-left font-semibold">Nr.</th>
+                <th class="py-2 px-3 text-left font-semibold">Fahrer</th>
+                <th class="py-2 px-3 text-right font-semibold">Zeit</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in dhFinishResults" :key="r.result_id || r.participant_id"
+                  class="border-b border-gray-50 even:bg-gray-50/50">
+                <td class="py-2 px-3 font-black text-gray-700">{{ r.start_number }}</td>
+                <td class="py-2 px-3">
+                  <div class="font-semibold text-gray-800 text-xs">{{ r.first_name[0] }}. {{ r.last_name }}</div>
+                </td>
+                <td class="py-2 px-3 text-right font-mono font-bold text-sm">
+                  <span v-if="r.status === 'valid' && r.total_time !== null">{{ dhFormatTime(r.total_time) }}</span>
+                  <span v-else class="badge-warn text-xs">{{ r.status?.toUpperCase() }}</span>
+                </td>
+              </tr>
+              <tr v-if="dhFinishResults.length === 0">
+                <td colspan="3" class="py-8 text-center text-xs text-gray-400">Noch keine Zieldurchfahrten</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── RECHTS: Komplette Starterliste ── -->
+      <aside class="col-span-full lg:col-span-4 space-y-3">
+        <div class="flex items-center justify-between px-1">
+          <h2 class="text-xs font-bold uppercase tracking-widest text-gray-500">Starterliste</h2>
+          <span class="text-xs text-gray-400">
+            {{ dhSchedule.filter(s => s.finished).length }}/{{ dhSchedule.length }} fertig
+          </span>
+        </div>
+        <div class="card overflow-hidden" style="max-height: calc(100vh - 240px); overflow-y: auto;">
+          <table class="w-full text-xs">
+            <tbody class="divide-y divide-gray-100">
+              <tr v-for="s in dhSchedule" :key="s.id"
+                  class="transition"
+                  :class="{
+                    'bg-msc-blue/10': s.id === dhNext?.id,
+                    'opacity-50 bg-green-50/30': s.finished
+                  }">
+                <td class="py-1.5 px-3 font-mono text-gray-500 w-14">{{ s.scheduled_start?.slice(11, 16) }}</td>
+                <td class="py-1.5 px-2 font-black text-gray-700 w-10">#{{ s.start_number }}</td>
+                <td class="py-1.5 px-2 text-gray-800">{{ s.first_name }} {{ s.last_name }}</td>
+                <td class="py-1.5 px-2 text-center w-6">
+                  <span v-if="s.finished" class="text-green-500">✓</span>
+                  <span v-else-if="s.id === dhNext?.id" class="text-msc-blue">→</span>
+                </td>
+              </tr>
+              <tr v-if="!dhSchedule.length">
+                <td colspan="4" class="py-6 text-center text-gray-400">Keine Starterliste</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ══════════ NORMALER ZEITNAHME-MODUS ══════════ -->
+  <div v-else class="max-w-7xl mx-auto px-4 py-4 pb-12 grid grid-cols-1 lg:grid-cols-12 gap-4">
 
     <!-- ── LINKE SPALTE: Startliste ── -->
-    <aside class="col-span-3 space-y-3">
+    <aside class="col-span-full lg:col-span-3 space-y-3">
       <!-- Klassen-Auswahl -->
       <select v-model="selectedClassId" @change="loadClass" class="input font-semibold">
         <option v-for="c in store.classes" :key="c.id" :value="c.id">
@@ -65,7 +214,7 @@
     </aside>
 
     <!-- ── MITTE: Eingabe ── -->
-    <section class="col-span-6 space-y-4">
+    <section class="col-span-full lg:col-span-6 space-y-4">
 
       <!-- Auto-Close Toast -->
       <Transition name="fade">
@@ -279,7 +428,7 @@
     </section>
 
     <!-- ── RECHTE SPALTE: Ergebnisse ── -->
-    <aside class="col-span-3 space-y-3">
+    <aside class="col-span-full lg:col-span-3 space-y-3">
       <div class="flex items-center justify-between px-1">
         <h2 class="text-xs font-bold uppercase tracking-widest text-gray-500">
           Lauf {{ selectedRun === 0 ? 'Training' : selectedRun }} – Ergebnisse
@@ -379,6 +528,58 @@ const history          = ref([])  // für Undo
 const currentReglement = ref(null)
 const timeInput        = ref(null)
 const manualOrder      = ref([])  // participant IDs in user-defined sequence
+
+// ── Downhill-Modus ────────────────────────────────────────────────────────────
+const isDownhill      = computed(() => store.activeEvent?.timing_mode === 'downhill')
+const dhSchedule      = ref([])
+const dhFinishResults = ref([])
+const dhClock         = ref('')
+const dhFinishFlash   = ref(false)
+let   dhTickId        = null
+let   dhFlashTimer    = null
+
+const dhNext = computed(() => dhSchedule.value.find(s => !s.finished) ?? null)
+const dhUpcoming = computed(() => dhSchedule.value.filter(s => !s.finished))
+
+const dhCountdownSec = computed(() => {
+  if (!dhNext.value?.scheduled_start) return null
+  return Math.round((new Date(dhNext.value.scheduled_start).getTime() - Date.now()) / 1000)
+})
+
+const dhCountdown = computed(() => {
+  const sec = dhCountdownSec.value
+  if (sec === null || sec <= 0) return null
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+})
+
+function dhFormatTime(secs) {
+  if (secs == null) return '–'
+  const m = Math.floor(secs / 60)
+  const s = (secs % 60).toFixed(2).padStart(5, '0')
+  return m > 0 ? `${m}:${s}` : `${Number(secs).toFixed(2)} s`
+}
+
+async function loadDhSchedule() {
+  if (!store.activeEvent) return
+  try {
+    const { data } = await api.get(`/events/${store.activeEvent.id}/schedule`)
+    dhSchedule.value = data
+  } catch { dhSchedule.value = [] }
+}
+
+async function loadDhResults() {
+  if (!store.activeEvent) return
+  try {
+    const { data } = await api.get(`/events/${store.activeEvent.id}/run-results`, {
+      params: { run_number: 1 },
+    })
+    dhFinishResults.value = [...data]
+      .sort((a, b) => (a.start_number ?? 0) - (b.start_number ?? 0))
+      .slice(0, 30)
+  } catch { dhFinishResults.value = [] }
+}
 
 // ── Lichtschranke / Timing-Device ─────────────────────────────────────────────
 const lsConnected  = ref(false)   // Raspi aktuell verbunden
@@ -480,7 +681,7 @@ async function loadPendingMarshalReports() {
   }
 }
 
-function handleWsMessage(data) {
+async function handleWsMessage(data) {
   if (data.type === 'timing_device_status') {
     lsConnected.value = data.connected
   }
@@ -495,8 +696,16 @@ function handleWsMessage(data) {
     lsFlashTimer = setTimeout(() => { lsFlash.value = false }, 1800)
     timeInput.value?.focus()
   }
-  // Reload results if another client confirmed a result
-  if (data.type === 'results' && data.class_id === selectedClassId.value) {
+  // Downhill: Zieldurchfahrt oder Ergebnis-Update
+  if (data.type === 'timing_finish' || (data.type === 'results' && isDownhill.value)) {
+    dhFinishFlash.value = true
+    clearTimeout(dhFlashTimer)
+    dhFlashTimer = setTimeout(() => { dhFinishFlash.value = false }, 2500)
+    await loadDhSchedule()
+    await loadDhResults()
+  }
+  // Normal: Reload results if another client confirmed a result
+  if (data.type === 'results' && !isDownhill.value && data.class_id === selectedClassId.value) {
     loadRunResults()
   }
   // Eingehende Streckenposten-Meldung (class_id optional — zeige immer wenn passend oder kein Filter)
@@ -752,12 +961,18 @@ function onKey(e) {
 }
 
 onMounted(async () => {
-  if (store.classes.length) {
+  if (isDownhill.value) {
+    await loadDhSchedule()
+    await loadDhResults()
+    dhClock.value = new Date().toTimeString().slice(0, 8)
+    dhTickId = setInterval(() => {
+      dhClock.value = new Date().toTimeString().slice(0, 8)
+    }, 500)
+  } else if (store.classes.length) {
     const running = store.classes.find(c => c.run_status === 'running')
     selectedClassId.value = (running ?? store.classes[0]).id
     await loadClass()
   } else {
-    // Keine Klassen, aber trotzdem offene Reports laden
     await loadPendingMarshalReports()
   }
   window.addEventListener('keydown', onKey)
@@ -766,6 +981,8 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('keydown', onKey)
   _marshalTimers.forEach(t => clearTimeout(t))
+  if (dhTickId) clearInterval(dhTickId)
+  clearTimeout(dhFlashTimer)
 })
 
 watch(rawTime, (val) => {
@@ -774,6 +991,7 @@ watch(rawTime, (val) => {
 })
 
 watch(() => store.classes, async (v) => {
+  if (isDownhill.value) return
   if (v.length && !selectedClassId.value) {
     const running = v.find(c => c.run_status === 'running')
     selectedClassId.value = (running ?? v[0]).id

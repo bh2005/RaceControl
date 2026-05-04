@@ -1,8 +1,8 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 py-4 pb-12 grid grid-cols-12 gap-4">
+  <div class="max-w-7xl mx-auto px-4 py-4 pb-12 grid grid-cols-1 lg:grid-cols-12 gap-4">
 
     <!-- ── LINKE SPALTE: Session + Fahrerliste ── -->
-    <aside class="col-span-3 space-y-3">
+    <aside class="col-span-full lg:col-span-3 space-y-3">
 
       <!-- Session-Auswahl -->
       <div>
@@ -53,7 +53,7 @@
           <input v-model="traineeSearch" type="text" placeholder="Suche…"
                  class="text-xs input py-0.5 px-2 w-28">
         </div>
-        <div class="space-y-1 max-h-[calc(100vh-340px)] overflow-y-auto pr-1">
+        <div class="space-y-1 max-h-64 lg:max-h-[calc(100vh-340px)] overflow-y-auto pr-1">
           <div
             v-for="t in filteredTrainees"
             :key="t.id"
@@ -85,7 +85,7 @@
     </aside>
 
     <!-- ── MITTE: Zeitnahme ── -->
-    <section class="col-span-5 space-y-4">
+    <section class="col-span-full lg:col-span-5 space-y-4">
 
       <div v-if="!selectedSession" class="card p-8 text-center text-gray-400">
         <div class="text-4xl mb-3">🏁</div>
@@ -221,7 +221,7 @@
     </section>
 
     <!-- ── RECHTE SPALTE: Wertung ── -->
-    <aside class="col-span-4 space-y-3">
+    <aside class="col-span-full lg:col-span-4 space-y-3">
 
       <div class="flex items-center justify-between px-1">
         <h2 class="text-xs font-bold uppercase tracking-widest text-gray-500">Session-Wertung</h2>

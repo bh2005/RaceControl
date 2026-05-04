@@ -3,6 +3,60 @@ RaceControl Pro  Changelog
 ===========================
 
 
+[0.8.0] - 2026-05-04
+---------------------
+Downhill-Frontend, Trainee-Disziplinen, Zeitanalyse-Fix
+
+  Downhill-Frontend (Abschluss)
+  + AdminView: neues Dropdown "Zeitmessung" (Slalom / Downhill / Seifenkiste)
+    im Veranstaltungs-Formular -- Downhill-Events koennen jetzt direkt
+    aus dem Admin angelegt werden (timing_mode fehlte bisher in der UI)
+  + NennungView: neuer Tab "Starterliste" (erscheint nur bei Downhill-Events):
+    - Startzeiten generieren: erste Startzeit (HH:MM:SS) + Intervall
+      (30s / 45s / 1min / 90s / 2min / benutzerdefiniert)
+    - CSV-Import (Format: Startnr.,HH:MM:SS)
+    - Tabelle mit Startzeit, Nr., Fahrer, Finish-Status, Loeschen-Button
+  + ZeitnahmeView: neuer Downhill-Modus (3-spaltig, v-if isDownhill):
+    - Links: Digitaluhr + Countdown zum naechsten Starter (pulst gelb
+      <=10s, gruen mit "START!" bei 0s), naechste Starter-Liste
+    - Mitte: Finish-Ergebnisse (Startzeit, Zielzeit, Laufzeit, Status)
+    - Rechts: komplette Starterliste als Uebersicht mit Finish-Status
+    - 500ms Tick-Interval; timing_finish WS-Event loest Flash + Reload aus
+
+  Trainee-Disziplinen (neu)
+  + Neue DB-Tabelle TraineeDisciplines (n:m Trainees <-> Disciplines)
+    mit PK (trainee_id, discipline_id) und ON DELETE CASCADE
+  + Migration _migrate_trainee_disciplines() fuer bestehende Datenbanken
+  + Backend schemas.py: discipline_ids: list[int] = [] in
+    TraineeCreate, TraineeUpdate, TraineeResponse
+  + Backend trainees.py: _save_disciplines() Helper (vollstaendiger
+    Replace der Zuordnungen); list, create, update lesen/schreiben
+    discipline_ids; _row_with_club() gibt discipline_ids zurueck
+  + AdminView: Disziplin-Checkboxen (Pill-Style, blau markiert = aktiv)
+    im Trainee-Formular -- erscheinen nur wenn Disziplinen angelegt
+  + AdminView: Disziplin-Badges (blau) in der Jugendlichen-Listenansicht
+  + AdminView: Disziplinen werden beim Oeffnen des Jugendlichen-Tabs
+    automatisch nachgeladen
+
+  Zeitanalyse-Bugfix (Sprecher-Dashboard)
+  ~ SpeakerView: timeTargets verglich Fahrer gegen ALLE Gesamtwertungen,
+    auch gegen Teilnehmer mit weniger abgeschlossenen Laeufen; in einem
+    2-Lauf-Event waehrend Lauf 2 standen Fahrer mit nur Lauf 1 (z.B. 48s)
+    rechnerisch vor Fahrern mit Lauf 1+2 (z.B. 88s) -- Zeitanalyse zeigte
+    dadurch sinnlose oder gar keine Ziele
+  ~ Fix: timeTargets filtert auf start_numbers aus runResults (nur Fahrer
+    die den aktuellen Lauf bereits beendet haben), sortiert nach Gesamtzeit;
+    isCurrentDriver-Workaround entfernt
+
+  Demo-Testdaten (neu)
+  + backend/seed_demo.py: idempotentes Seed-Script fuer alle Modi:
+    Slalom (K3 laufend + K4 geplant), Downhill (8 Starter + Startplan
+    + 3 Zielzeiten), Training (JKS-Session, 6 Fahrer, 21 Laeufe)
+  + --clean: loescht alle [DEMO]-Objekte via CASCADE
+  + _ensure_migrations(): ruft database._migrate() auf, damit alle
+    Tabellen vor dem Seeden existieren
+
+
 [0.7.0] - 2026-05-01
 ---------------------
 Downhill-Timing-Modus (Seifenkiste / Downhill MTB / Ski-Abfahrt)

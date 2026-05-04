@@ -60,7 +60,7 @@
                 <label class="text-xs text-gray-500 font-semibold block mb-1">Name *</label>
                 <input v-model="eventForm.name" type="text" placeholder="z.B. ADAC Kart-Slalom Kassel 2026" class="input font-semibold">
               </div>
-              <div class="grid grid-cols-3 gap-3">
+              <div class="grid grid-cols-4 gap-3">
                 <div>
                   <label class="text-xs text-gray-500 font-semibold block mb-1">Datum *</label>
                   <input v-model="eventForm.date" type="date" class="input">
@@ -76,6 +76,13 @@
                     <option value="active">Aktiv</option>
                     <option value="finished">Beendet</option>
                     <option value="official">Offiziell</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-gray-500 font-semibold block mb-1">Zeitmessung</label>
+                  <select v-model="eventForm.timing_mode" class="input">
+                    <option value="slalom">Slalom / Kart</option>
+                    <option value="downhill">Downhill / Seifenkiste</option>
                   </select>
                 </div>
               </div>
@@ -262,6 +269,7 @@
                 <th class="py-2 px-3 text-left">Jg.</th>
                 <th class="py-2 px-3 text-left">Verein</th>
                 <th class="py-2 px-3 text-left">Kart</th>
+                <th class="py-2 px-3 text-left">Disziplinen</th>
                 <th class="py-2 px-2"></th>
               </tr>
             </thead>
@@ -283,12 +291,20 @@
                 <td class="py-2.5 px-3 text-gray-500">{{ t.birth_year || '–' }}</td>
                 <td class="py-2.5 px-3 text-gray-500">{{ t.club_name || '–' }}</td>
                 <td class="py-2.5 px-3 text-gray-500">{{ t.kart_number || '–' }}</td>
+                <td class="py-2.5 px-3">
+                  <span
+                    v-for="did in (t.discipline_ids || [])"
+                    :key="did"
+                    class="inline-block text-xs bg-blue-100 text-blue-700 rounded px-1.5 py-0.5 mr-1"
+                  >{{ disciplines.find(d => d.id === did)?.name || did }}</span>
+                  <span v-if="!(t.discipline_ids || []).length" class="text-gray-300">–</span>
+                </td>
                 <td class="py-2 px-2">
                   <button @click.stop="deleteTrainee(t)" class="text-gray-300 hover:text-msc-red text-xs">✕</button>
                 </td>
               </tr>
               <tr v-if="!traineeFiltered.length">
-                <td colspan="5" class="py-4 text-center text-sm text-gray-400">Keine Jugendlichen gefunden</td>
+                <td colspan="6" class="py-4 text-center text-sm text-gray-400">Keine Jugendlichen gefunden</td>
               </tr>
             </tbody>
           </table>
@@ -333,6 +349,28 @@
           <div>
             <label class="text-xs text-gray-500 font-semibold block mb-1">Notizen</label>
             <textarea v-model="traineeForm.notes" rows="2" class="input resize-none" placeholder="z.B. Allergien, Besonderheiten…"></textarea>
+          </div>
+          <div v-if="disciplines.length">
+            <label class="text-xs text-gray-500 font-semibold block mb-1">Disziplinen</label>
+            <div class="flex flex-wrap gap-2">
+              <label
+                v-for="d in disciplines"
+                :key="d.id"
+                class="flex items-center gap-1 text-xs cursor-pointer select-none px-2 py-1 rounded border"
+                :class="traineeForm.discipline_ids.includes(d.id)
+                  ? 'bg-msc-blue text-white border-msc-blue'
+                  : 'border-gray-200 text-gray-600 hover:border-msc-blue'"
+              >
+                <input
+                  type="checkbox"
+                  class="hidden"
+                  :value="d.id"
+                  :checked="traineeForm.discipline_ids.includes(d.id)"
+                  @change="e => { if (e.target.checked) traineeForm.discipline_ids.push(d.id); else traineeForm.discipline_ids = traineeForm.discipline_ids.filter(x => x !== d.id) }"
+                >
+                {{ d.name }}
+              </label>
+            </div>
           </div>
           <div class="flex items-center gap-2">
             <input type="checkbox" v-model="traineeForm.is_active" id="traineeActive" class="accent-msc-blue">
@@ -646,6 +684,74 @@
 
       <!-- ═══ SYSTEM ═══ -->
       <div v-if="activeTab === 'system'" class="grid grid-cols-2 gap-4">
+
+        <!-- QR-Codes für Geräte -->
+        <div class="col-span-2 card p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="font-bold text-gray-800">📱 QR-Codes für Geräte</h3>
+              <p class="text-xs text-gray-500 mt-0.5">
+                Für Chrome-Nutzer: URL immer mit
+                <code class="bg-gray-100 px-1 rounded">http://</code> eingeben.
+                QR-Codes enthalten bereits das richtige Protokoll.
+              </p>
+            </div>
+            <button @click="window.print()"
+                    class="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5 print:hidden">
+              🖨️ Drucken
+            </button>
+          </div>
+
+          <!-- IP-Eingabe -->
+          <div class="flex items-center gap-2 mb-4">
+            <label class="text-xs text-gray-500 font-semibold shrink-0">Server-Adresse:</label>
+            <div class="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5">
+              <span class="text-xs text-gray-400 font-mono">http://</span>
+              <input
+                v-model="qrHost"
+                type="text"
+                placeholder="192.168.1.100:1980"
+                class="font-mono text-sm font-bold text-gray-800 bg-transparent outline-none w-48"
+                @input="generateQrCodes"
+              >
+            </div>
+            <button @click="qrHost = serverHost; generateQrCodes()"
+                    class="text-xs text-gray-400 hover:text-msc-blue transition"
+                    title="Automatisch erkannte Adresse wiederherstellen">
+              ↺ Auto
+            </button>
+          </div>
+
+          <div class="flex gap-6 flex-wrap">
+            <!-- Livetiming -->
+            <div class="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 bg-white">
+              <div class="text-xs font-bold uppercase tracking-widest text-gray-500">Livetiming</div>
+              <img v-if="qrImages.livetiming" :src="qrImages.livetiming" alt="QR Livetiming"
+                   class="w-36 h-36 rounded-lg">
+              <div v-else class="w-36 h-36 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                Lädt…
+              </div>
+              <code class="text-xs text-gray-500">http://{{ qrHost }}/livetiming</code>
+              <p class="text-xs text-gray-400 text-center max-w-32">
+                Ergebnisse live für Zuschauer
+              </p>
+            </div>
+
+            <!-- Selbstnennung -->
+            <div class="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 bg-white">
+              <div class="text-xs font-bold uppercase tracking-widest text-gray-500">Selbstnennung</div>
+              <img v-if="qrImages.nennen" :src="qrImages.nennen" alt="QR Selbstnennung"
+                   class="w-36 h-36 rounded-lg">
+              <div v-else class="w-36 h-36 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-xs">
+                Lädt…
+              </div>
+              <code class="text-xs text-gray-500">http://{{ qrHost }}/nennen</code>
+              <p class="text-xs text-gray-400 text-center max-w-32">
+                Online-Anmeldung für Fahrer
+              </p>
+            </div>
+          </div>
+        </div>
 
         <!-- Veranstalter / Druckvorlage -->
         <div class="card p-4 space-y-4">
@@ -1056,8 +1162,23 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import api from '../api/client'
 import { useEventStore } from '../stores/event'
+import QRCode from 'qrcode'
 
 const store = useEventStore()
+
+// ── QR-Codes ──────────────────────────────────────────────────────────────────
+const qrImages = ref({ livetiming: '', nennen: '' })
+
+const serverHost = window.location.host   // z.B. "192.168.1.100:1980"
+const qrHost     = ref(serverHost)        // editierbar durch den User
+
+async function generateQrCodes() {
+  const host = qrHost.value.trim() || serverHost
+  const base = `http://${host}`
+  const opts = { width: 200, margin: 2, color: { dark: '#1e3a5f', light: '#ffffff' } }
+  qrImages.value.livetiming = await QRCode.toDataURL(`${base}/livetiming`, opts)
+  qrImages.value.nennen     = await QRCode.toDataURL(`${base}/nennen`, opts)
+}
 
 const activeTab  = ref('events')
 const tabs = [
@@ -1096,7 +1217,7 @@ function selectEvent(e) {
 function openNewEvent() {
   activeEvent.value = null
   showEventForm.value = true
-  eventForm.value = { name: '', date: '', location: '', status: 'planned', description: '' }
+  eventForm.value = { name: '', date: '', location: '', status: 'planned', description: '', timing_mode: 'slalom' }
   eventError.value = ''
   classRows.value = []
 }
@@ -1219,13 +1340,13 @@ async function loadTrainees() {
 
 function openNewTrainee() {
   selectedTrainee.value = null
-  traineeForm.value = { first_name: '', last_name: '', birth_year: null, license_number: '', club_id: null, kart_number: '', is_active: true, notes: '' }
+  traineeForm.value = { first_name: '', last_name: '', birth_year: null, license_number: '', club_id: null, kart_number: '', is_active: true, notes: '', discipline_ids: [] }
   traineeError.value = ''
 }
 
 function selectTrainee(t) {
   selectedTrainee.value = t
-  traineeForm.value = { ...t }
+  traineeForm.value = { ...t, discipline_ids: [...(t.discipline_ids || [])] }
   traineeError.value = ''
 }
 
@@ -1537,8 +1658,9 @@ watch(activeTab, (tab) => {
     }
     loadLogs()
   }
-  if (tab === 'trainees' && !trainees.value.length) loadTrainees()
+  if (tab === 'trainees') { if (!trainees.value.length) loadTrainees(); if (!disciplines.value.length) loadDisciplines() }
   if (tab === 'training') { loadTrainingSessions(); loadDisciplines() }
+  if (tab === 'system') generateQrCodes()
 })
 
 onMounted(async () => {

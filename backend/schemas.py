@@ -352,6 +352,7 @@ class TraineeCreate(BaseModel):
     kart_number: Optional[str] = None
     is_active: bool = True
     notes: Optional[str] = None
+    discipline_ids: list[int] = []
 
 
 class TraineeUpdate(BaseModel):
@@ -363,6 +364,7 @@ class TraineeUpdate(BaseModel):
     kart_number: Optional[str] = None
     is_active: Optional[bool] = None
     notes: Optional[str] = None
+    discipline_ids: Optional[list[int]] = None
 
 
 class TraineeResponse(BaseModel):
@@ -377,6 +379,7 @@ class TraineeResponse(BaseModel):
     is_active: bool
     notes: Optional[str]
     created_at: str
+    discipline_ids: list[int] = []
 
     model_config = {"from_attributes": True}
 

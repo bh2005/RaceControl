@@ -1,6 +1,6 @@
 # RaceControl Pro – Funktionsübersicht
 
-Stand: Mai 2026 · Version 0.7.0
+Stand: Mai 2026 · Version 0.8.0
 
 ---
 
@@ -148,6 +148,7 @@ Stand: Mai 2026 · Version 0.7.0
 ### Jugendlichen-Datenbank (Trainees)
 - Persistente Fahrerdaten unabhängig von Veranstaltungen
 - Felder: Vorname, Nachname, Jahrgang, Kart-Nummer, Verein, Lizenznummer, Notizen
+- **Disziplin-Zuordnung**: Mehrere Disziplinen pro Fahrer (n:m via `TraineeDisciplines`); Pill-Checkboxen im Formular, Badges in der Listenansicht
 - Aktiv/Inaktiv-Schalter (inaktive Fahrer erscheinen nicht in der Session-Liste)
 - Verwaltung im Admin-Bereich (Tab „🧒 Jugendliche")
 
@@ -190,6 +191,7 @@ Stand: Mai 2026 · Version 0.7.0
 ### Veranstaltungen
 - Anlegen, Bearbeiten, Löschen von Veranstaltungen
 - Felder: Name, Datum, Ort, Status, Beschreibung/Infotexte
+- **Zeitmessung-Modus**: `Slalom / Kart` (Standard) oder `Downhill / Seifenkiste` — steuert ob Nennbüro-Starterliste und Downhill-Zeitnahmeansicht aktiviert sind
 - Klassenverwaltung pro Veranstaltung (Name, Kürzel, Jahrgangsgrenzen, Reglement, Startreihenfolge)
 - Status-Steuerung der Klassen (auch Pause/Fortsetzen) direkt im Admin
 
@@ -207,7 +209,7 @@ Stand: Mai 2026 · Version 0.7.0
 - Aktive Sponsoren erscheinen auf der öffentlichen Landingpage
 
 ### Jugendliche / Training
-- Tab „🧒 Jugendliche": Trainings-Stammdaten verwalten (Anlegen, Bearbeiten, Suche, Aktiv-Filter)
+- Tab „🧒 Jugendliche": Trainings-Stammdaten verwalten (Anlegen, Bearbeiten, Suche, Aktiv-Filter, **Disziplin-Checkboxen**)
 - Tab „🏋 Training": Sessions anlegen und aktivieren (Datum, Name, Status, Notizen)
 
 ### Reglements-Vorlagen

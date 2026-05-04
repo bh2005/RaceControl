@@ -1,7 +1,7 @@
 # RaceControl Pro – Handbuch
 
 **MSC Braach e.V. im ADAC**  
-Stand: Mai 2026 · Version 0.7.0
+Stand: Mai 2026 · Version 0.8.0
 
 ---
 
@@ -267,6 +267,7 @@ Der Trainingsmodus ermöglicht das Erfassen von Trainingszeiten für Jugendliche
 ### Vorbereitung im Admin
 
 1. Admin → **🧒 Jugendliche** → Jugendliche anlegen (Name, Jahrgang, Kart-Nummer, Verein)
+   - Optional: **Disziplinen** zuordnen (Pill-Checkboxen erscheinen wenn Disziplinen unter „Disziplinen" angelegt wurden)
 2. Admin → **🏋 Training** → Neue Session anlegen (Datum, Name)
 3. Session aktivieren: Auf **▶ Aktivieren** klicken — alle anderen Sessions werden automatisch beendet
 
@@ -579,22 +580,27 @@ Start und Ziel sind weit voneinander entfernt — die Laufzeit ergibt sich aus
 ### Veranstaltung als Downhill-Event anlegen
 
 1. Admin → Veranstaltungen → Neue Veranstaltung anlegen
-2. Feld **Timing-Modus** auf `downhill` setzen
+2. Dropdown **Zeitmessung** auf **Downhill / Seifenkiste** setzen
 3. Klassen anlegen wie gewohnt (eine Klasse pro Wertungsgruppe)
-4. Teilnehmer anmelden (Nennbüro oder Online-Nennung)
+4. Teilnehmer anmelden (Nennbüro oder Online-Nennung) und Startnummern vergeben
 
 ### Starterliste (Planstarts) eintragen
 
-1. Admin → Veranstaltung → **Starterliste** (Tab erscheint nur bei `timing_mode = downhill`)
-2. Pro Teilnehmer: Planstart-Zeit `HH:MM:SS` eintragen
-3. **Spur** (optional): leer lassen für Single-Lane, `A` oder `B` für Zwei-Spur-Betrieb
+1. **Nennungsverwaltung** → Tab **📋 Starterliste** (erscheint automatisch nur bei Downhill-Events)
+2. **Erste Startzeit** eingeben (z.B. `10:00:00`) und **Startintervall** wählen (30 s / 45 s / 1 min / 90 s / 2 min / benutzerdefiniert)
+3. Klick auf **⚡ Startzeiten generieren** — alle Teilnehmer mit Startnummer erhalten automatisch ihre Startzeiten in Startnummernreihenfolge
+4. **Spur** (optional, Zwei-Bahn-Betrieb): einzelne Einträge im CSV-Import können `A` oder `B` enthalten
 
-**Massenimport** (API): `POST /api/events/{id}/schedule/bulk` mit JSON-Array:
+**CSV-Import** (Alternative zu automatischer Generierung):
+- Format: eine Zeile pro Fahrer → `Startnummer,HH:MM:SS`
+- Erste Zeile kann Kopfzeile sein (wird erkannt und übersprungen)
+- Beispiel: `1,10:00:00` / `2,10:01:00`
+
+**Massenimport** über API: `POST /api/events/{id}/schedule/bulk` mit JSON-Array:
 ```json
 [
   { "participant_id": 1, "scheduled_start": "12:00:00" },
-  { "participant_id": 2, "scheduled_start": "12:01:00" },
-  { "participant_id": 3, "scheduled_start": "12:02:00" }
+  { "participant_id": 2, "scheduled_start": "12:01:00" }
 ]
 ```
 

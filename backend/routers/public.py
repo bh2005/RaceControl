@@ -10,6 +10,48 @@ from database import get_db
 router = APIRouter(prefix="/public", tags=["public"])
 
 
+@router.get("/training/active")
+def get_active_training(db: Annotated[sqlite3.Connection, Depends(get_db)]):
+    """Returns active training session with standings and recent runs. No auth required."""
+    session = db.execute(
+        """SELECT s.*, d.name AS discipline_name
+           FROM TrainingSessions s
+           LEFT JOIN Disciplines d ON d.id = s.discipline_id
+           WHERE s.status = 'active'
+           ORDER BY s.id DESC LIMIT 1"""
+    ).fetchone()
+    if not session:
+        raise HTTPException(404, "Kein aktives Training")
+    session_dict = dict(session)
+
+    standings = db.execute(
+        """SELECT *, RANK() OVER (ORDER BY best_time ASC NULLS LAST) AS rank
+           FROM v_training_standings
+           WHERE session_id = ?
+           ORDER BY best_time ASC NULLS LAST""",
+        (session_dict["id"],),
+    ).fetchall()
+
+    recent_runs = db.execute(
+        """SELECT r.id, r.run_number, r.raw_time, r.penalty_seconds, r.status,
+                  r.created_at, r.trainee_id,
+                  t.first_name, t.last_name,
+                  CASE WHEN r.status = 'valid' AND r.raw_time IS NOT NULL
+                       THEN r.raw_time + r.penalty_seconds ELSE NULL END AS total_time
+           FROM TrainingRuns r
+           JOIN Trainees t ON t.id = r.trainee_id
+           WHERE r.session_id = ?
+           ORDER BY r.created_at DESC LIMIT 20""",
+        (session_dict["id"],),
+    ).fetchall()
+
+    return {
+        "session": session_dict,
+        "standings": [dict(r) for r in standings],
+        "recent_runs": [dict(r) for r in recent_runs],
+    }
+
+
 class SelfRegisterBody(BaseModel):
     first_name: str
     last_name: str

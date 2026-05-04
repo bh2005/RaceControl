@@ -22,7 +22,23 @@ def _row_with_club(db: sqlite3.Connection, trainee_id: int) -> dict:
     ).fetchone()
     if not row:
         raise HTTPException(404, "Trainee nicht gefunden")
-    return dict(row)
+    d = dict(row)
+    d["discipline_ids"] = [
+        r[0] for r in db.execute(
+            "SELECT discipline_id FROM TraineeDisciplines WHERE trainee_id = ? ORDER BY discipline_id",
+            (trainee_id,),
+        )
+    ]
+    return d
+
+
+def _save_disciplines(db: sqlite3.Connection, trainee_id: int, discipline_ids: list[int]) -> None:
+    db.execute("DELETE FROM TraineeDisciplines WHERE trainee_id = ?", (trainee_id,))
+    for did in discipline_ids:
+        db.execute(
+            "INSERT OR IGNORE INTO TraineeDisciplines (trainee_id, discipline_id) VALUES (?, ?)",
+            (trainee_id, did),
+        )
 
 
 @router.get("", response_model=list[TraineeResponse])
@@ -47,7 +63,17 @@ def list_trainees(
         params += [s, s, s]
     query += " ORDER BY t.last_name, t.first_name"
     rows = db.execute(query, params).fetchall()
-    return [dict(r) for r in rows]
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["discipline_ids"] = [
+            x[0] for x in db.execute(
+                "SELECT discipline_id FROM TraineeDisciplines WHERE trainee_id = ? ORDER BY discipline_id",
+                (d["id"],),
+            )
+        ]
+        result.append(d)
+    return result
 
 
 @router.post("", response_model=TraineeResponse, status_code=201)
@@ -64,6 +90,7 @@ def create_trainee(
         (body.first_name, body.last_name, body.birth_year, body.license_number,
          body.club_id, body.kart_number, int(body.is_active), body.notes),
     )
+    _save_disciplines(db, cur.lastrowid, body.discipline_ids)
     db.commit()
     return _row_with_club(db, cur.lastrowid)
 
@@ -76,15 +103,19 @@ def update_trainee(
     _: AdminOnly,
 ):
     updates = body.model_dump(exclude_unset=True)
-    if not updates:
+    discipline_ids = updates.pop("discipline_ids", None)
+    if updates:
+        if "is_active" in updates:
+            updates["is_active"] = int(updates["is_active"])
+        sets = ", ".join(f"{k} = ?" for k in updates)
+        db.execute(
+            f"UPDATE Trainees SET {sets} WHERE id = ?",
+            (*updates.values(), trainee_id),
+        )
+    elif discipline_ids is None:
         raise HTTPException(422, "Keine Felder zum Aktualisieren")
-    if "is_active" in updates:
-        updates["is_active"] = int(updates["is_active"])
-    sets = ", ".join(f"{k} = ?" for k in updates)
-    db.execute(
-        f"UPDATE Trainees SET {sets} WHERE id = ?",
-        (*updates.values(), trainee_id),
-    )
+    if discipline_ids is not None:
+        _save_disciplines(db, trainee_id, discipline_ids)
     db.commit()
     return _row_with_club(db, trainee_id)
 

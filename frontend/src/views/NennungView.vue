@@ -1,8 +1,8 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 py-4 pb-12 grid grid-cols-12 gap-4">
+  <div class="max-w-7xl mx-auto px-4 py-4 pb-12 grid grid-cols-1 lg:grid-cols-12 gap-4">
 
     <!-- ── LINKE SPALTE ── -->
-    <aside class="col-span-3 space-y-3">
+    <aside class="col-span-full lg:col-span-3 space-y-3">
 
       <!-- Kennzahlen -->
       <div class="grid grid-cols-2 gap-2">
@@ -144,7 +144,7 @@
     </aside>
 
     <!-- ── MITTE: Teilnehmerliste ── -->
-    <section class="col-span-6 space-y-2">
+    <section class="col-span-full lg:col-span-6 space-y-2">
 
       <!-- Modus-Toggle -->
       <div class="flex items-center gap-2">
@@ -157,6 +157,11 @@
           class="text-xs font-bold px-3 py-1.5 rounded-lg transition"
           :class="mode === 'numbers' ? 'bg-msc-blue text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'">
           🎲 Startnummern vergeben
+        </button>
+        <button v-if="isDownhill" @click="mode = 'schedule'; loadSchedule()"
+          class="text-xs font-bold px-3 py-1.5 rounded-lg transition"
+          :class="mode === 'schedule' ? 'bg-orange-500 text-white' : 'bg-white text-orange-600 border border-orange-200 hover:bg-orange-50'">
+          📋 Starterliste
         </button>
         <span v-if="mode === 'numbers'" class="text-xs text-gray-400 ml-1">
           Nach Auslosung eintragen
@@ -315,10 +320,117 @@
         </p>
       </div>
 
+      <!-- ═══ DOWNHILL STARTERLISTE ═══ -->
+      <div v-if="mode === 'schedule'" class="space-y-4">
+
+        <!-- Startzeiten generieren -->
+        <div class="card p-4 space-y-3">
+          <h3 class="font-bold text-gray-700 text-sm uppercase tracking-widest">Startzeiten generieren</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Erste Startzeit</label>
+              <input v-model="schedFirstStart" type="time" step="1" class="input font-mono">
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Startintervall</label>
+              <select v-model="schedInterval" class="input">
+                <option value="30">30 Sekunden</option>
+                <option value="45">45 Sekunden</option>
+                <option value="60">1 Minute</option>
+                <option value="90">90 Sekunden</option>
+                <option value="120">2 Minuten</option>
+                <option value="custom">Benutzerdefiniert</option>
+              </select>
+            </div>
+          </div>
+          <div v-if="schedInterval === 'custom'" class="flex items-center gap-2">
+            <label class="text-xs text-gray-500 font-semibold shrink-0">Sekunden:</label>
+            <input v-model.number="schedCustomInterval" type="number" min="10" max="600" class="input w-24">
+          </div>
+          <div class="flex items-center gap-2">
+            <button @click="generateSchedule"
+              :disabled="!schedFirstStart || !participantsForSchedule.length"
+              class="flex-1 btn-primary py-2 disabled:opacity-40">
+              ⚡ Startzeiten generieren ({{ participantsForSchedule.length }} Starter)
+            </button>
+            <button v-if="schedule.length" @click="clearSchedule"
+              class="text-xs font-bold px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 transition">
+              🗑 Alle löschen
+            </button>
+          </div>
+          <p class="text-xs text-gray-400">
+            Starter werden in Reihenfolge der Startnummer eingeplant.
+            Nur Teilnehmer mit vergebener Startnummer werden berücksichtigt.
+          </p>
+        </div>
+
+        <!-- Aktuelle Starterliste -->
+        <div class="card overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="font-bold text-gray-700">
+              Starterliste
+              <span class="text-gray-400 font-normal text-sm">({{ schedule.length }})</span>
+              <span v-if="schedule.filter(s => s.finished).length" class="ml-2 text-xs text-green-600 font-normal">
+                {{ schedule.filter(s => s.finished).length }} abgeschlossen
+              </span>
+            </h3>
+            <label class="text-xs font-bold px-2.5 py-1 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 transition cursor-pointer"
+                   title="CSV importieren (Spalten: Startnr.,HH:MM:SS)">
+              📥 CSV Import
+              <input type="file" accept=".csv,.txt" class="hidden" @change="importScheduleCsv">
+            </label>
+          </div>
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                <th class="py-2.5 px-3 text-left">Startzeit</th>
+                <th class="py-2.5 px-3 text-left">Nr.</th>
+                <th class="py-2.5 px-3 text-left">Fahrer</th>
+                <th class="py-2.5 px-3 text-center">Status</th>
+                <th class="py-2.5 px-3 text-center">Aktion</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr v-for="s in schedule" :key="s.id"
+                  :class="s.finished ? 'opacity-60 bg-green-50/40' : ''">
+                <td class="py-2 px-3 font-mono text-xs font-bold text-gray-700">
+                  {{ s.scheduled_start ? s.scheduled_start.slice(11, 19) : '–' }}
+                </td>
+                <td class="py-2 px-3 font-black text-gray-700">
+                  <span v-if="s.start_number">#{{ s.start_number }}</span>
+                  <span v-else class="text-gray-300 font-normal">–</span>
+                </td>
+                <td class="py-2 px-3 font-semibold text-gray-800">
+                  {{ s.first_name }} {{ s.last_name }}
+                </td>
+                <td class="py-2 px-3 text-center">
+                  <span v-if="s.finished"
+                    class="text-xs bg-green-100 text-green-700 font-bold rounded-full px-2 py-0.5">✓ Finish</span>
+                  <span v-else class="text-xs text-amber-600">Ausstehend</span>
+                </td>
+                <td class="py-2 px-3 text-center">
+                  <button @click="deleteScheduleEntry(s.id)"
+                    class="text-xs text-red-400 hover:text-red-600 font-bold transition"
+                    :disabled="s.finished"
+                    :class="s.finished ? 'opacity-30 cursor-not-allowed' : ''"
+                    title="Eintrag löschen">✕</button>
+                </td>
+              </tr>
+              <tr v-if="schedule.length === 0">
+                <td colspan="5" class="py-8 text-center text-sm text-gray-400">
+                  Noch keine Startzeiten generiert.<br>
+                  <span class="text-xs">Erste Startzeit und Interval oben eingeben, dann „Startzeiten generieren" klicken.</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </section>
 
     <!-- ── RECHTE SPALTE: Formular ── -->
-    <aside class="col-span-3">
+    <aside class="col-span-full lg:col-span-3">
       <div v-if="form" class="card p-4 space-y-3">
         <h2 class="font-bold text-gray-800 flex items-center gap-2">
           <span class="h-2.5 w-2.5 rounded-full" :class="selected ? 'bg-amber-400' : 'bg-green-500'"></span>
@@ -949,11 +1061,101 @@ async function printNennliste() {
   setTimeout(() => w.print(), 400)
 }
 
+// ── Downhill Starterliste ─────────────────────────────────────────────────────
+const isDownhill          = computed(() => store.activeEvent?.timing_mode === 'downhill')
+const schedule            = ref([])
+const schedFirstStart     = ref('')
+const schedInterval       = ref('60')
+const schedCustomInterval = ref(60)
+
+const participantsForSchedule = computed(() =>
+  [...participants.value]
+    .filter(p => p.start_number)
+    .sort((a, b) => (a.start_number ?? 9999) - (b.start_number ?? 9999))
+)
+
+async function loadSchedule() {
+  if (!store.activeEvent || !isDownhill.value) return
+  try {
+    const { data } = await api.get(`/events/${store.activeEvent.id}/schedule`)
+    schedule.value = data
+  } catch { schedule.value = [] }
+}
+
+async function generateSchedule() {
+  if (!store.activeEvent || !schedFirstStart.value) return
+  const ps = participantsForSchedule.value
+  if (!ps.length) { alert('Keine Teilnehmer mit Startnummer vorhanden.'); return }
+  const intervalSec = schedInterval.value === 'custom'
+    ? (schedCustomInterval.value || 60)
+    : parseInt(schedInterval.value)
+  const today   = new Date().toISOString().slice(0, 10)
+  const firstMs = new Date(`${today}T${schedFirstStart.value}`).getTime()
+  const entries = ps.map((p, i) => ({
+    participant_id:  p.id,
+    lane:            null,
+    scheduled_start: new Date(firstMs + i * intervalSec * 1000).toISOString(),
+  }))
+  try {
+    const { data } = await api.post(`/events/${store.activeEvent.id}/schedule/bulk`, entries)
+    schedule.value = data
+  } catch (e) {
+    alert(e.response?.data?.detail || 'Fehler beim Generieren der Startzeiten')
+  }
+}
+
+async function deleteScheduleEntry(id) {
+  if (!store.activeEvent) return
+  try {
+    await api.delete(`/events/${store.activeEvent.id}/schedule/${id}`)
+    await loadSchedule()
+  } catch (e) { alert(e.response?.data?.detail || 'Fehler beim Löschen') }
+}
+
+async function clearSchedule() {
+  if (!store.activeEvent || !schedule.value.length) return
+  if (!confirm(`Alle ${schedule.value.length} Startzeiten wirklich löschen?`)) return
+  try {
+    for (const s of schedule.value)
+      await api.delete(`/events/${store.activeEvent.id}/schedule/${s.id}`)
+    schedule.value = []
+  } catch { await loadSchedule() }
+}
+
+async function importScheduleCsv(evt) {
+  const file = evt.target.files?.[0]
+  evt.target.value = ''
+  if (!file || !store.activeEvent) return
+  const text  = await file.text()
+  const today = new Date().toISOString().slice(0, 10)
+  const lines = text.trim().split(/\r?\n/)
+  const start = lines[0]?.match(/^\D/) ? 1 : 0
+  const entries = []
+  for (const line of lines.slice(start)) {
+    const [numStr, timeStr] = line.split(',').map(s => s.trim().replace(/"/g, ''))
+    if (!numStr || !timeStr) continue
+    const p = participants.value.find(pp => String(pp.start_number) === numStr)
+    if (!p) continue
+    const dt = new Date(`${today}T${timeStr}`)
+    if (isNaN(dt.getTime())) continue
+    entries.push({ participant_id: p.id, lane: null, scheduled_start: dt.toISOString() })
+  }
+  if (!entries.length) { alert('Keine gültigen Einträge gefunden (Format: Startnr.,HH:MM:SS)'); return }
+  try {
+    const { data } = await api.post(`/events/${store.activeEvent.id}/schedule/bulk`, entries)
+    schedule.value = data
+  } catch (e) { alert(e.response?.data?.detail || 'Fehler beim CSV-Import') }
+}
+
 onMounted(async () => {
   if (!store.classes.length) await store.loadEvents()
   await load()
+  if (isDownhill.value) await loadSchedule()
 })
-watch(() => store.activeEvent, load)
+watch(() => store.activeEvent, async () => {
+  await load()
+  if (isDownhill.value) await loadSchedule()
+})
 
 function statusLabel(s) {
   return { planned: 'Geplant', running: 'Läuft', preliminary: 'Vorläufig', technical_ok: 'Freigegeben', registered: 'Gemeldet', checked_in: 'Eingecheckt', disqualified: 'DSQ', official: 'Offiziell' }[s] || s

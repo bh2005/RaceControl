@@ -1,7 +1,7 @@
 # Projekt-Agenda: "RaceControl Pro"
 **Konzept:** Modulare Veranstaltungssoftware für Kart-Slalom (JKS & KS2000)  
 **Zielgruppe:** ADAC Hessen-Thüringen (ca. 10 Klassen / 300 Starter)  
-**Stand:** Mai 2026 (v0.7.0)
+**Stand:** Mai 2026 (v0.8.0)
 
 ---
 
@@ -79,7 +79,7 @@
 - ✅ **Ereignis-Log:** Echtzeit-Protokoll für Streckenposten-Meldungen, Klassen-Statusänderungen, Ankündigungen (📢 Nennungsschluss etc.)
 - ✅ **DB-Vorladung:** Letzte Marshal-Meldungen werden beim Öffnen aus der DB geladen
 - ✅ **Trainingsanzeige:** Trainingszeiten und -queue werden korrekt angezeigt (manueller Override bleibt erhalten)
-- ✅ **Zeitanalyse:** Was braucht der Fahrer für Platz 1 / Top 3 / Top 10? Pylonen-Budget
+- ✅ **Zeitanalyse:** Was braucht der Fahrer für Platz 1 / Top 3 / Top 10? Pylonen-Budget — vergleicht nur gegen Fahrer die den aktuellen Lauf bereits abgeschlossen haben (Fix: gemischte Mehrfachlauf-Stände verfälschten die Analyse)
 
 ## 9. Qualitätssicherung & Test
 - ❌ **Stresstest:** Simulation mit 300 Datensätzen und 50+ simultanen Clients – noch nicht durchgeführt
@@ -91,7 +91,8 @@
 ---
 
 ## 10. Trainingsmodus & Auswertung
-- ✅ **Trainees:** Persistente Jugendlichen-Datenbank (CRUD, Verein, Kart-Nummer, Aktiv-Flag)
+- ✅ **Trainees:** Persistente Jugendlichen-Datenbank (CRUD, Verein, Kart-Nummer, Aktiv-Flag, **Disziplin-Zuordnung n:m**)
+- ✅ **Trainee-Disziplinen:** TraineeDisciplines-Tabelle (n:m), Pill-Checkboxen im Formular, Badges in der Liste
 - ✅ **TrainingSessions:** Anlegen, aktivieren (Single-Active-Lock), beenden
 - ✅ **TrainingRuns:** Zeiterfassung mit Auto-Increment run_number, WS-Broadcast, Löschen
 - ✅ **TrainingView:** 3-spaltiges Layout (Fahrerliste / Zeitnahme / Wertung)
@@ -111,6 +112,7 @@
 | ~~🟡 Mittel~~ | ~~pytest-Tests für Trainings-Endpunkte (trainees, training)~~ | ~~mittel~~ |
 | ~~🟡 Mittel~~ | ~~pytest-Tests für neue Endpunkte (marshal, admin_logs, auto-close)~~ | ~~mittel~~ |
 | ~~🟡 Mittel~~ | ~~Downhill-Timing-Modus (StartSchedule, timing_finish, Seifenkiste)~~ | ~~groß~~ |
-| 🟡 Mittel | Downhill-Zeitnahme-View im Frontend (Starterliste, nächster Starter) | mittel |
+| ~~🟡 Mittel~~ | ~~Downhill-Zeitnahme-View im Frontend (Starterliste, nächster Starter, Event-Formular)~~ | ~~mittel~~ |
+| ~~🟡 Mittel~~ | ~~Trainee-Disziplinen (n:m TraineeDisciplines, Admin-UI)~~ | ~~klein~~ |
 | 🟢 Nice-to-have | Stresstest (300 Starter, 50 Clients) | groß |
 | ~~🟢 Nice-to-have~~ | ~~Automatisierte Tests~~ | ~~groß~~ |
