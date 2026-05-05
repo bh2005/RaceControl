@@ -51,7 +51,7 @@ jobs:
 
       - name: Run Vitest
         working-directory: frontend
-        run: npm test
+        run: npm run test:coverage
 
   # ── Frontend build (catch compile errors) ───────────────────────────────────
   frontend-build:

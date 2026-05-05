@@ -73,6 +73,13 @@
             <div class="font-semibold">{{ auth.user?.role }}</div>
           </div>
           <button
+            @click="passwordDialogOpen = true"
+            class="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center font-bold transition text-sm"
+            title="Passwort ändern"
+          >
+            🔒
+          </button>
+          <button
             @click="handleLogout"
             class="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center font-bold transition text-sm"
             title="Abmelden"
@@ -84,6 +91,38 @@
 
     </div>
   </header>
+
+  <div v-if="passwordDialogOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div class="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <div class="text-lg font-bold text-gray-900">Passwort ändern</div>
+          <div class="text-xs text-gray-500">Eigenes Passwort aktualisieren</div>
+        </div>
+        <button @click="closePasswordModal" class="text-gray-500 hover:text-gray-800">✕</button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs font-semibold text-gray-600 block mb-1">Aktuelles Passwort</label>
+          <input v-model="passwordForm.current_password" type="password" class="input w-full" autocomplete="current-password">
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-gray-600 block mb-1">Neues Passwort</label>
+          <input v-model="passwordForm.new_password" type="password" class="input w-full" autocomplete="new-password">
+        </div>
+        <div>
+          <label class="text-xs font-semibold text-gray-600 block mb-1">Neues Passwort wiederholen</label>
+          <input v-model="passwordForm.confirm_password" type="password" class="input w-full" autocomplete="new-password">
+        </div>
+        <div v-if="passwordError" class="text-sm text-red-600">{{ passwordError }}</div>
+        <div v-if="passwordMessage" class="text-sm text-green-600">{{ passwordMessage }}</div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button @click="closePasswordModal" class="btn-secondary py-2 px-3 text-sm">Abbrechen</button>
+          <button @click="changeOwnPassword" class="btn-primary py-2 px-3 text-sm">Speichern</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -91,6 +130,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useEventStore } from '../stores/event'
+import api from '../api/client'
 
 const auth   = useAuthStore()
 const store  = useEventStore()
@@ -100,6 +140,10 @@ const route  = useRoute()
 const currentTime = ref('')
 const menuOpen    = ref(false)
 const dropdownRef = ref(null)
+const passwordDialogOpen = ref(false)
+const passwordMessage = ref(null)
+const passwordError = ref(null)
+const passwordForm = ref({ current_password: '', new_password: '', confirm_password: '' })
 let clockTimer    = null
 
 function updateClock() {
@@ -112,6 +156,36 @@ function updateClock() {
 function onClickOutside(e) {
   if (dropdownRef.value && !dropdownRef.value.contains(e.target)) {
     menuOpen.value = false
+  }
+}
+
+function closePasswordModal() {
+  passwordDialogOpen.value = false
+  passwordError.value = null
+  passwordMessage.value = null
+  passwordForm.value = { current_password: '', new_password: '', confirm_password: '' }
+}
+
+async function changeOwnPassword() {
+  passwordError.value = null
+  passwordMessage.value = null
+  if (!passwordForm.value.current_password || !passwordForm.value.new_password) {
+    passwordError.value = 'Beide Felder müssen ausgefüllt sein.'
+    return
+  }
+  if (passwordForm.value.new_password !== passwordForm.value.confirm_password) {
+    passwordError.value = 'Die Passwörter stimmen nicht überein.'
+    return
+  }
+  try {
+    await api.patch('/users/me/password', {
+      current_password: passwordForm.value.current_password,
+      new_password: passwordForm.value.new_password,
+    })
+    passwordMessage.value = 'Passwort wurde geändert.'
+    passwordForm.value = { current_password: '', new_password: '', confirm_password: '' }
+  } catch (e) {
+    passwordError.value = e.response?.data?.detail || 'Fehler beim Ändern des Passworts.'
   }
 }
 

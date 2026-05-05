@@ -631,6 +631,7 @@
                 <th class="py-2 px-3 text-left">Anzeigename</th>
                 <th class="py-2 px-3 text-left">Rolle</th>
                 <th class="py-2 px-3 text-center">Aktiv</th>
+                <th class="py-2 px-3 text-right">Aktion</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -645,40 +646,72 @@
                     {{ u.is_active ? '✓' : '✗' }}
                   </span>
                 </td>
+                <td class="py-2.5 px-3 text-right">
+                  <button @click="selectPasswordUser(u)" class="text-xs btn-secondary px-2 py-1">Passwort</button>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div v-if="userForm" class="card p-4 space-y-3 self-start">
-          <h3 class="font-bold text-gray-800">Neuer Benutzer</h3>
-          <div>
-            <label class="text-xs text-gray-500 font-semibold block mb-1">Benutzername</label>
-            <input v-model="userForm.username" type="text" class="input font-mono">
-          </div>
-          <div>
-            <label class="text-xs text-gray-500 font-semibold block mb-1">Passwort</label>
-            <input v-model="userForm.password" type="password" class="input">
-          </div>
-          <div>
-            <label class="text-xs text-gray-500 font-semibold block mb-1">Rolle</label>
-            <select v-model="userForm.role" class="input">
-              <option value="zeitnahme">Zeitnahme</option>
-              <option value="nennung">Nennung</option>
-              <option value="schiedsrichter">Schiedsrichter</option>
-              <option value="marshal">Streckenposten</option>
-              <option value="viewer">Viewer</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-          <div>
-            <label class="text-xs text-gray-500 font-semibold block mb-1">Anzeigename</label>
-            <input v-model="userForm.display_name" type="text" class="input">
-          </div>
-          <div class="flex gap-2">
-            <button @click="saveUser" class="flex-1 btn-primary py-2">Anlegen</button>
-            <button @click="userForm = null" class="btn-secondary py-2 px-3 text-sm">Abbrechen</button>
-          </div>
+        <div class="card p-4 space-y-3 self-start">
+          <template v-if="userForm">
+            <h3 class="font-bold text-gray-800">Neuer Benutzer</h3>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Benutzername</label>
+              <input v-model="userForm.username" type="text" class="input font-mono">
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Passwort</label>
+              <input v-model="userForm.password" type="password" class="input">
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Rolle</label>
+              <select v-model="userForm.role" class="input">
+                <option value="zeitnahme">Zeitnahme</option>
+                <option value="nennung">Nennung</option>
+                <option value="schiedsrichter">Schiedsrichter</option>
+                <option value="marshal">Streckenposten</option>
+                <option value="viewer">Viewer</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Anzeigename</label>
+              <input v-model="userForm.display_name" type="text" class="input">
+            </div>
+            <div class="flex gap-2">
+              <button @click="saveUser" class="flex-1 btn-primary py-2">Anlegen</button>
+              <button @click="userForm = null" class="btn-secondary py-2 px-3 text-sm">Abbrechen</button>
+            </div>
+          </template>
+
+          <template v-else-if="passwordUser">
+            <h3 class="font-bold text-gray-800">Passwort zurücksetzen</h3>
+            <div class="text-sm text-gray-500">
+              Passwort für <strong>{{ passwordUser.username }}</strong> ändern.
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Neues Passwort</label>
+              <input v-model="passwordForm.new_password" type="password" class="input">
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Neues Passwort wiederholen</label>
+              <input v-model="passwordForm.confirm_password" type="password" class="input">
+            </div>
+            <div v-if="passwordError" class="text-xs text-red-600">{{ passwordError }}</div>
+            <div v-if="passwordMessage" class="text-xs text-green-600">{{ passwordMessage }}</div>
+            <div class="flex gap-2">
+              <button @click="savePasswordForUser" class="flex-1 btn-primary py-2">Speichern</button>
+              <button @click="cancelPasswordReset" class="btn-secondary py-2 px-3 text-sm">Abbrechen</button>
+            </div>
+          </template>
+
+          <template v-else>
+            <div class="text-sm text-gray-500">
+              Wähle einen Benutzer aus, um sein Passwort zurückzusetzen, oder füge einen neuen Benutzer hinzu.
+            </div>
+          </template>
         </div>
       </div>
 
@@ -1544,8 +1577,12 @@ async function deleteSponsor(s) {
 }
 
 // ── Users ──
-const users    = ref([])
-const userForm = ref(null)
+const users        = ref([])
+const userForm     = ref(null)
+const passwordUser = ref(null)
+const passwordForm = ref({ new_password: '', confirm_password: '' })
+const passwordError = ref(null)
+const passwordMessage = ref(null)
 
 async function loadUsers() {
   const { data } = await api.get('/users/')
@@ -1553,6 +1590,9 @@ async function loadUsers() {
 }
 
 function openNewUser() {
+  passwordUser.value = null
+  passwordMessage.value = null
+  passwordError.value = null
   userForm.value = { username: '', password: '', role: 'zeitnahme', display_name: '' }
 }
 
@@ -1560,6 +1600,45 @@ async function saveUser() {
   await api.post('/users/', userForm.value)
   await loadUsers()
   userForm.value = null
+}
+
+function selectPasswordUser(user) {
+  userForm.value = null
+  passwordMessage.value = null
+  passwordError.value = null
+  passwordUser.value = user
+  passwordForm.value = { new_password: '', confirm_password: '' }
+}
+
+function cancelPasswordReset() {
+  passwordUser.value = null
+  passwordMessage.value = null
+  passwordError.value = null
+  passwordForm.value = { new_password: '', confirm_password: '' }
+}
+
+async function savePasswordForUser() {
+  passwordError.value = null
+  passwordMessage.value = null
+  if (!passwordForm.value.new_password) {
+    passwordError.value = 'Neues Passwort eingeben.'
+    return
+  }
+  if (passwordForm.value.new_password !== passwordForm.value.confirm_password) {
+    passwordError.value = 'Die Passwörter stimmen nicht überein.'
+    return
+  }
+  if (!passwordUser.value) return
+  try {
+    await api.patch(`/users/${passwordUser.value.id}/password`, {
+      new_password: passwordForm.value.new_password,
+    })
+    passwordMessage.value = 'Passwort wurde zurückgesetzt.'
+    await loadUsers()
+    passwordForm.value = { new_password: '', confirm_password: '' }
+  } catch (e) {
+    passwordError.value = e.response?.data?.detail || 'Fehler beim Speichern des Passworts.'
+  }
 }
 
 // ── System / Settings ──
@@ -1797,7 +1876,7 @@ async function seedTestData() {
       _updateLast('ok', `Klasse "${c.name}" (ID ${c.id})`)
     }
 
-    // 5. Teilnehmer
+    // 5. Teilnehmer — IDs für spätere Schritte merken
     const pDefs = [
       { first_name: 'Tim',   last_name: 'Fischer', birth_year: 2016, start_number: 1, ci: 0 },
       { first_name: 'Lena',  last_name: 'Braun',   birth_year: 2017, start_number: 2, ci: 0 },
@@ -1807,14 +1886,76 @@ async function seedTestData() {
       { first_name: 'Petra', last_name: 'Mayer',   birth_year: 2005, start_number: 6, ci: 2 },
     ]
     _log('6 Testteilnehmer anlegen…')
+    const pCreated = []
     for (const p of pDefs) {
-      await api.post(`/events/${event.id}/participants`, {
+      pCreated.push((await api.post(`/events/${event.id}/participants`, {
         first_name: p.first_name, last_name: p.last_name,
         birth_year: p.birth_year, start_number: p.start_number,
         class_id: created[p.ci].id,
-      })
+      })).data)
     }
     _updateLast('ok', '6 Testteilnehmer angelegt')
+
+    // 6. Schüler A: starten · Trainingslauf · Lauf 1 für Tim (Lena bleibt in Queue)
+    _log('Schüler A starten · Training · Lauf 1 Tim…')
+    await api.patch(`/events/${event.id}/classes/${created[0].id}`, { run_status: 'running' })
+    await api.post(`/events/${event.id}/results`, { participant_id: pCreated[0].id, class_id: created[0].id, run_number: 0, raw_time: 42.3 })
+    await api.post(`/events/${event.id}/results`, { participant_id: pCreated[1].id, class_id: created[0].id, run_number: 0, raw_time: 45.1 })
+    await api.post(`/events/${event.id}/results`, { participant_id: pCreated[0].id, class_id: created[0].id, run_number: 1, raw_time: 38.5 })
+    _updateLast('ok', 'Schüler A läuft — Tim: L1 fertig · Lena: in Queue')
+
+    // 7. Junioren: Training + 2 Läufe → auto-close → vorläufig
+    _log('Junioren: Training + L1 + L2 → vorläufig…')
+    await api.patch(`/events/${event.id}/classes/${created[1].id}`, { run_status: 'running' })
+    for (const [pid, t] of [[pCreated[2].id, 44.2], [pCreated[3].id, 47.8]])
+      await api.post(`/events/${event.id}/results`, { participant_id: pid, class_id: created[1].id, run_number: 0, raw_time: t })
+    for (const [pid, t] of [[pCreated[2].id, 40.1], [pCreated[3].id, 43.2]])
+      await api.post(`/events/${event.id}/results`, { participant_id: pid, class_id: created[1].id, run_number: 1, raw_time: t })
+    for (const [pid, t] of [[pCreated[2].id, 39.4], [pCreated[3].id, 41.8]])
+      await api.post(`/events/${event.id}/results`, { participant_id: pid, class_id: created[1].id, run_number: 2, raw_time: t })
+    await api.post(`/events/${event.id}/classes/${created[1].id}/auto-close`)
+    _updateLast('ok', 'Junioren: Training + L1 + L2 → vorläufig')
+
+    // 8. Downhill-Veranstaltung mit Startplan und 2 Zielzeiten
+    _log(`Downhill-Test ${year} anlegen…`)
+    const dhEvent = (await api.post('/events/', {
+      name: `Downhill-Test ${year}`, date: today,
+      location: 'Testhang', timing_mode: 'downhill', status: 'active',
+    })).data
+    const dhClass = (await api.post(`/events/${dhEvent.id}/classes`, {
+      name: 'Downhill', short_name: 'DH', reglement_id: reg.id,
+      run_status: 'planned', is_exhibition: true, start_order: 0,
+    })).data
+    const dhNames = [
+      { first_name: 'Lukas', last_name: 'Müller', start_number: 11 },
+      { first_name: 'Sara',  last_name: 'Klein',  start_number: 12 },
+      { first_name: 'Felix', last_name: 'Bauer',  start_number: 13 },
+      { first_name: 'Nina',  last_name: 'Wolf',   start_number: 14 },
+    ]
+    const dhP = []
+    for (const n of dhNames)
+      dhP.push((await api.post(`/events/${dhEvent.id}/participants`, { ...n, class_id: dhClass.id })).data)
+    await api.post(`/events/${dhEvent.id}/schedule/bulk`,
+      dhP.map((p, i) => ({ participant_id: p.id, scheduled_start: `10:0${i}:00` }))
+    )
+    await api.post(`/events/${dhEvent.id}/results`, { participant_id: dhP[0].id, class_id: dhClass.id, run_number: 1, raw_time: 23.7 })
+    await api.post(`/events/${dhEvent.id}/results`, { participant_id: dhP[1].id, class_id: dhClass.id, run_number: 1, raw_time: 25.1 })
+    _updateLast('ok', `Downhill ID ${dhEvent.id}: 4 Starter · Startplan · 2 Zielzeiten`)
+
+    // 9. Trainees + aktive Trainings-Session + 6 Runs
+    _log('2 Trainees + Trainings-Session + 6 Runs…')
+    const trainee1 = (await api.post('/trainees/', { first_name: 'Kai', last_name: 'Stern', birth_year: 2014, kart_number: 'K42' })).data
+    const trainee2 = (await api.post('/trainees/', { first_name: 'Mia', last_name: 'Vogel', birth_year: 2015, kart_number: 'K17' })).data
+    const session  = (await api.post('/training/sessions', { name: `Trainingstag ${year}`, date: today, status: 'active' })).data
+    for (const [tid, rt] of [
+      [trainee1.id, 38.2], [trainee1.id, 41.5], [trainee1.id, 36.9],
+      [trainee2.id, 43.1], [trainee2.id, 39.7], [trainee2.id, 35.8],
+    ]) {
+      await api.post(`/training/sessions/${session.id}/runs`, {
+        trainee_id: tid, raw_time: rt, penalty_seconds: 0, status: 'valid', source: 'manual',
+      })
+    }
+    _updateLast('ok', `2 Trainees · Session "${session.name}" · 6 Runs`)
 
     _log('Testumgebung vollständig angelegt.', 'ok')
     await loadEvents()
@@ -1828,15 +1969,19 @@ async function seedTestData() {
 
 async function deleteTestData() {
   const year = new Date().getFullYear()
-  const name = `Testlauf ${year}`
-  const evt  = events.value.find(e => e.name === name)
-  if (!evt) {
-    seedLog.value = [{ status: 'err', label: `Keine Veranstaltung "${name}" gefunden.` }]
+  const toDelete = [`Testlauf ${year}`, `Downhill-Test ${year}`]
+  const found = events.value.filter(e => toDelete.includes(e.name))
+  if (!found.length) {
+    seedLog.value = [{ status: 'err', label: 'Keine Testveranstaltungen gefunden.' }]
     return
   }
-  if (!confirm(`Testveranstaltung "${evt.name}" und alle zugehörigen Daten löschen?`)) return
-  await api.delete(`/events/${evt.id}`)
-  seedLog.value = [{ status: 'ok', label: `"${evt.name}" gelöscht.` }]
+  const names = found.map(e => `"${e.name}"`).join(' + ')
+  if (!confirm(`Testveranstaltungen ${names} und alle zugehörigen Daten löschen?`)) return
+  seedLog.value = []
+  for (const evt of found) {
+    await api.delete(`/events/${evt.id}`)
+    _log(`"${evt.name}" gelöscht.`, 'ok')
+  }
   await loadEvents()
   await store.loadEvents()
 }

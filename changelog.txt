@@ -3,6 +3,66 @@ RaceControl Pro  Changelog
 ===========================
 
 
+[0.9.0] - 2026-05-05
+---------------------
+Shared Components, Passwortverwaltung, Tests & CI/CD
+
+  Frontend -- Shared Components & Refactoring
+  + utils/format.js: reine Formatfunktionen (fmtRace, fmtTrain,
+    fmtPenalty, fmtDelta, fmtDeltaTrain, fmtDownhill) -- aus
+    LivetimingView extrahiert; keine Vue-Abhaengigkeit
+  + components/StatusBadge.vue: wiederverwendbares Status-Badge;
+    light/dark-Theme; 9 Status-Werte; Slot-Override fuer benutzer-
+    definierten Label-Text
+  + components/TimeDisplay.vue: Zeitanzeige-Komponente; 6 Modi
+    (race, training, penalty, delta-race, delta-train, downhill);
+    font-mono tabnum fuer gleichmaessige Ziffernbreite
+  + constants/contest.js: alle Wettkampf-Konstanten (PROTEST_WINDOW_MIN,
+    POLL_INTERVAL_MS, DEBOUNCE_SAVE_MS, FLASH_DURATION_MS,
+    MARSHAL_TIMEOUT_MS, DEFAULT_RUNS, RECENT_RUNS_LIMIT, ...)
+  + utils/print.js: gemeinsame Druckhilfen (esc, fmtDate, printOpen)
+  + utils/printNennung.js: printNennungsformular + printNennliste;
+    ~180 Zeilen Drucklogik aus NennungView herausgeloest
+  + utils/printSchiedsrichter.js: printErgebnisliste +
+    printSprecherliste + printUrkunden; ~470 Zeilen aus
+    SchiedsrichterView herausgeloest
+  + components/ParticipantCard.vue: eigenstaendige Teilnehmer-
+    Bearbeitungskarte; Props: participant (null = Nachnennung), error;
+    Emits: save(formData), cancel; Print-Button sobald Lizenz +
+    Nenngeld + Helmkontrolle OK; interne form-Zustandsverwaltung
+  ~ LivetimingView: nutzt StatusBadge, TimeDisplay, format.js;
+    hasIncompleteRuns computed; Fusszeile mit Versionsnummer
+  ~ NennungView: nutzt ParticipantCard; duenne Print-Wrapper
+  ~ SchiedsrichterView: duenne Wrapper fuer die drei Print-Funktionen
+  ~ StatusBar.vue: Versionsnummer aus package.json
+  ~ package.json: Version 0.1.0 -> 0.9.0
+
+  Backend -- Passwortverwaltung
+  + PATCH /api/users/me/password: eigenes Passwort aendern
+    (current_password + new_password; 401 bei falschem Passwort)
+  + PATCH /api/users/{id}/password: Admin setzt Passwort zurueck
+    (new_password; 403 fuer Nicht-Admins; 404 bei unbekanntem User)
+  + AdminView: Passwort-Zuruecksetzen-UI im Benutzer-Tab
+
+  Tests
+  + src/__tests__/format.test.js (12 Tests: alle 6 Formatfunktionen,
+    null/undefined, Kantenfaelle)
+  + src/__tests__/StatusBadge.test.js (9 Tests: Labels, CSS-Klassen,
+    light/dark-Theme, Fallback, Slot-Override)
+  + src/__tests__/TimeDisplay.test.js (13 Tests: alle Modi, null,
+    tabnum + font-mono, Fallback)
+  + src/__tests__/ParticipantCard.test.js (14 Tests: Nachnennung/
+    Bearbeiten-Modus, save/cancel-Emits, Fehleranzeige,
+    Print-Button-Sichtbarkeit, Form-Reset bei Prop-Wechsel)
+  + test_auth.py: test_non_admin_cannot_reset_other_password (403),
+    test_password_reset_nonexistent_user (404)
+
+  CI/CD
+  + @vitest/coverage-v8 als devDependency
+  + vitest.config.js: Coverage-Konfiguration (v8, text + lcov)
+  + package.json: Skript test:coverage
+  ~ ci.yml: Frontend-Job nutzt npm run test:coverage
+
 [0.8.0] - 2026-05-04
 ---------------------
 Downhill-Frontend, Trainee-Disziplinen, Zeitanalyse-Fix

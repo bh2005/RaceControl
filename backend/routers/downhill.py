@@ -1,6 +1,6 @@
 from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
-from typing import Annotated
+from typing import Annotated, Optional
 import sqlite3
 
 from database import get_db
@@ -46,7 +46,7 @@ def list_schedule(
     event_id: int,
     db: Annotated[sqlite3.Connection, Depends(get_db)],
     _: AdminOrZeit,
-    lane: str | None = None,
+    lane: Optional[str] = None,
 ):
     query = """
         SELECT ss.*, p.first_name, p.last_name, p.start_number,
@@ -70,12 +70,12 @@ def list_schedule(
 
 # ── Next unfinished (für Starter-View / Zeitnahme-Anzeige) ────────────────────
 
-@router.get("/{event_id}/schedule/next", response_model=StartScheduleResponse | None)
+@router.get("/{event_id}/schedule/next", response_model=Optional[StartScheduleResponse])
 def next_starter(
     event_id: int,
     db: Annotated[sqlite3.Connection, Depends(get_db)],
     _: AdminOrZeit,
-    lane: str | None = None,
+    lane: Optional[str] = None,
 ):
     """Nächster unbeendeter Starter. lane=None → Single-Lane (alle Einträge ohne Spurfilter)."""
     row = db.execute(

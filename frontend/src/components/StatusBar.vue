@@ -17,7 +17,7 @@
     </div>
     <div class="flex items-center gap-3 text-gray-400">
       <RouterLink to="/lizenz" class="hover:text-gray-200 transition text-xs">GPL-2.0</RouterLink>
-      <span>RaceControl Pro v0.1.0</span>
+      <span>RaceControl Pro v{{ version }}</span>
     </div>
   </footer>
 </template>
@@ -25,6 +25,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useEventStore } from '../stores/event'
+import { version } from '../../package.json'
 
 const store  = useEventStore()
 const online = ref(navigator.onLine)

@@ -2,7 +2,7 @@
 from __future__ import annotations
 import csv
 import io
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 import sqlite3
@@ -70,7 +70,7 @@ async def import_participants(
     Duplikate (gleiche Lizenznummer im selben Event) werden übersprungen.
     """
     raw = await file.read()
-    text: str | None = None
+    text: Optional[str] = None
     for enc in ("utf-8-sig", "utf-8", "latin-1"):
         try:
             text = raw.decode(enc)
@@ -138,12 +138,12 @@ async def import_participants(
                 continue
 
         # Klasse auflösen
-        class_id: int | None = None
+        class_id: Optional[int] = None
         if "class_name" in mapped:
             class_id = classes.get(mapped["class_name"].lower())
 
         # Verein auflösen / anlegen
-        club_id: int | None = None
+        club_id: Optional[int] = None
         if "club" in mapped:
             key = mapped["club"].lower()
             if key in clubs:
@@ -158,14 +158,14 @@ async def import_participants(
                     club_id = cid
                     clubs[key] = cid
 
-        birth_year: int | None = None
+        birth_year: Optional[int] = None
         if "birth_year" in mapped:
             try:
                 birth_year = int(mapped["birth_year"])
             except ValueError:
                 pass
 
-        start_number: int | None = None
+        start_number: Optional[int] = None
         if "start_number" in mapped:
             try:
                 start_number = int(mapped["start_number"])

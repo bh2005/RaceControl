@@ -292,6 +292,13 @@ class UserResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class PasswordChangeSelf(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class PasswordChangeAdmin(BaseModel):
+    new_password: str
 
 # ── Teams / Mannschaftswertung ───────────────────────────────────────────────
 

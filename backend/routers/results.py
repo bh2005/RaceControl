@@ -311,7 +311,7 @@ def statistics(
     }
 
 
-def _fmt(seconds: float | None, zero_as_dash: bool = False) -> str:
+def _fmt(seconds: Optional[float], zero_as_dash: bool = False) -> str:
     """Formatiert Sekunden als MM:SS.sss oder SS.sss für CSV-Export."""
     if seconds is None:
         return ""

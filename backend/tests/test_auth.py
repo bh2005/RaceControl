@@ -40,6 +40,67 @@ def test_login_inactive_user(client, db):
     r = client.post("/api/auth/login", data={"username": "inactive", "password": "pw"})
     assert r.status_code == 401
 
+def test_change_own_password(client, db):
+    _create(db, "alice", "zeitnahme")
+    login = client.post("/api/auth/login", data={"username": "alice", "password": "correct"})
+    token = login.json()["access_token"]
+
+    r = client.patch(
+        "/api/users/me/password",
+        json={"current_password": "correct", "new_password": "newpass"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert r.status_code == 204
+
+    r2 = client.post("/api/auth/login", data={"username": "alice", "password": "newpass"})
+    assert r2.status_code == 200
+
+
+def test_change_own_password_wrong_current(client, db):
+    _create(db, "alice", "zeitnahme")
+    login = client.post("/api/auth/login", data={"username": "alice", "password": "correct"})
+    token = login.json()["access_token"]
+
+    r = client.patch(
+        "/api/users/me/password",
+        json={"current_password": "wrong", "new_password": "newpass"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert r.status_code == 401
+
+
+def test_admin_can_reset_user_password(client, db, admin_headers):
+    _create(db, "bob", "nennung")
+    r = client.patch(
+        "/api/users/2/password",
+        json={"new_password": "reset123"},
+        headers=admin_headers,
+    )
+    assert r.status_code == 204
+
+    r2 = client.post("/api/auth/login", data={"username": "bob", "password": "reset123"})
+    assert r2.status_code == 200
+
+
+def test_non_admin_cannot_reset_other_password(client, db, zeitnahme_headers):
+    _create(db, "bob", "nennung")
+    bob_id = db.execute("SELECT id FROM Users WHERE username='bob'").fetchone()["id"]
+    r = client.patch(
+        f"/api/users/{bob_id}/password",
+        json={"new_password": "hacked"},
+        headers=zeitnahme_headers,
+    )
+    assert r.status_code == 403
+
+
+def test_password_reset_nonexistent_user(client, admin_headers):
+    r = client.patch(
+        "/api/users/9999/password",
+        json={"new_password": "whatever"},
+        headers=admin_headers,
+    )
+    assert r.status_code == 404
+
 
 # ── Role guards ───────────────────────────────────────────────────────────────
 

@@ -3,10 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import Annotated
 import sqlite3
 
-from auth import hash_password
+from auth import hash_password, verify_password
 from database import get_db
 from deps import require_roles, CurrentUser
-from schemas import UserCreate, UserResponse
+from schemas import UserCreate, UserResponse, PasswordChangeAdmin, PasswordChangeSelf
 from system_logger import log_event
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -51,3 +51,45 @@ def deactivate_user(
 ):
     db.execute("UPDATE Users SET is_active = 0 WHERE id = ?", (user_id,))
     db.commit()
+
+
+@router.patch("/me/password", status_code=204)
+def change_own_password(
+    body: PasswordChangeSelf,
+    db: Annotated[sqlite3.Connection, Depends(get_db)],
+    user: CurrentUser,
+):
+    if not verify_password(body.current_password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Aktuelles Passwort falsch")
+    db.execute(
+        "UPDATE Users SET password_hash = ? WHERE id = ?",
+        (hash_password(body.new_password), user["id"]),
+    )
+    db.commit()
+    log_event(
+        "password_changed",
+        username=user["username"],
+        detail="Eigenes Passwort geändert",
+    )
+
+
+@router.patch("/{user_id}/password", status_code=204)
+def change_user_password(
+    user_id: int,
+    body: PasswordChangeAdmin,
+    db: Annotated[sqlite3.Connection, Depends(get_db)],
+    actor: AdminOnly,
+):
+    row = db.execute("SELECT * FROM Users WHERE id = ?", (user_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Benutzer nicht gefunden")
+    db.execute(
+        "UPDATE Users SET password_hash = ? WHERE id = ?",
+        (hash_password(body.new_password), user_id),
+    )
+    db.commit()
+    log_event(
+        "password_reset",
+        username=row["username"],
+        detail=f"Passwort geändert von {actor['username']}",
+    )
