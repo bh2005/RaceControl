@@ -71,8 +71,10 @@ def test_change_own_password_wrong_current(client, db):
 
 def test_admin_can_reset_user_password(client, db, admin_headers):
     _create(db, "bob", "nennung")
+    bob_id = db.execute("SELECT id FROM Users WHERE username = ?", ("bob",)).fetchone()["id"]
+
     r = client.patch(
-        "/api/users/2/password",
+        f"/api/users/{bob_id}/password",
         json={"new_password": "reset123"},
         headers=admin_headers,
     )
