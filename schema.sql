@@ -157,6 +157,16 @@ INSERT OR IGNORE INTO Disciplines (name, sort_order) VALUES
     ('KS2000',      2),
     ('Auto Slalom', 3);
 
+-- n:m Zuordnung Trainees <-> Disciplines
+CREATE TABLE IF NOT EXISTS TraineeDisciplines (
+    trainee_id    INTEGER NOT NULL REFERENCES Trainees(id) ON DELETE CASCADE,
+    discipline_id INTEGER NOT NULL REFERENCES Disciplines(id) ON DELETE CASCADE,
+    PRIMARY KEY (trainee_id, discipline_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_trainee_disc_trainee    ON TraineeDisciplines (trainee_id);
+CREATE INDEX IF NOT EXISTS idx_trainee_disc_discipline ON TraineeDisciplines (discipline_id);
+
 -- ============================================================
 -- 5c. TRAINING-SESSIONS & LÄUFE
 -- ============================================================
