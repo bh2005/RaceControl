@@ -9,6 +9,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        offlineGoogleAnalytics: false,
         runtimeCaching: [
           {
             // Public event + standings endpoints — serve cached copy when offline

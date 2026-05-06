@@ -61,7 +61,40 @@ Shared Components, Passwortverwaltung, Tests & CI/CD
   + @vitest/coverage-v8 als devDependency
   + vitest.config.js: Coverage-Konfiguration (v8, text + lcov)
   + package.json: Skript test:coverage
-  ~ ci.yml: Frontend-Job nutzt npm run test:coverage
+  ~ ci.yml: Frontend-Job nutzt npm run test:coverage;
+    Coverage-Schwellwert 70 % (Zeilen + Branches)
+
+  Server-Wartung (neue CLI-Skripte)
+  + backend/backup_db.py: WAL-sicheres DB-Backup mit Zeitstempel
+    (sqlite3.backup(), --dest PFAD, --keep N, Exit-Codes 0/1/2)
+  + backend/db_health.py: Gesundheitspruefung (integrity_check,
+    foreign_key_check, WAL-Checkpoint TRUNCATE, optional VACUUM,
+    Groessen-Report vorher/nachher)
+  + backend/manage_users.py: Benutzerverwaltung per CLI --
+    Subcommands: list, set-role, activate, deactivate, create,
+    delete; admin-Benutzer ist gegen delete geschuetzt
+  + backend/trim_logs.py: SystemLog-Bereinigung nach Alter
+    (--days N Standard 90, --dry-run, --vacuum); AuditLog
+    wird absichtlich nie geloescht
+  + backend/export_results.py: CSV-Export Veranstaltungs-
+    ergebnisse (alle Klassen, alle Laeuf, Platzierung, Bestzeit;
+    UTF-8 BOM fuer Excel; --official-only; ohne --event:
+    zeigt Veranstaltungsliste)
+  + backend/rotate_timing_key.py: Timing-API-Key rotieren
+    (secrets.token_hex(24)), optional alle Client-Skripte
+    automatisch patchen (--patch-clients); --show fuer
+    aktuellen Key
+  ~ backend/reset_admin_password.py: Bestaetigung vor DB-
+    Schreiboperation (Benutzer gefunden: ID X) ergaenzt
+
+  Bugfixes
+  ~ schema.sql: TraineeDisciplines-Tabelle + Indizes ergaenzt
+    (fehlte in schema.sql, war nur als Migration vorhanden;
+    fuehrte zu "no such table"-Fehlern in allen CI-Tests
+    fuer test_trainees.py und test_training.py)
+  ~ frontend/package-lock.json: nach Hinzufuegen von
+    @vitest/coverage-v8 neu generiert (npm install); npm ci
+    schlug in CI fehl
 
 [0.8.0] - 2026-05-04
 ---------------------

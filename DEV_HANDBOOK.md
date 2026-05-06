@@ -1,7 +1,7 @@
 # RaceControl Pro – Entwickler-Handbuch
 
 **Für Entwickler, die das System erweitern oder warten**  
-Stand: Mai 2026 · Version 0.7.0
+Stand: Mai 2026 · Version 0.9.0
 
 ---
 
@@ -112,28 +112,40 @@ RaceControl/
 │   ├── auth.py              # JWT (HS256), bcrypt-Passwortverwaltung
 │   ├── broadcast.py         # BroadcastManager: WebSocket-Verbindungspool
 │   ├── seed.py              # Testdaten-Seeder (Dev/Demo)
+│   ├── backup_db.py         # WAL-sicheres DB-Backup mit Zeitstempel + Rotation
+│   ├── db_health.py         # PRAGMA integrity_check + FK-Check + WAL-Checkpoint
+│   ├── manage_users.py      # CLI-Benutzerverwaltung (list/create/set-role/delete)
+│   ├── trim_logs.py         # SystemLog-Bereinigung (--days, --dry-run, --vacuum)
+│   ├── export_results.py    # CSV-Export Veranstaltungsergebnisse (Excel BOM)
+│   ├── rotate_timing_key.py # Timing-API-Key rotieren + Client-Skripte patchen
+│   ├── reset_admin_password.py  # Passwort direkt in DB setzen (ohne API)
 │   ├── routers/
-│   │   ├── auth.py          # POST /api/auth/login
+│   │   ├── auth.py          # POST /api/auth/login, PATCH /api/users/me/password
 │   │   ├── events.py        # CRUD Events, Classes, Nennungsschluss, Announce
 │   │   ├── participants.py  # CRUD Teilnehmer, suggest-class
 │   │   ├── results.py       # Ergebnisse, Strafen, Standings, Views, Statistics
 │   │   ├── trainees.py      # CRUD Trainees (Jugendlichen-Stammdaten)
 │   │   ├── training.py      # CRUD TrainingSessions + TrainingRuns, Standings
 │   │   ├── reglements.py    # CRUD Reglements + PenaltyDefinitions
-│   │   ├── users.py         # CRUD Benutzer (admin only)
+│   │   ├── users.py         # CRUD Benutzer (admin only), Passwort-Reset
 │   │   ├── clubs.py         # CRUD Vereine
 │   │   ├── sponsors.py      # CRUD Sponsoren
-│   │   ├── settings.py      # Druckvorlagen-Einstellungen
+│   │   ├── settings.py      # Druckvorlagen-Einstellungen, Timing-Key-Rotation
 │   │   ├── public.py        # Öffentliche Endpunkte (kein Login)
-│   │   ├── notifications.py
-│   ├── marshal.py       # Streckenposten – Fehlerpunkt-Meldungen # POST /api/notifications (Push-Nachrichten)
+│   │   ├── notifications.py # POST /api/notifications (Push-Nachrichten)
+│   │   ├── marshal.py       # Streckenposten – Fehlerpunkt-Meldungen
 │   │   └── import_router.py # CSV-Import Teilnehmer
 │   └── tests/
 │       ├── conftest.py      # Fixtures: db, client, admin_headers, class_id, …
-│       ├── test_auth.py
+│       ├── test_auth.py     # Login, Rollen, Passwort-Endpunkte
 │       ├── test_events.py
 │       ├── test_participants.py
-│       └── test_results.py
+│       ├── test_results.py
+│       ├── test_public.py
+│       ├── test_marshal.py
+│       ├── test_auto_close.py
+│       ├── test_trainees.py # Jugendlichen-Stammdaten + Disziplin-Zuordnung
+│       └── test_training.py # TrainingSessions + TrainingRuns
 ├── frontend/
 │   ├── src/
 │   │   ├── main.js          # Vue-App initialisieren, Pinia, Router
@@ -645,11 +657,23 @@ def test_suggest_class(client, event_id, class_id, db):
 
 ```bash
 cd frontend
-npm test
+npm test                  # einmalig
+npm run test:coverage     # mit Coverage-Report (v8, lcov + text)
 ```
 
-Tests liegen in `src/__tests__/`. Aktuell getestet: `useNetworkStatus` und `useRealtimeUpdate`.  
-Neue Composable-Tests analog aufbauen — jsdom + `@vue/test-utils` sind verfügbar.
+Tests liegen in `src/__tests__/`. Getestete Einheiten:
+
+| Datei | Was getestet wird |
+|---|---|
+| `useNetworkStatus.test.js` | Online/Offline-Erkennung |
+| `useRealtimeUpdate.test.js` | WebSocket-Verbindung + Reconnect |
+| `format.test.js` | Alle 6 Formatfunktionen (fmtRace, fmtTrain, fmtDelta, …) |
+| `StatusBadge.test.js` | Labels, CSS-Klassen, light/dark-Theme, Slot-Override |
+| `TimeDisplay.test.js` | Alle 6 Modi, null-Handling, tabnum/font-mono |
+| `ParticipantCard.test.js` | Nachnennung/Bearbeiten-Modus, save/cancel-Emits, Fehleranzeige |
+
+Neue Composable- oder Komponenten-Tests analog aufbauen — jsdom + `@vue/test-utils` sind verfügbar.  
+Coverage-Schwellwert: **70 %** (Zeilen + Branches). CI schlägt fehl wenn unterschritten.
 
 ---
 
@@ -761,7 +785,7 @@ Drei Jobs laufen bei jedem Push/PR auf `main`:
 | Job | Was wird geprüft | Runtime |
 |---|---|---|
 | `backend-tests` | `pytest backend/tests/ -v` auf Python 3.11 | ~30 s |
-| `frontend-tests` | `npm ci && npm test` (Vitest) auf Node 20 | ~20 s |
+| `frontend-tests` | `npm ci && npm run test:coverage` (Vitest + v8) auf Node 20 | ~25 s |
 | `frontend-build` | `npm run build` (nach frontend-tests) | ~30 s |
 
 ### Voraussetzungen für grüne CI
@@ -769,6 +793,8 @@ Drei Jobs laufen bei jedem Push/PR auf `main`:
 - `backend/requirements.txt` und `backend/requirements-test.txt` aktuell halten
 - `frontend/package-lock.json` muss synchron mit `package.json` sein (`npm install` lokal ausführen wenn neue Pakete hinzugefügt werden)
 - Alle neuen Backend-Tests müssen mit In-Memory-SQLite (`db`-Fixture aus `conftest.py`) funktionieren — keine Abhängigkeit von `racecontrol.db`
+- Jede neue Tabelle muss in **beiden** Stellen erscheinen: `schema.sql` (für Fresh-Installs + Tests) **und** als Migration in `database.py` (für bestehende Installs)
+- Frontend-Coverage-Schwellwert **70 %** — unterschrittene Coverage bricht CI ab
 
 ### Häufige CI-Fehler und Ursachen
 
@@ -779,6 +805,8 @@ Drei Jobs laufen bei jedem Push/PR auf `main`:
 | `405 Method Not Allowed` bei POST | StaticFiles-Route interceptiert Request | StaticFiles-Route im `client`-Fixture entfernen |
 | `npm ci` schlägt fehl | `package-lock.json` out of sync | `npm install` lokal ausführen, Lock-File committen |
 | `no such column: xyz` | Spalte in `schema.sql` ergänzt aber Migration vergessen | Migration in `database.py` hinzufügen |
+| `no such table: XYZ` in Tests | Neue Tabelle nur in `database.py`-Migration, nicht in `schema.sql` | Tabelle in `schema.sql` ergänzen (Tests nutzen schema.sql direkt) |
+| Coverage unter 70 % | Tests schlagen fehl (Fehler zählen als unabgedeckte Zeilen) | Zuerst den eigentlichen Testfehler beheben |
 
 ---
 

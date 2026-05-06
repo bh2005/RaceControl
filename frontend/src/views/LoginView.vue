@@ -52,7 +52,7 @@
         </form>
       </div>
 
-      <p class="text-center text-blue-300 text-xs mt-6">v0.1.0</p>
+      <p class="text-center text-blue-300 text-xs mt-6">v{{ version }}</p>
     </div>
   </div>
 </template>
@@ -62,6 +62,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useEventStore } from '../stores/event'
+import { version } from '../../package.json'
 
 const auth     = useAuthStore()
 const store    = useEventStore()

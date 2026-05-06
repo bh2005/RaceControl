@@ -1,6 +1,6 @@
 # RaceControl Pro – Funktionsübersicht
 
-Stand: Mai 2026 · Version 0.8.0
+Stand: Mai 2026 · Version 0.9.0
 
 ---
 
@@ -202,6 +202,8 @@ Stand: Mai 2026 · Version 0.8.0
 ### Benutzer
 - Benutzerverwaltung: Benutzername, Passwort, Rolle, Anzeigename
 - Rollen: admin, nennung, zeitnahme, schiedsrichter, marshal, viewer
+- **Passwort zurücksetzen (Admin):** Admin kann das Passwort jedes Benutzers neu setzen (`PATCH /api/users/{id}/password`)
+- **Passwort selbst ändern:** Jeder angemeldete Benutzer kann sein eigenes Passwort über den Admin-Bereich oder via API ändern (`PATCH /api/users/me/password`; altes Passwort muss bestätigt werden)
 
 ### Sponsoren
 - Sponsorenverwaltung: Name, Logo-URL, Website-URL, Reihenfolge, Aktiv/Inaktiv
@@ -332,6 +334,25 @@ Stand: Mai 2026 · Version 0.8.0
   Streckenposten, Dokumente, Online-Nennung) ausgeblendet, damit die Bar nicht überfüllt wird;
   Dropdown zeigt fett wenn eine enthaltene Seite aktiv ist
 - **Push-Benachrichtigungen** als globales cyan Banner (alle Views, 30 s, schließbar)
+
+## Server-Wartung (CLI-Skripte)
+
+Wartungsskripte im Verzeichnis `backend/` — sicher auf dem laufenden Server ausführbar (außer VACUUM):
+
+| Skript | Funktion | Schlüsseloptionen |
+|---|---|---|
+| `backup_db.py` | WAL-sicheres DB-Backup mit Zeitstempel; automatische Rotation | `--dest`, `--keep N` |
+| `db_health.py` | PRAGMA integrity_check + FK-Check + WAL-Checkpoint | `--vacuum` |
+| `manage_users.py` | Benutzerverwaltung (list / set-role / activate / deactivate / create / delete) | Subcommands |
+| `trim_logs.py` | SystemLog-Einträge nach Alter löschen (AuditLog nie!) | `--days N`, `--dry-run` |
+| `export_results.py` | CSV-Export Veranstaltungsergebnisse (Excel BOM, Semikolon-getrennt) | `--event ID`, `--official-only` |
+| `rotate_timing_key.py` | Timing-API-Key neu generieren + Client-Skripte automatisch patchen | `--patch-clients`, `--show` |
+| `reset_admin_password.py` | Admin-Passwort direkt in der DB setzen (ohne laufenden Server) | `--user`, `--password` |
+
+Alle Skripte: `--db` zum Überschreiben des DB-Pfads; `DATA_DIR`-Umgebungsvariable wird respektiert.  
+Exit-Codes: `0` = OK, `1` = Argument-/Dateifehler, `2` = SQLite-Fehler (Shell-Scripting-freundlich).
+
+---
 
 ## Docker-Deployment
 

@@ -5,7 +5,7 @@
 
   **Professionelle Kart-Slalom Veranstaltungssoftware**
 
-  ![Version](https://img.shields.io/badge/Version-0.7.0-cyan?style=flat-square)
+  ![Version](https://img.shields.io/badge/Version-0.9.0-cyan?style=flat-square)
   ![Backend](https://img.shields.io/badge/Backend-FastAPI%20%2B%20SQLite-009688?style=flat-square)
   ![Frontend](https://img.shields.io/badge/Frontend-Vue%203%20%2B%20Tailwind-4FC08D?style=flat-square)
   ![Platform](https://img.shields.io/badge/Platform-WLAN%20offline--first-orange?style=flat-square)
@@ -70,6 +70,13 @@ RaceControl/
 │   ├── broadcast.py            # WebSocket-BroadcastManager (Push an alle Clients)
 │   ├── system_logger.py        # Thread-sicheres System-Log (Login, Server-Start)
 │   ├── seed.py                 # Testdaten-Seeder (Admin-Tab)
+│   ├── backup_db.py            # WAL-sicheres DB-Backup mit Rotation (--keep N)
+│   ├── db_health.py            # PRAGMA integrity_check + FK-Check + WAL-Checkpoint
+│   ├── manage_users.py         # CLI-Benutzerverwaltung (list/create/set-role/delete)
+│   ├── trim_logs.py            # SystemLog-Bereinigung nach Alter (--days, --dry-run)
+│   ├── export_results.py       # CSV-Export Veranstaltungsergebnisse (Excel-kompatibel)
+│   ├── rotate_timing_key.py    # Timing-API-Key rotieren + Client-Skripte patchen
+│   ├── reset_admin_password.py # Admin-Passwort direkt in DB setzen (ohne API)
 │   └── routers/                # API-Endpunkte pro Modul
 │       ├── auth.py             # POST /login
 │       ├── users.py            # Benutzerverwaltung
@@ -147,8 +154,8 @@ RaceControl/
 └── data/                       # SQLite-DB (persistentes Volume, lokal leer)
 ```
 
-**Backend:** Python 3.12, FastAPI, SQLite (WAL), JWT (HS256), bcrypt, WebSockets, pytest (105 Tests)  
-**Frontend:** Vue 3 (Composition API), Vite, Pinia, Vue Router, Tailwind CSS, Axios, Vitest  
+**Backend:** Python 3.12, FastAPI, SQLite (WAL), JWT (HS256), bcrypt, WebSockets, pytest (~130 Tests)  
+**Frontend:** Vue 3 (Composition API), Vite, Pinia, Vue Router, Tailwind CSS, Axios, Vitest (Coverage 70 %)  
 **Deployment:** Docker (Single-Container), Windows-Installer (PyInstaller + Inno Setup)
 
 ---
@@ -157,13 +164,13 @@ RaceControl/
 
 | Kategorie | Dateien | Zeilen |
 |-----------|---------|--------|
-| Python – Backend, Tests, Tools | 44 | ~5.900 |
-| Vue / JavaScript – Frontend | 31 | ~7.800 |
+| Python – Backend, Tests, Tools | 50 | ~6.700 |
+| Vue / JavaScript – Frontend | 35 | ~8.500 |
 | SQL, Konfiguration, Spec | 3 | ~500 |
-| **Quellcode gesamt** | **78** | **~14.200** |
-| Dokumentation (Handbücher, Changelog) | 13 | ~2.000 |
+| **Quellcode gesamt** | **88** | **~15.700** |
+| Dokumentation (Handbücher, Changelog) | 13 | ~2.200 |
 
-Geschätzter Entwicklungsaufwand: **~205 Stunden** · Marktwert als Freelancer-Projekt: **~18.000–20.000 €**
+Geschätzter Entwicklungsaufwand: **~220 Stunden** · Marktwert als Freelancer-Projekt: **~19.000–22.000 €**
 
 ---
 

@@ -1,7 +1,7 @@
 # Projekt-Agenda: "RaceControl Pro"
 **Konzept:** Modulare Veranstaltungssoftware für Kart-Slalom (JKS & KS2000)  
 **Zielgruppe:** ADAC Hessen-Thüringen (ca. 10 Klassen / 300 Starter)  
-**Stand:** Mai 2026 (v0.8.0)
+**Stand:** Mai 2026 (v0.9.0)
 
 ---
 
@@ -84,7 +84,7 @@
 ## 9. Qualitätssicherung & Test
 - ❌ **Stresstest:** Simulation mit 300 Datensätzen und 50+ simultanen Clients – noch nicht durchgeführt
 - ✅ **Datensicherheit:** Sofortige Persistenz bei jeder Eingabe (kein Datenverlust bei WLAN-Abbruch)
-- ✅ **Automatisierte Tests:** pytest-Integrationstests (auth, events, participants, results, public, marshal, auto-close, admin-logs — 105 Tests); Vitest-Tests für useNetworkStatus und useRealtimeUpdate; GitHub Actions CI/CD
+- ✅ **Automatisierte Tests:** pytest-Integrationstests (auth, events, participants, results, public, marshal, auto-close, trainees, training — ~130 Tests); Vitest-Tests für Composables und Komponenten (format, StatusBadge, TimeDisplay, ParticipantCard, useNetworkStatus, useRealtimeUpdate); GitHub Actions CI/CD mit Coverage-Schwellwert 70 %
 - ✅ **Admin Test-Tab:** API Verbindungscheck + Testdaten-Seeder (Reglement, Klassen, Teilnehmer) mit Progress-Log
 - ✅ **GPL-2.0 Lizenzseite:** `/lizenz`-Route mit Projektinfo, Bibliotheken-Übersicht, Link auf gnu.org; GPL-Link in StatusBar
 
@@ -99,6 +99,17 @@
 - ✅ **Lichtschranke im Training:** timing_result auto-befüllt Zeitfeld
 - ✅ **Auswertungsseite:** Schnellste pro Klasse + Schnellste Dame + Schnellster Herr
 - ✅ **gender-Feld:** Participants.gender (m/w/NULL) inkl. Migration und Formular-UI
+
+---
+
+## 10a. Server-Wartung & Betrieb
+- ✅ **Backup:** `backup_db.py` — WAL-sicheres Backup mit Zeitstempel, automatische Rotation (--keep N)
+- ✅ **Health-Check:** `db_health.py` — integrity_check, FK-Check, WAL-Checkpoint, optionales VACUUM
+- ✅ **Benutzerverwaltung CLI:** `manage_users.py` — list / set-role / activate / deactivate / create / delete
+- ✅ **Log-Bereinigung:** `trim_logs.py` — SystemLog nach Alter löschen (--days, --dry-run)
+- ✅ **Ergebnis-Export:** `export_results.py` — CSV-Export aller Klassen + Läufe (Excel BOM)
+- ✅ **Key-Rotation:** `rotate_timing_key.py` — neuen Timing-API-Key generieren + Client-Skripte patchen
+- ✅ **Passwort-Reset:** `reset_admin_password.py` — Admin-Passwort ohne laufenden Server zurücksetzen
 
 ---
 
