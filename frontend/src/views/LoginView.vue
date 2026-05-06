@@ -4,7 +4,7 @@
 
       <!-- Logo -->
       <div class="flex flex-col items-center mb-8">
-        <img src="/msc-logo.svg" alt="MSC Braach" class="h-24 w-24 rounded-full border-4 border-white/30 shadow-xl mb-4">
+        <img src="/msc-logo.png" alt="MSC Braach" class="h-24 w-24 rounded-full border-4 border-white/30 shadow-xl mb-4">
         <h1 class="text-white font-black text-3xl">RaceControl Pro</h1>
         <p class="text-blue-200 text-sm mt-1">MSC Braach e.V. im ADAC</p>
       </div>

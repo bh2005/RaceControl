@@ -3,7 +3,7 @@
 
     <!-- Header / Steuerung -->
     <header class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center gap-4 flex-wrap">
-      <img src="/msc-logo.svg" alt="MSC" class="h-8 w-8 rounded-full border border-white/20 shrink-0">
+      <img src="/msc-logo.png" alt="MSC" class="h-8 w-8 rounded-full border border-white/20 shrink-0">
       <span class="font-black text-lg tracking-tight text-white shrink-0">Sprecher-Dashboard</span>
 
       <select v-model="selectedClassId" @change="onClassChange"

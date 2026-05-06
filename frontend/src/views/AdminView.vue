@@ -177,6 +177,138 @@
         </div>
       </div>
 
+      <!-- ═══ REGLEMENTS ═══ -->
+      <div v-if="activeTab === 'reglements'" class="grid grid-cols-3 gap-4">
+
+        <!-- Liste -->
+        <div class="col-span-1 space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="font-bold text-gray-800">Reglements</h2>
+            <button @click="openNewReglement" class="text-xs btn-primary px-3 py-1.5">+ Neu</button>
+          </div>
+          <div
+            v-for="r in reglements"
+            :key="r.id"
+            @click="selectReglement(r)"
+            class="card p-3 cursor-pointer hover:border-msc-blue/40 transition"
+            :class="{ 'border-msc-blue border-2 bg-blue-50/40': activeReglement?.id === r.id }"
+          >
+            <div class="font-semibold text-sm text-gray-800">{{ r.name }}</div>
+            <div class="text-xs text-gray-500 mt-0.5">
+              {{ scoringLabel(r.scoring_type) }} · {{ r.runs_per_class }} Läufe
+              <span v-if="r.has_training" class="ml-1 text-gray-400">· Training</span>
+            </div>
+          </div>
+          <div v-if="!reglements.length" class="text-sm text-gray-400 text-center py-6">
+            Keine Reglements vorhanden.
+          </div>
+        </div>
+
+        <!-- Formular -->
+        <div class="col-span-2 space-y-4" v-if="showReglementForm">
+
+          <!-- Reglement-Stammdaten -->
+          <div class="card p-4">
+            <h3 class="font-bold text-gray-800 mb-3">
+              {{ activeReglement ? activeReglement.name : 'Neues Reglement' }}
+            </h3>
+            <div v-if="reglementError" class="text-xs text-red-600 bg-red-50 rounded px-2 py-1 mb-3">{{ reglementError }}</div>
+            <div class="space-y-3">
+              <div>
+                <label class="text-xs text-gray-500 font-semibold block mb-1">Name *</label>
+                <input v-model="reglementForm.name" type="text" placeholder="z.B. JKS 2026" class="input">
+              </div>
+              <div class="grid grid-cols-3 gap-3 items-end">
+                <div>
+                  <label class="text-xs text-gray-500 font-semibold block mb-1">Wertungstyp</label>
+                  <select v-model="reglementForm.scoring_type" class="input">
+                    <option value="sum_all">Summe aller Läufe</option>
+                    <option value="best_of">Bester Lauf</option>
+                    <option value="sum_minus_worst">Summe − schlechtester</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-xs text-gray-500 font-semibold block mb-1">Anzahl Läufe</label>
+                  <input v-model.number="reglementForm.runs_per_class" type="number" min="1" max="10" class="input">
+                </div>
+                <div class="pb-1">
+                  <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                    <input v-model="reglementForm.has_training" type="checkbox" class="w-4 h-4 accent-msc-blue">
+                    Trainingslauf vorgesehen
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="flex gap-2 mt-4">
+              <button @click="saveReglement" :disabled="!reglementForm.name"
+                class="btn-primary px-4 py-2 text-sm disabled:opacity-40">
+                {{ activeReglement ? 'Speichern' : 'Anlegen' }}
+              </button>
+              <button v-if="!activeReglement" @click="cancelNewReglement" class="btn-secondary px-4 py-2 text-sm">
+                Abbrechen
+              </button>
+              <button v-if="activeReglement" @click="deleteReglement"
+                class="ml-auto text-xs text-red-500 hover:text-red-700 px-3 py-2 transition">
+                Reglement löschen
+              </button>
+            </div>
+          </div>
+
+          <!-- Straf-Definitionen -->
+          <div class="card p-4" v-if="activeReglement">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-bold text-gray-800">Straf-Definitionen</h3>
+              <button @click="addPenaltyRow" class="text-xs btn-primary px-3 py-1.5">+ Strafe</button>
+            </div>
+            <div v-if="!penaltyRows.length" class="text-sm text-gray-400 text-center py-4">
+              Keine Strafen. Über „+ Strafe" hinzufügen.
+            </div>
+            <table v-else class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-gray-100 text-left text-xs text-gray-500 font-semibold">
+                  <th class="py-2 pr-3">Bezeichnung</th>
+                  <th class="py-2 pr-3 w-24">Sekunden</th>
+                  <th class="py-2 pr-3 w-20">Taste</th>
+                  <th class="py-2 pr-3 w-16">Reihe</th>
+                  <th class="py-2 w-6"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(p, idx) in penaltyRows" :key="p._key" class="border-b border-gray-50 last:border-0">
+                  <td class="py-1.5 pr-3">
+                    <input v-model="p.label" type="text" placeholder="z.B. Pylone"
+                      class="input text-sm py-1" @change="savePenaltyRow(p)">
+                  </td>
+                  <td class="py-1.5 pr-3">
+                    <input v-model.number="p.seconds" type="number" min="0" step="0.5"
+                      class="input text-sm py-1 text-right" @change="savePenaltyRow(p)">
+                  </td>
+                  <td class="py-1.5 pr-3">
+                    <input v-model="p.shortcut_key" type="text" maxlength="1" placeholder="–"
+                      class="input text-sm py-1 text-center font-mono uppercase"
+                      @change="savePenaltyRow(p)"
+                      @input="p.shortcut_key = p.shortcut_key?.toUpperCase() ?? null">
+                  </td>
+                  <td class="py-1.5 pr-3">
+                    <input v-model.number="p.sort_order" type="number" min="0"
+                      class="input text-sm py-1 text-center" @change="savePenaltyRow(p)">
+                  </td>
+                  <td class="py-1.5 text-center">
+                    <button @click="deletePenaltyRow(idx, p)"
+                      class="text-gray-300 hover:text-red-500 text-xs transition">✕</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="text-xs text-gray-400 mt-2">
+              Änderungen werden beim Verlassen des Feldes sofort gespeichert.
+              Taste = Tastaturkürzel in der Zeitnahme (z.B. P, T, G).
+            </p>
+          </div>
+
+        </div>
+      </div>
+
       <!-- ═══ VEREINE ═══ -->
       <div v-if="activeTab === 'clubs'" class="grid grid-cols-2 gap-4">
         <div class="card overflow-hidden">
@@ -716,7 +848,65 @@
       </div>
 
       <!-- ═══ SYSTEM ═══ -->
-      <div v-if="activeTab === 'system'" class="grid grid-cols-2 gap-4">
+      <!-- ═══ DRUCK ═══ -->
+      <div v-if="activeTab === 'printing'" class="grid grid-cols-2 gap-4">
+
+        <!-- Veranstalter / Druckvorlage -->
+        <div class="col-span-2 card p-4 space-y-4">
+          <h3 class="font-bold text-gray-800">Druckvorlage – Nennliste</h3>
+          <p class="text-xs text-gray-500">
+            Diese Texte erscheinen auf jeder gedruckten Nennliste (Versicherungshinweis, Einverständniserklärung für Eltern).
+          </p>
+          <div class="space-y-3">
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Veranstalter</label>
+              <input v-model="sysForm.organizer_name" type="text" class="input" placeholder="MSC Braach e.V. im ADAC">
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Adresse</label>
+              <input v-model="sysForm.organizer_address" type="text" class="input" placeholder="Musterstraße 1, 12345 Braach">
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Versicherungshinweis</label>
+              <textarea v-model="sysForm.insurance_notice" rows="4" class="input resize-none text-xs"
+                placeholder="Alle Teilnehmer sind über den ADAC-Motorsport versichert…"></textarea>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 font-semibold block mb-1">Einverständniserklärung (Eltern/Erziehungsberechtigte)</label>
+              <textarea v-model="sysForm.parent_consent_text" rows="3" class="input resize-none text-xs"
+                placeholder="Ich bin mit der Teilnahme meines Kindes einverstanden…"></textarea>
+            </div>
+          </div>
+          <div v-if="sysMessage" class="text-xs rounded px-2 py-1.5"
+               :class="sysMessage.type === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'">
+            {{ sysMessage.text }}
+          </div>
+          <button @click="saveSettings" class="btn-primary px-4 py-2 text-sm">Einstellungen speichern</button>
+        </div>
+
+        <!-- Drucker-Info -->
+        <div class="col-span-2 card p-4 space-y-3 self-start">
+          <h3 class="font-bold text-gray-800">Drucker</h3>
+          <p class="text-xs text-gray-500">
+            Der Druck erfolgt über den Browser. Klicke im Nennbüro auf <strong>🖨 Nennliste drucken</strong> –
+            es öffnet sich ein Druckdialog, in dem du den gewünschten Drucker auswählen kannst.
+          </p>
+          <div class="rounded-xl bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs text-blue-700 space-y-1">
+            <div class="font-bold">Empfohlene Druckeinstellungen</div>
+            <div>• Format: A4 Hochformat</div>
+            <div>• Ränder: Schmal (12–15 mm)</div>
+            <div>• Kopf- & Fußzeilen: Deaktivieren</div>
+            <div>• Hintergrundfarben: Aktivieren (für grau hinterlegte Spaltenköpfe)</div>
+          </div>
+          <div class="rounded-xl bg-gray-50 border border-gray-200 px-3 py-2.5 text-xs text-gray-600 space-y-1">
+            <div class="font-bold">Hinweis Elternunterschrift</div>
+            <div>
+              Die Nennliste enthält eine Unterschriftenspalte.
+              Bei minderjährigen Fahrern muss ein Erziehungsberechtigter unterschreiben.
+              Die unterzeichnete Liste ist als Veranstaltungsunterlage aufzubewahren.
+            </div>
+          </div>
+        </div>
 
         <!-- QR-Codes für Geräte -->
         <div class="col-span-2 card p-4">
@@ -729,8 +919,8 @@
                 QR-Codes enthalten bereits das richtige Protokoll.
               </p>
             </div>
-            <button @click="window.print()"
-                    class="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5 print:hidden">
+            <button @click="printQrCodes"
+                    class="btn-secondary px-3 py-1.5 text-xs flex items-center gap-1.5">
               🖨️ Drucken
             </button>
           </div>
@@ -786,64 +976,37 @@
           </div>
         </div>
 
-        <!-- Veranstalter / Druckvorlage -->
-        <div class="card p-4 space-y-4">
-          <h3 class="font-bold text-gray-800">Druckvorlage – Nennliste</h3>
-          <p class="text-xs text-gray-500">
-            Diese Texte erscheinen auf jeder gedruckten Nennliste (Versicherungshinweis, Einverständniserklärung für Eltern).
-          </p>
-          <div class="space-y-3">
-            <div>
-              <label class="text-xs text-gray-500 font-semibold block mb-1">Veranstalter</label>
-              <input v-model="sysForm.organizer_name" type="text" class="input" placeholder="MSC Braach e.V. im ADAC">
-            </div>
-            <div>
-              <label class="text-xs text-gray-500 font-semibold block mb-1">Adresse</label>
-              <input v-model="sysForm.organizer_address" type="text" class="input" placeholder="Musterstraße 1, 12345 Braach">
-            </div>
-            <div>
-              <label class="text-xs text-gray-500 font-semibold block mb-1">Versicherungshinweis</label>
-              <textarea v-model="sysForm.insurance_notice" rows="4" class="input resize-none text-xs"
-                placeholder="Alle Teilnehmer sind über den ADAC-Motorsport versichert…"></textarea>
-            </div>
-            <div>
-              <label class="text-xs text-gray-500 font-semibold block mb-1">Einverständniserklärung (Eltern/Erziehungsberechtigte)</label>
-              <textarea v-model="sysForm.parent_consent_text" rows="3" class="input resize-none text-xs"
-                placeholder="Ich bin mit der Teilnahme meines Kindes einverstanden…"></textarea>
-            </div>
-          </div>
-          <div v-if="sysMessage" class="text-xs rounded px-2 py-1.5"
-               :class="sysMessage.type === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'">
-            {{ sysMessage.text }}
-          </div>
-          <button @click="saveSettings" class="btn-primary px-4 py-2 text-sm">Einstellungen speichern</button>
-        </div>
+      </div>
 
-        <!-- Drucker-Info -->
-        <div class="card p-4 space-y-3 self-start">
-          <h3 class="font-bold text-gray-800">Drucker</h3>
-          <p class="text-xs text-gray-500">
-            Der Druck erfolgt über den Browser. Klicke im Nennbüro auf <strong>🖨 Nennliste drucken</strong> –
-            es öffnet sich ein Druckdialog, in dem du den gewünschten Drucker auswählen kannst.
-          </p>
-          <div class="rounded-xl bg-blue-50 border border-blue-200 px-3 py-2.5 text-xs text-blue-700 space-y-1">
-            <div class="font-bold">Empfohlene Druckeinstellungen</div>
-            <div>• Format: A4 Hochformat</div>
-            <div>• Ränder: Schmal (12–15 mm)</div>
-            <div>• Kopf- & Fußzeilen: Deaktivieren</div>
-            <div>• Hintergrundfarben: Aktivieren (für grau hinterlegte Spaltenköpfe)</div>
-          </div>
-          <div class="rounded-xl bg-gray-50 border border-gray-200 px-3 py-2.5 text-xs text-gray-600 space-y-1">
-            <div class="font-bold">Hinweis Elternunterschrift</div>
-            <div>
-              Die Nennliste enthält eine Unterschriftenspalte.
-              Bei minderjährigen Fahrern muss ein Erziehungsberechtigter unterschreiben.
-              Die unterzeichnete Liste ist als Veranstaltungsunterlage aufzubewahren.
-            </div>
+      <!-- ═══ SYSTEM ═══ -->
+      <div v-if="activeTab === 'system'" class="grid grid-cols-2 gap-4">
+
+        <!-- Spendenhinweis -->
+        <div class="col-span-2 rounded-2xl border border-amber-300 bg-amber-50 p-5 flex gap-4 items-start">
+          <div class="text-3xl leading-none select-none">💛</div>
+          <div class="space-y-2 text-sm">
+            <div class="font-bold text-amber-900">RaceControl Pro – kostenlos & Open Source</div>
+            <p class="text-amber-800 text-xs leading-relaxed">
+              Diese Software wird in der Freizeit vom Entwickler BH2005 gepflegt und ständig weiterentwickelt –
+              speziell für den Kart-Slalom der Jugend-Gruppe des <strong>MSC Braach e.V. im ADAC</strong>.
+              Sie ist kostenlos nutzbar. Wenn dir die Software hilft und du die Weiterentwicklung sowie
+              die Jugendarbeit unterstützen möchtest, freut sich der Entwickler sehr über eine kleine Spende.
+            </p>
+            <a
+              href="https://www.paypal.com/paypalme/AnkeHolzhauer"
+              target="_blank"
+              rel="noopener"
+              class="inline-flex items-center gap-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold px-4 py-2 text-xs transition-colors"
+            >
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.471z"/>
+              </svg>
+              Per PayPal spenden · bernd.holzhauer@googlemail.com
+            </a>
+            <p class="text-amber-700 text-xs">Vielen Dank für deine Unterstützung! 🏎️</p>
           </div>
         </div>
 
-        <!-- Lichtschranken-API-Key -->
         <div class="col-span-2 card p-4 space-y-3">
           <h3 class="font-bold text-gray-800">⏱ Lichtschranken-API-Key</h3>
           <p class="text-xs text-gray-500">
@@ -876,29 +1039,49 @@
           </div>
         </div>
 
-        <!-- Spendenhinweis -->
-        <div class="col-span-2 rounded-2xl border border-amber-300 bg-amber-50 p-5 flex gap-4 items-start">
-          <div class="text-3xl leading-none select-none">💛</div>
-          <div class="space-y-2 text-sm">
-            <div class="font-bold text-amber-900">RaceControl Pro – kostenlos & Open Source</div>
-            <p class="text-amber-800 text-xs leading-relaxed">
-              Diese Software wird in der Freizeit vom Entwickler BH2005 gepflegt und ständig weiterentwickelt –
-              speziell für den Kart-Slalom der Jugend-Gruppe des <strong>MSC Braach e.V. im ADAC</strong>.
-              Sie ist kostenlos nutzbar. Wenn dir die Software hilft und du die Weiterentwicklung sowie
-              die Jugendarbeit unterstützen möchtest, freut sich der Entwickler sehr über eine kleine Spende.
-            </p>
-            <a
-              href="https://www.paypal.com/paypalme/AnkeHolzhauer"
-              target="_blank"
-              rel="noopener"
-              class="inline-flex items-center gap-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold px-4 py-2 text-xs transition-colors"
-            >
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.471z"/>
-              </svg>
-              Per PayPal spenden · bernd.holzhauer@googlemail.com
-            </a>
-            <p class="text-amber-700 text-xs">Vielen Dank für deine Unterstützung! 🏎️</p>
+        <!-- Datenbank-Verwaltung -->
+        <div class="col-span-2 card p-4 space-y-4">
+          <h3 class="font-bold text-gray-800">💾 Datenbank-Verwaltung</h3>
+          <div class="grid grid-cols-2 gap-6">
+
+            <!-- Herunterladen -->
+            <div class="space-y-2">
+              <div class="font-medium text-sm text-gray-700">Sicherung herunterladen</div>
+              <p class="text-xs text-gray-500">
+                Erstellt einen WAL-sicheren Snapshot der laufenden Datenbank als
+                <code class="bg-gray-100 px-1 rounded">.db</code>-Datei —
+                sicher auch während der Veranstaltung.
+              </p>
+              <button @click="downloadDb" :disabled="dbDownloading"
+                class="btn-primary px-4 py-2 text-sm disabled:opacity-40">
+                {{ dbDownloading ? 'Lädt…' : '⬇ DB herunterladen' }}
+              </button>
+            </div>
+
+            <!-- Wiederherstellen -->
+            <div class="space-y-2">
+              <div class="font-medium text-sm text-gray-700">Sicherung wiederherstellen</div>
+              <p class="text-xs text-gray-500">
+                Lädt eine <code class="bg-gray-100 px-1 rounded">.db</code>-Datei hoch
+                und ersetzt die laufende Datenbank vollständig.
+                Seite danach neu laden.
+              </p>
+              <label class="btn-secondary px-4 py-2 text-sm cursor-pointer inline-flex items-center gap-2"
+                :class="dbRestoring ? 'opacity-40 pointer-events-none' : ''">
+                {{ dbRestoring ? 'Stellt wieder her…' : '⬆ DB wiederherstellen' }}
+                <input type="file" accept=".db,application/octet-stream" class="hidden"
+                  @change="restoreDb" :disabled="dbRestoring">
+              </label>
+            </div>
+          </div>
+
+          <div v-if="dbMsg" class="text-xs rounded px-2 py-1.5"
+            :class="dbMsg.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'">
+            {{ dbMsg.text }}
+          </div>
+          <div class="rounded-xl bg-yellow-50 border border-yellow-200 px-3 py-2 text-xs text-yellow-800">
+            ⚠️ Beim Wiederherstellen werden alle aktuellen Daten der laufenden Datenbank
+            unwiderruflich überschrieben. Nur SQLite-Dateien aus dieser Software werden akzeptiert.
           </div>
         </div>
 
@@ -1199,28 +1382,96 @@ import QRCode from 'qrcode'
 
 const store = useEventStore()
 
+function printQrCodes() {
+  const host    = qrHost.value || serverHost
+  const logoUrl = `${window.location.origin}/msc-logo.png`
+  const win = window.open('', '_blank', 'width=900,height=650')
+  win.document.write(`<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8">
+<title>QR-Codes – RaceControl Pro</title>
+<style>
+  @page { size: A4 landscape; margin: 12mm 15mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; margin: 0; background: #fff; color: #222; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  header { display: flex; align-items: center; gap: 14px; border-bottom: 2px solid #1e3a5f; padding-bottom: 10px; margin-bottom: 18px; }
+  header img { width: 54px; height: 54px; }
+  header h1 { font-size: 17pt; margin: 0; color: #1e3a5f; }
+  header p  { font-size: 9pt; color: #555; margin: 2px 0 0; }
+  .codes { display: flex; gap: 24px; justify-content: center; align-items: flex-start; }
+  .code { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+  .code img { width: 190px; height: 190px; border-radius: 10px; }
+  .code .label { font-size: 13pt; font-weight: bold; color: #1e3a5f; }
+  .code .url { font-size: 7.5pt; color: #555; font-family: monospace; word-break: break-all; text-align: center; }
+  .code .hint { font-size: 8pt; color: #888; text-align: center; }
+  .divider { width: 1px; background: #ddd; align-self: stretch; margin: 10px 0; }
+  .spenden .label { color: #92400e; }
+  .spenden img { border: 2px solid #fcd34d; }
+</style>
+</head><body>
+<header>
+  <img src="${logoUrl}" alt="MSC Braach">
+  <div>
+    <h1>MSC Braach e.V. im ADAC – RaceControl Pro</h1>
+    <p>Server: http://${host}</p>
+  </div>
+</header>
+<div class="codes">
+  <div class="code">
+    <img src="${qrImages.value.livetiming}" alt="QR Livetiming">
+    <div class="label">Livetiming</div>
+    <div class="url">http://${host}/livetiming</div>
+    <div class="hint">Ergebnisse live für Zuschauer</div>
+  </div>
+  <div class="divider"></div>
+  <div class="code">
+    <img src="${qrImages.value.nennen}" alt="QR Selbstnennung">
+    <div class="label">Selbstnennung</div>
+    <div class="url">http://${host}/nennen</div>
+    <div class="hint">Online-Anmeldung für Fahrer</div>
+  </div>
+  <div class="divider"></div>
+  <div class="code spenden">
+    <img src="${qrImages.value.spenden}" alt="QR Spenden">
+    <div class="label">💛 Spenden</div>
+    <div class="url">paypal.me/AnkeHolzhauer</div>
+    <div class="hint">Software & Jugendarbeit unterstützen</div>
+  </div>
+</div>
+</body></html>`)
+  win.document.close()
+  win.focus()
+  setTimeout(() => { win.print(); win.close() }, 400)
+}
+
 // ── QR-Codes ──────────────────────────────────────────────────────────────────
-const qrImages = ref({ livetiming: '', nennen: '' })
+const qrImages = ref({ livetiming: '', nennen: '', spenden: '' })
 
 const serverHost = window.location.host   // z.B. "192.168.1.100:1980"
 const qrHost     = ref(serverHost)        // editierbar durch den User
 
+const PAYPAL_URL = 'https://www.paypal.com/paypalme/AnkeHolzhauer'
+
 async function generateQrCodes() {
   const host = qrHost.value.trim() || serverHost
   const base = `http://${host}`
-  const opts = { width: 200, margin: 2, color: { dark: '#1e3a5f', light: '#ffffff' } }
-  qrImages.value.livetiming = await QRCode.toDataURL(`${base}/livetiming`, opts)
-  qrImages.value.nennen     = await QRCode.toDataURL(`${base}/nennen`, opts)
+  const opts     = { width: 200, margin: 2, color: { dark: '#1e3a5f', light: '#ffffff' } }
+  const optsAmber = { width: 200, margin: 2, color: { dark: '#92400e', light: '#fffbeb' } }
+  ;[qrImages.value.livetiming, qrImages.value.nennen, qrImages.value.spenden] = await Promise.all([
+    QRCode.toDataURL(`${base}/livetiming`, opts),
+    QRCode.toDataURL(`${base}/nennen`, opts),
+    QRCode.toDataURL(PAYPAL_URL, optsAmber),
+  ])
 }
 
 const activeTab  = ref('events')
 const tabs = [
-  { id: 'events',    label: '📅 Veranstaltungen' },
-  { id: 'clubs',     label: '🏁 Vereine' },
+  { id: 'events',     label: '📅 Veranstaltungen' },
+  { id: 'reglements', label: '📜 Reglements' },
+  { id: 'clubs',      label: '🏁 Vereine' },
   { id: 'trainees',  label: '🧒 Jugendliche' },
   { id: 'training',  label: '🏋 Training' },
   { id: 'users',     label: '👥 Benutzer' },
   { id: 'sponsors',  label: '🤝 Sponsoren' },
+  { id: 'printing',  label: '🖨 Druck' },
   { id: 'system',    label: '⚙️ System' },
   { id: 'logs',      label: '📋 Logs' },
   { id: 'test',      label: '🧪 Test' },
@@ -1313,6 +1564,115 @@ async function saveClasses() {
     }
   }
   await store.selectEvent(activeEvent.value)
+}
+
+// ── Reglements ──
+const reglements        = ref([])
+const activeReglement   = ref(null)
+const showReglementForm = ref(false)
+const reglementForm     = ref({})
+const reglementError    = ref('')
+const penaltyRows       = ref([])
+
+async function loadReglements() {
+  const { data } = await api.get('/reglements/')
+  reglements.value = data
+}
+
+function scoringLabel(type) {
+  return {
+    sum_all:          'Summe aller Läufe',
+    best_of:          'Bester Lauf',
+    sum_minus_worst:  'Summe − schlechtester',
+  }[type] ?? type
+}
+
+function selectReglement(r) {
+  activeReglement.value = r
+  showReglementForm.value = true
+  reglementForm.value = { ...r }
+  reglementError.value = ''
+  loadPenalties(r.id)
+}
+
+function openNewReglement() {
+  activeReglement.value = null
+  showReglementForm.value = true
+  reglementForm.value = { name: '', scoring_type: 'sum_all', runs_per_class: 2, has_training: true }
+  reglementError.value = ''
+  penaltyRows.value = []
+}
+
+function cancelNewReglement() {
+  showReglementForm.value = false
+  activeReglement.value = null
+}
+
+async function loadPenalties(regId) {
+  const { data } = await api.get(`/reglements/${regId}/penalties`)
+  penaltyRows.value = data.map(p => ({ ...p, _key: p.id }))
+}
+
+async function saveReglement() {
+  reglementError.value = ''
+  try {
+    if (activeReglement.value) {
+      const { data } = await api.patch(`/reglements/${activeReglement.value.id}`, reglementForm.value)
+      activeReglement.value = data
+      const idx = reglements.value.findIndex(r => r.id === data.id)
+      if (idx >= 0) reglements.value[idx] = data
+    } else {
+      const { data } = await api.post('/reglements/', reglementForm.value)
+      reglements.value.push(data)
+      activeReglement.value = data
+      penaltyRows.value = []
+    }
+    await store.loadReglements()
+  } catch (e) {
+    reglementError.value = e.response?.data?.detail || 'Fehler beim Speichern'
+  }
+}
+
+async function deleteReglement() {
+  if (!confirm(`Reglement "${activeReglement.value.name}" löschen?\n\nAlle zugehörigen Straf-Definitionen werden ebenfalls gelöscht.`)) return
+  await api.delete(`/reglements/${activeReglement.value.id}`)
+  reglements.value = reglements.value.filter(r => r.id !== activeReglement.value.id)
+  activeReglement.value = null
+  showReglementForm.value = false
+  await store.loadReglements()
+}
+
+function addPenaltyRow() {
+  penaltyRows.value.push({
+    _key: Date.now(), id: null,
+    label: '', seconds: 0, shortcut_key: null,
+    sort_order: penaltyRows.value.length,
+  })
+}
+
+async function savePenaltyRow(p) {
+  if (!p.label) return
+  try {
+    if (p.id) {
+      const { data } = await api.patch(
+        `/reglements/${activeReglement.value.id}/penalties/${p.id}`,
+        { label: p.label, seconds: p.seconds, shortcut_key: p.shortcut_key || null, sort_order: p.sort_order },
+      )
+      Object.assign(p, data)
+    } else {
+      const { data } = await api.post(
+        `/reglements/${activeReglement.value.id}/penalties`,
+        { label: p.label, seconds: p.seconds, shortcut_key: p.shortcut_key || null, sort_order: p.sort_order },
+      )
+      p.id   = data.id
+      p._key = data.id
+    }
+  } catch { /* UNIQUE-Konflikte (doppelte Taste) werden still ignoriert */ }
+}
+
+async function deletePenaltyRow(idx, p) {
+  if (p.id) await api.delete(`/reglements/${activeReglement.value.id}/penalties/${p.id}`)
+  penaltyRows.value.splice(idx, 1)
 }
 
 // ── Clubs ──
@@ -1728,6 +2088,61 @@ function sysLogLabel(type) {
   }[type] ?? type
 }
 
+// ── DB-Verwaltung ──
+const dbDownloading = ref(false)
+const dbRestoring   = ref(false)
+const dbMsg         = ref(null)
+
+async function downloadDb() {
+  dbDownloading.value = true
+  dbMsg.value = null
+  try {
+    const response = await api.get('/settings/db/download', { responseType: 'blob' })
+    const disposition = response.headers['content-disposition'] || ''
+    const match = disposition.match(/filename="([^"]+)"/)
+    const filename = match ? match[1] : 'racecontrol.db'
+    const url = URL.createObjectURL(response.data)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    dbMsg.value = { ok: true, text: `Download gestartet: ${filename}` }
+  } catch {
+    dbMsg.value = { ok: false, text: 'Download fehlgeschlagen.' }
+  } finally {
+    dbDownloading.value = false
+  }
+}
+
+async function restoreDb(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  if (!confirm(
+    `Datenbank mit „${file.name}" wiederherstellen?\n\n` +
+    `Alle aktuellen Daten werden unwiderruflich überschrieben.\n` +
+    `Die Seite muss danach manuell neu geladen werden.`
+  )) {
+    event.target.value = ''
+    return
+  }
+  dbRestoring.value = true
+  dbMsg.value = null
+  try {
+    const form = new FormData()
+    form.append('file', file)
+    const { data } = await api.post('/settings/db/restore', form)
+    dbMsg.value = { ok: true, text: data.detail }
+  } catch (e) {
+    dbMsg.value = { ok: false, text: e.response?.data?.detail || 'Fehler beim Wiederherstellen.' }
+  } finally {
+    dbRestoring.value = false
+    event.target.value = ''
+  }
+}
+
 watch(activeTab, (tab) => {
   if (tab === 'logs') {
     if (!logEventId.value && events.value.length) {
@@ -1737,9 +2152,10 @@ watch(activeTab, (tab) => {
     }
     loadLogs()
   }
+  if (tab === 'reglements') { if (!reglements.value.length) loadReglements() }
   if (tab === 'trainees') { if (!trainees.value.length) loadTrainees(); if (!disciplines.value.length) loadDisciplines() }
   if (tab === 'training') { loadTrainingSessions(); loadDisciplines() }
-  if (tab === 'system') generateQrCodes()
+  if (tab === 'printing') generateQrCodes()
 })
 
 onMounted(async () => {

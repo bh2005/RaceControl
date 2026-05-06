@@ -58,6 +58,14 @@ class ReglementCreate(BaseModel):
     has_training: bool = True
 
 
+class ReglementUpdate(BaseModel):
+    name: Optional[str] = None
+    scoring_type: Optional[Literal["sum_all", "best_of", "sum_minus_worst"]] = None
+    points_formula: Optional[str] = None
+    runs_per_class: Optional[int] = None
+    has_training: Optional[bool] = None
+
+
 class ReglementResponse(ReglementCreate):
     id: int
     created_at: str
@@ -73,6 +81,13 @@ class PenaltyDefinitionCreate(BaseModel):
     seconds: float = Field(ge=0)
     shortcut_key: Optional[str] = None
     sort_order: int = 0
+
+
+class PenaltyDefinitionUpdate(BaseModel):
+    label: Optional[str] = None
+    seconds: Optional[float] = Field(default=None, ge=0)
+    shortcut_key: Optional[str] = None
+    sort_order: Optional[int] = None
 
 
 class PenaltyDefinitionResponse(PenaltyDefinitionCreate):

@@ -4,7 +4,7 @@
     <!-- Header -->
     <header class="bg-msc-blue text-white shadow-lg">
       <div class="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
-        <img src="/msc-logo.svg" alt="MSC" class="h-12 w-12 rounded-full border-2 border-white/30">
+        <img src="/msc-logo.png" alt="MSC" class="h-12 w-12 rounded-full border-2 border-white/30">
         <div>
           <div class="font-black text-xl leading-tight">Online-Nennung</div>
           <div class="text-blue-200 text-sm">{{ eventInfo?.name || 'MSC Braach e.V. im ADAC' }}</div>

@@ -42,9 +42,9 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: '/msc-logo.svg',
+            src: '/msc-logo.png',
             sizes: 'any',
-            type: 'image/svg+xml',
+            type: 'image/png',
             purpose: 'any maskable',
           },
         ],

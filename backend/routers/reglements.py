@@ -5,7 +5,10 @@ import sqlite3
 
 from database import get_db
 from deps import require_roles
-from schemas import ReglementCreate, ReglementResponse, PenaltyDefinitionCreate, PenaltyDefinitionResponse
+from schemas import (
+    ReglementCreate, ReglementUpdate, ReglementResponse,
+    PenaltyDefinitionCreate, PenaltyDefinitionUpdate, PenaltyDefinitionResponse,
+)
 
 router = APIRouter(prefix="/reglements", tags=["reglements"])
 
@@ -37,6 +40,27 @@ def create_reglement(
     )
     db.commit()
     return dict(db.execute("SELECT * FROM Reglements WHERE id = ?", (cur.lastrowid,)).fetchone())
+
+
+@router.patch("/{reg_id}", response_model=ReglementResponse)
+def update_reglement(
+    reg_id: int,
+    body: ReglementUpdate,
+    db: Annotated[sqlite3.Connection, Depends(get_db)],
+    _: AdminOnly,
+):
+    row = db.execute("SELECT * FROM Reglements WHERE id = ?", (reg_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "Reglement nicht gefunden")
+    updates = {k: v for k, v in body.model_dump(exclude_none=True).items()}
+    if not updates:
+        return dict(row)
+    if "has_training" in updates:
+        updates["has_training"] = int(updates["has_training"])
+    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    db.execute(f"UPDATE Reglements SET {set_clause} WHERE id = ?", (*updates.values(), reg_id))
+    db.commit()
+    return dict(db.execute("SELECT * FROM Reglements WHERE id = ?", (reg_id,)).fetchone())
 
 
 @router.delete("/{reg_id}", status_code=204)
@@ -72,6 +96,31 @@ def create_penalty(
     )
     db.commit()
     return dict(db.execute("SELECT * FROM PenaltyDefinitions WHERE id = ?", (cur.lastrowid,)).fetchone())
+
+
+@router.patch("/{reg_id}/penalties/{pen_id}", response_model=PenaltyDefinitionResponse)
+def update_penalty(
+    reg_id: int,
+    pen_id: int,
+    body: PenaltyDefinitionUpdate,
+    db: Annotated[sqlite3.Connection, Depends(get_db)],
+    _: AdminOnly,
+):
+    row = db.execute(
+        "SELECT * FROM PenaltyDefinitions WHERE id = ? AND reglement_id = ?", (pen_id, reg_id)
+    ).fetchone()
+    if not row:
+        raise HTTPException(404, "Strafe nicht gefunden")
+    updates = {k: v for k, v in body.model_dump(exclude_none=True).items()}
+    if not updates:
+        return dict(row)
+    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    try:
+        db.execute(f"UPDATE PenaltyDefinitions SET {set_clause} WHERE id = ?", (*updates.values(), pen_id))
+        db.commit()
+    except Exception as exc:
+        raise HTTPException(409, str(exc))
+    return dict(db.execute("SELECT * FROM PenaltyDefinitions WHERE id = ?", (pen_id,)).fetchone())
 
 
 @router.delete("/{reg_id}/penalties/{pen_id}", status_code=204)

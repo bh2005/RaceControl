@@ -247,7 +247,7 @@ export async function printNennliste(api, event, classes, participants) {
 <html lang="de"><head><meta charset="UTF-8">
 <title>Nennliste – ${esc(event.name)}</title>
 <style>
-  @page { size: A4 portrait; margin: 12mm 15mm; }
+  @page { size: A4 landscape; margin: 12mm 15mm; }
   * { box-sizing: border-box; }
   body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #222; }
   h1 { font-size: 13pt; margin: 0 0 2px; }

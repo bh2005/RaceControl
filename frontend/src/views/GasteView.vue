@@ -8,7 +8,7 @@
            style="background-image: repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,.3) 39px,rgba(255,255,255,.3) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,.3) 39px,rgba(255,255,255,.3) 40px)">
       </div>
       <div class="relative">
-        <img src="/msc-logo.svg" alt="MSC" class="h-20 w-20 rounded-full border-3 border-white/30 mx-auto mb-4 shadow-2xl">
+        <img src="/msc-logo.png" alt="MSC" class="h-20 w-20 rounded-full border-3 border-white/30 mx-auto mb-4 shadow-2xl">
         <div class="text-blue-200 text-sm font-semibold tracking-widest uppercase mb-1">MSC Braach e.V. im ADAC</div>
         <h1 class="font-black text-3xl sm:text-4xl leading-tight">
           {{ event?.name || 'RaceControl Pro' }}
