@@ -40,9 +40,10 @@ fi
 
 # ── .env anlegen (falls noch nicht vorhanden) ─────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_FILE="$SCRIPT_DIR/.env"
+LICHTSCHRANKEN_DIR="$(dirname "$SCRIPT_DIR")"
+ENV_FILE="$LICHTSCHRANKEN_DIR/.env"
 if [ ! -f "$ENV_FILE" ]; then
-    cp "$SCRIPT_DIR/.env.example" "$ENV_FILE"
+    cp "$LICHTSCHRANKEN_DIR/.env.example" "$ENV_FILE"
 fi
 
 # ── Timing-API-Key vom laufenden Backend abholen ──────
@@ -83,7 +84,7 @@ else
     echo "  1. Gruppe aktivieren (OHNE Neu-Anmelden): newgrp plugdev"
 fi
 if [ -z "$API_KEY" ]; then
-echo "  2. TIMING_API_KEY in tools/.env eintragen"
+echo "  2. TIMING_API_KEY in lichtschranken/.env eintragen"
 echo "     (Quelle: RaceControl Admin → System)"
 fi
 echo "  3. LSU200 per USB anschließen"

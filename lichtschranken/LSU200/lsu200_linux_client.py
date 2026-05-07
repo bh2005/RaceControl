@@ -32,6 +32,7 @@ import struct
 import sys
 import time
 import threading
+import uuid
 import usb.core
 import usb.util
 import websocket
@@ -168,18 +169,20 @@ def _close_device(dev):
 
 def _parse_time(time_str: str) -> float | None:
     """
-    Wandelt 'HH:MM:SS:mmm' in Dezimal-Sekunden um.
-    Beispiel: '00:01:23:456' → 83.456
+    Unterstützt zwei Formate:
+      kompakt  'HHMMSSMMM'   z.B. '000006456' → 6.456 s
+      getrennt 'HH:MM:SS:mmm' z.B. '00:00:06:456' → 6.456 s
     """
+    t = time_str.strip()
     try:
-        parts = time_str.strip().replace(",", ":").split(":")
+        if t.isdigit() and len(t) == 9:
+            # Kompaktformat des LSU200: HHMMSSMMM
+            return int(t[0:2]) * 3600 + int(t[2:4]) * 60 + int(t[4:6]) + int(t[6:9]) / 1000.0
+        parts = t.replace(",", ":").split(":")
         if len(parts) < 3:
             return None
-        h  = int(parts[0])
-        m  = int(parts[1])
-        s  = int(parts[2])
-        ms = int(parts[3]) if len(parts) > 3 else 0
-        return h * 3600 + m * 60 + s + ms / 1000.0
+        return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2]) + \
+               (int(parts[3]) if len(parts) > 3 else 0) / 1000.0
     except (ValueError, IndexError):
         return None
 
@@ -199,7 +202,8 @@ def _send_ws(payload: dict):
 
 def _usb_thread():
     global _last_hb_sent, _current_dev
-    last_state = -1
+    last_state   = -1
+    cooldown_end = 0.0   # Zeit bis der nächste Übergang akzeptiert wird
 
     while True:
         print("[LSU200] Suche Gerät (VID=18ef PID=e02c) …")
@@ -215,7 +219,8 @@ def _usb_thread():
             _current_dev = dev
         print("[LSU200] Gerät gefunden und geöffnet")
         _log("USB_CONNECTED", "LSU200 geöffnet")
-        last_state = -1
+        last_state   = -1
+        cooldown_end = 0.0
 
         try:
             while True:
@@ -225,6 +230,8 @@ def _usb_thread():
                 dev.write(EP_OUT, b"w", timeout=USB_TIMEOUT)
                 raw_bytes = dev.read(EP_IN, 64, timeout=USB_TIMEOUT)
                 raw = bytes(raw_bytes).decode("ascii", errors="ignore").strip()
+                if raw.startswith("w"):   # Gerät spiegelt Befehl zurück
+                    raw = raw[1:]
 
                 if ";" in raw:
                     state_str, time_str = raw.split(";", 1)
@@ -234,19 +241,22 @@ def _usb_thread():
                         current_state = -1
 
                     # Übergang Running(1) → Stopped(0) = Messung abgeschlossen
-                    if last_state == 1 and current_state == 0:
+                    if last_state == 1 and current_state == 0 and now > cooldown_end:
                         elapsed = _parse_time(time_str)
                         if elapsed is not None and elapsed >= MIN_TIME:
                             print(f"[LSU200] Neue Zeit: {elapsed:.3f} s")
                             _log("MESSUNG", f"{elapsed:.3f}")
                             _send_ws({
                                 "type":     "timing_result",
+                                "event_id": str(uuid.uuid4()),
                                 "raw_time": round(elapsed, 3),
                                 "device":   "lsu200-usb",
                             })
+                            cooldown_end = now + 2.0   # 2 s Bounce-Sperre
                         elif elapsed is not None:
                             print(f"[LSU200] Messung verworfen ({elapsed:.3f} s < {MIN_TIME} s)")
                             _log("VERWORFEN", f"{elapsed:.3f} (< {MIN_TIME} s)")
+                            cooldown_end = now + 2.0
 
                     last_state = current_state
 

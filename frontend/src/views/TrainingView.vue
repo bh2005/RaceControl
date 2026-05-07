@@ -291,6 +291,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import api from '../api/client'
+import { useRealtimeUpdate } from '../composables/useRealtimeUpdate'
 
 // ── Straf-Definitionen für Training ──────────────────────────────────────────
 const PENALTIES = [
@@ -317,8 +318,7 @@ const traineeSearch   = ref('')
 
 const lsConnected = ref(false)
 const lsFlash     = ref(false)
-let   lsFlashTimer  = null
-let   ws            = null
+let   lsFlashTimer = null
 
 const timeInput = ref(null)
 
@@ -456,50 +456,53 @@ async function deleteRun(r) {
   await Promise.all([loadRuns(), loadStandings()])
 }
 
-// ── WebSocket (Lichtschranke) ─────────────────────────────────────────────────
-function connectWs() {
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-  ws = new WebSocket(`${proto}://${location.host}/ws`)
-  ws.onmessage = ({ data }) => {
-    try {
-      const msg = JSON.parse(data)
-      if (msg.type === 'timing_device_status') {
-        lsConnected.value = msg.connected
-      }
-      if (msg.type === 'timing_device_heartbeat') {
-        lsConnected.value = true
-      }
-      if (msg.type === 'timing_result' && msg.raw_time != null) {
-        lsConnected.value = true
-        if (currentTrainee.value && selectedSession.value?.status === 'active') {
-          entryStatus.value = 'valid'
-          rawTime.value = msg.raw_time.toFixed(3)
-          lsFlash.value = true
-          clearTimeout(lsFlashTimer)
-          lsFlashTimer = setTimeout(() => { lsFlash.value = false }, 3000)
-          saveRun('lichtschranke')
-        }
-      }
-      // Wertung aktualisieren wenn ein anderer Client einen Lauf gespeichert hat
-      if (msg.type === 'training_run' && msg.session_id === selectedSessionId.value) {
-        loadRuns()
-        loadStandings()
-      }
-    } catch { /* ignore */ }
-  }
-  ws.onclose = () => {
-    lsConnected.value = false
-    setTimeout(connectWs, 3000)
+// ── WebSocket (Lichtschranke via useRealtimeUpdate) ───────────────────────────
+function _claimTimingEvent(eventId) {
+  if (!eventId) return true
+  const LS_KEY = 'rc_timing_events'
+  const now    = Date.now()
+  try {
+    const list   = JSON.parse(localStorage.getItem(LS_KEY) || '[]')
+    const recent = list.filter(e => now - e.ts < 30_000)
+    if (recent.some(e => e.id === eventId)) return false
+    recent.push({ id: eventId, ts: now })
+    localStorage.setItem(LS_KEY, JSON.stringify(recent))
+    return true
+  } catch {
+    return true
   }
 }
 
+useRealtimeUpdate((msg) => {
+  if (msg.type === 'timing_device_status') {
+    lsConnected.value = msg.connected
+  }
+  if (msg.type === 'timing_device_heartbeat') {
+    lsConnected.value = true
+  }
+  if (msg.type === 'timing_result' && msg.raw_time != null) {
+    lsConnected.value = true
+    if (currentTrainee.value && selectedSession.value?.status === 'active'
+        && _claimTimingEvent(msg.event_id)) {
+      entryStatus.value = 'valid'
+      rawTime.value = msg.raw_time.toFixed(3)
+      lsFlash.value = true
+      clearTimeout(lsFlashTimer)
+      lsFlashTimer = setTimeout(() => { lsFlash.value = false }, 3000)
+      saveRun('lichtschranke')
+    }
+  }
+  if (msg.type === 'training_run' && msg.session_id === selectedSessionId.value) {
+    loadRuns()
+    loadStandings()
+  }
+})
+
 onMounted(async () => {
   await loadSessions()
-  connectWs()
 })
 
 onUnmounted(() => {
-  ws?.close()
   clearTimeout(lsFlashTimer)
 })
 
