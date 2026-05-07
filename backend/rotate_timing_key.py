@@ -44,6 +44,7 @@ _CLIENT_SCRIPTS: list[pathlib.Path] = [
     ROOT.parent / "RaPi_lichtschranke" / "racecontrol_client_max7219.py",
     ROOT.parent / "RaPi_lichtschranke" / "racecontrol_downhill_finish.py",
     ROOT.parent / "tools"              / "lsu200_client.py",
+    ROOT.parent / "tools"              / "lsu200_linux_client.py",
     ROOT.parent / "tools"              / "alge_timy_client.py",
     ROOT.parent / "tools"              / "alge_multi_timy_client.py",
 ]
