@@ -84,7 +84,8 @@
 ## 9. Qualitätssicherung & Test
 - ❌ **Stresstest:** Simulation mit 300 Datensätzen und 50+ simultanen Clients – noch nicht durchgeführt
 - ✅ **Datensicherheit:** Sofortige Persistenz bei jeder Eingabe (kein Datenverlust bei WLAN-Abbruch)
-- ✅ **Automatisierte Tests:** pytest-Integrationstests (auth, events, participants, results, public, marshal, auto-close, trainees, training — ~130 Tests); Vitest-Tests für Composables und Komponenten (format, StatusBadge, TimeDisplay, ParticipantCard, useNetworkStatus, useRealtimeUpdate); GitHub Actions CI/CD mit Coverage-Schwellwert 70 %
+- ✅ **Automatisierte Tests:** pytest-Integrationstests (auth, events, participants, results, public, marshal, auto-close, trainees, training, misc, reglements, settings, teams, downhill, import — **322 Tests**, Coverage **≥ 95 %**); Vitest-Tests für Stores, API-Interceptors, Komponenten und Utils (**127 Tests**, Coverage **≥ 97 %**); GitHub Actions CI/CD mit Coverage-Schwellwert 60 %
+- ❌ **E2E-Tests (Playwright):** View-Level-Tests für AdminView, ZeitnahmeView, NennungView etc. — erfordert laufendes Backend + Frontend; Playwright empfohlen; Aufwand: mehrere Tage
 - ✅ **Admin Test-Tab:** API Verbindungscheck + Testdaten-Seeder (Reglement, Klassen, Teilnehmer) mit Progress-Log
 - ✅ **GPL-2.0 Lizenzseite:** `/lizenz`-Route mit Projektinfo, Bibliotheken-Übersicht, Link auf gnu.org; GPL-Link in StatusBar
 
@@ -146,4 +147,5 @@
 | ~~🟡 Mittel~~ | ~~Downhill-Zeitnahme-View im Frontend (Starterliste, nächster Starter, Event-Formular)~~ | ~~mittel~~ |
 | ~~🟡 Mittel~~ | ~~Trainee-Disziplinen (n:m TraineeDisciplines, Admin-UI)~~ | ~~klein~~ |
 | 🟢 Nice-to-have | Stresstest (300 Starter, 50 Clients) | groß |
+| 🟢 Nice-to-have | E2E-Tests mit Playwright (Views) | groß |
 | ~~🟢 Nice-to-have~~ | ~~Automatisierte Tests~~ | ~~groß~~ |
