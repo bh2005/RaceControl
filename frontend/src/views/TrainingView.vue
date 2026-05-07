@@ -424,7 +424,7 @@ function addPenalty(s) {
 }
 
 // ── Lauf speichern ────────────────────────────────────────────────────────────
-async function saveRun() {
+async function saveRun(source = 'manual') {
   if (!currentTrainee.value || selectedSession.value?.status !== 'active') return
   saveError.value = ''
 
@@ -440,7 +440,7 @@ async function saveRun() {
       raw_time:        rawVal,
       penalty_seconds: penaltySeconds.value,
       status:          entryStatus.value,
-      source:          'manual',
+      source,
     })
     await Promise.all([loadRuns(), loadStandings()])
     resetEntry()
@@ -466,13 +466,18 @@ function connectWs() {
       if (msg.type === 'timing_device_status') {
         lsConnected.value = msg.connected
       }
+      if (msg.type === 'timing_device_heartbeat') {
+        lsConnected.value = true
+      }
       if (msg.type === 'timing_result' && msg.raw_time != null) {
-        // Zeit automatisch eintragen wenn Fahrer ausgewählt und Feld leer
-        if (currentTrainee.value && entryStatus.value === 'valid') {
+        lsConnected.value = true
+        if (currentTrainee.value && selectedSession.value?.status === 'active') {
+          entryStatus.value = 'valid'
           rawTime.value = msg.raw_time.toFixed(3)
           lsFlash.value = true
           clearTimeout(lsFlashTimer)
           lsFlashTimer = setTimeout(() => { lsFlash.value = false }, 3000)
+          saveRun('lichtschranke')
         }
       }
       // Wertung aktualisieren wenn ein anderer Client einen Lauf gespeichert hat
