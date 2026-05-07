@@ -3,6 +3,76 @@ RaceControl Pro  Changelog
 ===========================
 
 
+
+[0.9.1] - 2026-05-07
+---------------------
+Lichtschranken-Erweiterung: Arduino, ESP32, LoRa, GPS + Ordnerreorganisation
+
+  Hardware -- Arduino Nano Sketche (PlatformIO, lichtschranken/Ardoino/)
+  + arduino_TM1637_lichtschranke: Standalone-Zeitmessung, 4-Digit-Display,
+    USB-Serial JSON-Ausgabe bei jedem Ergebnis
+  + arduino_MAX7219_lichtschranke: wie TM1637, aber 8-Digit-Display mit
+    Live-Anzeige waehrend der Fahrt (50 ms Refresh)
+  + arduino_lora_sender: LoRa 433 MHz Sender (SX1276/RA-02) mit DS3231 RTC;
+    UTC-Timestamp beim Interrupt gestempelt; Zeitsync-Protokoll vom Gateway;
+    Fallback unix=0 wenn kein RTC
+
+  Hardware -- ESP32 Sketche (PlatformIO, lichtschranken/ESP32/)
+  + esp32_tm1637_lichtschranke: TM1637 + DIP-Schalter (SW1: Standalone/WiFi);
+    sendet Ergebnis per HTTP an RaceControl wenn WiFi aktiv
+  + esp32_max7219_lichtschranke: MAX7219 + DIP-Schalter (SW2: Helligkeit);
+    Live-Anzeige (30 ms), WiFi-Modus wie TM1637-Variante
+  + esp32_lora_wifi_sender: WiFi primaer (NTP-Sync, HTTP-POST direkt) +
+    LoRa automatischer Fallback; DS3231 RTC; DIP-Schalter fuer Spur (A/B)
+    und Checkpoint (0=start, 1-2=split, 3=finish)
+
+  Hardware -- Raspberry Pi LoRa-Gateway (lichtschranken/RasPi/)
+  + lora_ziel_gateway.py: empfaengt start/split/finish-Pakete von
+    Arduino/ESP32-Sendern per LoRa; leitet per HTTP an Backend weiter;
+    sendet alle 60 s Zeitsync-Broadcast; Fallback: Gateway-Timestamp
+    wenn unix=0 im Paket
+
+  Tools -- GPS-Timesync (lichtschranken/GPS/)
+  + ublox8_gps_client.py: Live-Monitor erweitert um WebSocket-Anbindung;
+    sendet alle 10 s GPS-UTC-Zeit als gps_timesync ans Backend wenn
+    Fix vorhanden und >= 4 Satelliten; Intervall per .env konfigurierbar
+
+  Tools -- Serial Logger
+  + serial_logger.py: liest JSON-Zeilen von Arduino/ESP32 ueber USB-Serial;
+    farbige Terminal-Ausgabe; CSV-Log (zeitmessung_DATUM.csv);
+    auto-detect COM-Port; unterstuetzt 9600 (Nano) und 115200 (ESP32) Baud
+
+  Tools -- Bugfixes
+  + alge_timy_client.py: TIMING_API_KEY fehlte; wird jetzt als ?key=...
+    an BACKEND_WS angehaengt (wie lsu200_client.py)
+  + alge_multi_timy_client.py: TIMING_API_KEY aus .env; ?key=... an WS-URL
+
+  Infrastruktur
+  + Alle Lichtschranken-Dateien nach lichtschranken/ reorganisiert:
+    Ardoino/, ESP32/, RasPi/, GPS/, ALGE/, LSU200/
+  + Arduino_lichtschranke/ und RaPi_lichtschranke/ und tools/ geloescht
+  + setup_tools.sh: neues Einrichtungs-Script fuer alle Clients
+    (Python-Version pruefen, pip install, .env anlegen, API-Key auto-fetch)
+  + .env.example: TIMY_START_PORT / TIMY_FINISH_PORT ergaenzt
+  + platformio.ini in allen 6 Sketch-Ordnern (Nano + ESP32)
+
+  Frontend
+  + msc-logo.svg ueberall durch msc-logo.png ersetzt (AppHeader, Login,
+    Speaker, Gaste, Selbstnennung, AdminView, vite.config.js)
+  + AdminView: Spendenhinweis-Karte als erste Karte im System-Tab
+  + AdminView: QR-Codes-Drucken als Popup (Logo + 3 QR-Codes A4 quer):
+    Livetiming, Online-Nennung, PayPal-Spenden
+  + LivetimingView: Spendenhinweis-Strip (amber) am Seitenende
+  + Nennliste drucken: A4-Querformat (@page landscape)
+
+  Dokumentation
+  + LICHTSCHRANKE_SETUP.md komplett neu: alle 13 Varianten (A-M),
+    korrigierte Pfade, neue Abschnitte fuer Arduino/ESP32/LoRa/GPS
+  + README.md: Architektur-Baum aktualisiert, Version 0.9.1,
+    Features-Tabelle Lichtschranke erweitert
+  + Bauanleitungen in lichtschranken/Ardoino/ und lichtschranken/ESP32/
+    auf VS Code + PlatformIO umgestellt (statt Arduino IDE)
+    
 [0.9.0] - 2026-05-05
 ---------------------
 Shared Components, Passwortverwaltung, Tests & CI/CD
@@ -329,11 +399,11 @@ Trainingsmodus + Auswertungsseite + Bugfixes
 
 [0.5.0] - 2026-04-27
 ---------------------
-Streckenposten, Zeitnahme, Sprecher – Stabilisierung + neue Features
+Streckenposten, Zeitnahme, Sprecher â€“ Stabilisierung + neue Features
 
   Streckenposten / Marshal
   + MarshalView: History der letzten 3 Meldungen mit Storno-Funktion
-  + Meldungen werden in DB (MarshalReports) persistiert – keine WS-only-Abhaengigkeit mehr
+  + Meldungen werden in DB (MarshalReports) persistiert â€“ keine WS-only-Abhaengigkeit mehr
   + Zeitnahme: offene Meldungen werden beim Laden aus DB nachgeladen (letzte 30 Min.)
   + Zeitnahme: Meldungsqueue wird nach Bestaetigung automatisch geleert
   + Verworfene Meldungen tauchen nach Seitenneuladen nicht mehr auf (_seenReportIds-Tracking)
@@ -353,7 +423,7 @@ Streckenposten, Zeitnahme, Sprecher – Stabilisierung + neue Features
   + Auto-Close setzt jetzt end_time -> Einspruchfrist-Timer startet sofort
     (auch bei automatischem Klassenabschluss, nicht nur bei manuellem)
 
-  Admin – Logs-Tab
+  Admin â€“ Logs-Tab
   + Neues Tab Logs im Admin-Bereich:
     Streckenposten-Meldungen, Zeitkorrekturen (AuditLog), System-Log
   + system_logger.py: Thread-sicherer Helfer (Server-Start, Login-OK/Fail, User-Erstellung)
@@ -374,7 +444,7 @@ Streckenposten, Zeitnahme, Sprecher – Stabilisierung + neue Features
     (cyan Zeitanzeige, 'Training'-Hinweis statt Lauf X/Y *)
   ~ Fix: nur der erste Trainingseintrag wurde angezeigt (classesWithStandings-Set)
 
-[0.4.4] – 2026-04-27
+[0.4.4] â€“ 2026-04-27
   Docker-Deployment
   - Dockerfile: Multi-Stage-Build (Node 22 baut Frontend, Python 3.12-slim fuehrt Backend aus)
   - docker-compose.yml: Single-Container-Start mit Volumes fuer DB und Assets
@@ -385,7 +455,7 @@ Streckenposten, Zeitnahme, Sprecher – Stabilisierung + neue Features
   - Healthcheck auf /health eingebaut
   - README, FEATURES, HANDBUCH, DEV_HANDBOOK aktualisiert
 
-[0.4.3] – 2026-04-25
+[0.4.3] â€“ 2026-04-25
 
   Streckenposten-Rolle, Nav-Dropdown, Teilnehmerliste-Sortierung
 
@@ -409,7 +479,7 @@ Streckenposten, Zeitnahme, Sprecher – Stabilisierung + neue Features
 
 
 
-[0.4.2] – 2026-04-25
+[0.4.2] â€“ 2026-04-25
 
   Dokumente-Seite
 
@@ -419,7 +489,7 @@ Streckenposten, Zeitnahme, Sprecher – Stabilisierung + neue Features
 
   - Statisches Serving unter /assets/ (PDF, PNG etc. direkt aufrufbar)
 
-  - Dateien nach Kategorie (Unterordner) gruppiert, Dateigroeße angezeigt
+  - Dateien nach Kategorie (Unterordner) gruppiert, DateigroeÃŸe angezeigt
 
   - Navigationslink Dokumente fuer alle Benutzer (inkl. Gaeste)
 

@@ -5,7 +5,7 @@
 
   **Professionelle Kart-Slalom Veranstaltungssoftware**
 
-  ![Version](https://img.shields.io/badge/Version-0.9.0-cyan?style=flat-square)
+  ![Version](https://img.shields.io/badge/Version-0.9.1-cyan?style=flat-square)
   ![Backend](https://img.shields.io/badge/Backend-FastAPI%20%2B%20SQLite-009688?style=flat-square)
   ![Frontend](https://img.shields.io/badge/Frontend-Vue%203%20%2B%20Tailwind-4FC08D?style=flat-square)
   ![Platform](https://img.shields.io/badge/Platform-WLAN%20offline--first-orange?style=flat-square)
@@ -38,7 +38,7 @@ Das System läuft komplett **lokal auf einem Laptop**, braucht kein Internet und
 | **Livetiming** | Echtzeit-Ergebnisse für Zuschauer – Gesamtrang + Lauf-Detailzeilen, Trainingszeiten als Fallback |
 | **Auswertung** | Statistikseite pro Veranstaltung: Schnellster Wertungslauf je Klasse, Schnellste Dame, Schnellster Herr |
 | **Sprecher** | 3-spaltiges Dashboard: aktueller Fahrer, Zeitanalyse (Was braucht er für P1/P3/P10?, Pylonen-Budget), Ereignis-Log (Streckenposten-Meldungen, Klassenänderungen, Ankündigungen) |
-| **Lichtschranke** | Raspberry Pi Client (TM1637 oder MAX7219 Display), ELV LSU200 per USB (Windows), ALGE Timy2/3 per RS232 (Windows) |
+| **Lichtschranke** | Arduino Nano / ESP32 (TM1637, MAX7219, LoRa 433 MHz, WiFi), Raspberry Pi (TM1637, MAX7219, LoRa-Gateway), ELV LSU200 per USB, ALGE Timy2/3 per RS232, u-blox 8 GPS-Timesync |
 | **Nachrichten** | Push-Nachrichten an alle Clients senden (Ankündigungen, Infos) |
 | **Streckenposten** | Eigene Rolle `marshal`; Fehlerpunkte per Eingabefeld sofort an Zeitnahme + Sprecher melden |
 | **Dokumente** | Öffentliche Seite für Reglemente, Vorlagen & Formulare aus dem `assets/`-Ordner |
@@ -127,18 +127,30 @@ RaceControl/
 │       ├── router/index.js             # Vue Router mit Rollen-Guard
 │       └── api/client.js              # Axios-Instanz + Auth-Header
 │
-├── RaPi_lichtschranke/         # Raspberry Pi Lichtschranken-Clients
-│   ├── racecontrol_client.py           # Produktions-Client (TM1637-Display)
-│   ├── racecontrol_client_max7219.py   # Produktions-Client (MAX7219-LED-Matrix)
-│   ├── py_code_raspi_TM1637.py         # Standalone-Test TM1637
-│   ├── py_code_raspi_max7219.py        # Standalone-Test MAX7219
-│   └── notes.md                        # Hardware-Aufbau und Verkabelung
-│
-├── tools/                      # Externe Geräte-Clients (laufen auf dem Laptop)
-│   ├── lsu200_client.py                # ELV LSU200 USB-Lichtschranke (COM-Port)
-│   ├── alge_timy_client.py             # ALGE Timy RS232-Lichtschranke (COM-Port)
-│   ├── alge_multi_timy_client.py       # ALGE Multi-Timy (mehrere Geräte gleichzeitig)
-│   └── requirements.txt
+├── lichtschranken/             # Alle Lichtschranken-Clients und Hardware-Sketche
+│   ├── Ardoino/                        # Arduino Nano Sketche (PlatformIO)
+│   │   ├── arduino_TM1637_lichtschranke/   # Standalone-Zeitmessung, 4-Digit-Display
+│   │   ├── arduino_MAX7219_lichtschranke/  # Standalone-Zeitmessung, 8-Digit-Display (live)
+│   │   └── arduino_lora_sender/            # LoRa-Sender mit DS3231 RTC + Zeitsync
+│   ├── ESP32/                          # ESP32 Sketche (PlatformIO)
+│   │   ├── esp32_tm1637_lichtschranke/     # TM1637 + optional WiFi-Reporting
+│   │   ├── esp32_max7219_lichtschranke/    # MAX7219 + optional WiFi-Reporting
+│   │   └── esp32_lora_wifi_sender/         # WiFi primär + LoRa-Fallback, DIP-Schalter
+│   ├── RasPi/                          # Raspberry Pi Clients + Bauanleitungen
+│   │   ├── racecontrol_client.py           # Produktions-Client (TM1637-Display)
+│   │   ├── racecontrol_client_max7219.py   # Produktions-Client (MAX7219-Display)
+│   │   └── lora_ziel_gateway.py            # LoRa-Gateway: empfängt von Arduino/ESP32
+│   ├── GPS/                            # u-blox 8 GPS-Timesync
+│   │   └── ublox8_gps_client.py            # GPS-Monitor + Timesync ans Backend
+│   ├── ALGE/                           # ALGE Timy RS232-Clients
+│   │   ├── alge_timy_client.py             # Einzelgerät
+│   │   └── alge_multi_timy_client.py       # Mehrere Timys gleichzeitig
+│   ├── LSU200/                         # ELV LSU200 USB-Clients
+│   │   ├── lsu200_client.py                # Windows (COM-Port)
+│   │   └── lsu200_linux_client.py          # Linux (pyusb direkt, kein Treiber)
+│   ├── serial_logger.py                # USB-Serial JSON-Logger für Arduino/ESP32
+│   ├── requirements.txt                # pip-Abhängigkeiten (pyserial, websocket-client …)
+│   └── setup_tools.sh                  # Einrichtungs-Script für alle Clients
 │
 ├── Windows/                    # Windows-Installer-Paket
 │   ├── launcher.py             # Einstiegspunkt: Server + Browser + Tray-Icon

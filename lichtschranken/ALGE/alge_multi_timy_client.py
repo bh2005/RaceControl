@@ -27,7 +27,9 @@ load_dotenv()
 
 # ── Konfiguration ─────────────────────────────────────────────────────────────
 
-BACKEND_WS = os.getenv("BACKEND_WS", "ws://localhost:1980/ws/timing")
+TIMING_API_KEY = os.getenv("TIMING_API_KEY", "")
+BACKEND_WS = os.getenv("BACKEND_WS", "ws://localhost:1980/ws/timing") + \
+             (f"?key={TIMING_API_KEY}" if TIMING_API_KEY else "")
 
 # Liste der Timys – hier kannst du beliebig viele hinzufügen
 TIMY_DEVICES = [

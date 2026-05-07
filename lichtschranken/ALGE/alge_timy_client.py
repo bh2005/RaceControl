@@ -37,7 +37,9 @@ SERIAL_PORT = None          # z.B. "COM4" oder None für Auto-Suche
 SERIAL_BAUD = 9600          # Standard bei den meisten ALGE Timy3-Einstellungen
                             # Manche nutzen 19200 – bei Bedarf anpassen!
 
-BACKEND_WS  = "ws://localhost:1980/ws/timing"
+TIMING_API_KEY = ""         # Admin → System → Lichtschranken-Schlüssel eintragen
+BACKEND_WS  = "ws://localhost:1980/ws/timing" + \
+              (f"?key={TIMING_API_KEY}" if TIMING_API_KEY else "")
 
 MIN_TIME    = 3.0           # Impulse mit kürzerer Zeit ignorieren (Anti-Bounce)
 HEARTBEAT_S = 5             # Heartbeat-Intervall
