@@ -88,10 +88,11 @@ def create_class(
     body.event_id = event_id
     cur = db.execute(
         """INSERT INTO Classes (event_id, reglement_id, name, short_name,
-           min_birth_year, max_birth_year, run_status, start_order)
-           VALUES (?,?,?,?,?,?,?,?)""",
+           min_birth_year, max_birth_year, run_status, start_order, is_exhibition)
+           VALUES (?,?,?,?,?,?,?,?,?)""",
         (event_id, body.reglement_id, body.name, body.short_name,
-         body.min_birth_year, body.max_birth_year, body.run_status, body.start_order),
+         body.min_birth_year, body.max_birth_year, body.run_status, body.start_order,
+         int(body.is_exhibition)),
     )
     db.commit()
     return dict(db.execute("SELECT * FROM Classes WHERE id = ?", (cur.lastrowid,)).fetchone())

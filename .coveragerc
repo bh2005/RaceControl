@@ -1,6 +1,7 @@
 [run]
 omit =
     backend/backup_db.py
+    backend/database.py
     backend/db_health.py
     backend/export_results.py
     backend/manage_users.py

@@ -339,7 +339,7 @@ def export_results_csv(
     if not event:
         raise HTTPException(404, "Veranstaltung nicht gefunden")
 
-    class_q = "SELECT id, name FROM Classes WHERE event_id = ? ORDER BY sort_order, id"
+    class_q = "SELECT id, name FROM Classes WHERE event_id = ? ORDER BY start_order, id"
     class_p: list = [event_id]
     if class_id is not None:
         class_q += " AND id = ?"
