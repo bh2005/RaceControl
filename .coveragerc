@@ -1,0 +1,16 @@
+[run]
+omit =
+    backend/backup_db.py
+    backend/db_health.py
+    backend/export_results.py
+    backend/manage_users.py
+    backend/reset_admin_password.py
+    backend/rotate_timing_key.py
+    backend/seed.py
+    backend/seed_demo.py
+    backend/trim_logs.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
