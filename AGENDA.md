@@ -113,6 +113,26 @@
 
 ---
 
+## 11. Hardware-Erweiterungen (Konzept)
+
+### 11a. LoRa-Übertragung für Downhill / Seifenkiste (inkl. Zwischenzeiten)
+- ❌ **Konzept:** Lichtschranken-Clients per LoRa (868 MHz) statt WLAN verbinden — ideal wenn Start und Ziel weit auseinander oder keine WLAN-Infrastruktur vorhanden ist
+- ❌ **Hardware:** Raspberry Pi / Arduino + LoRa-Modul SX1276/SX1278 (~5 €) am Start; LoRa-Empfänger (Pi + HAT) am Ziel/Server
+- ❌ **Architektur (Point-to-Point):**
+  - Lichtschranke löst aus → Pi stempelt Timestamp lokal → sendet kleines LoRa-Paket (< 50 Byte) → Empfänger am Ziel → leitet per LAN/WLAN an RaceControl-Backend weiter
+  - Timing-Genauigkeit bleibt erhalten (Timestamp lokal, nicht durch Übertragungsverzögerung verfälscht)
+- ❌ **Software-Anpassung:** `racecontrol_client.py` erhält LoRa-Sendemodus als Alternative zu HTTP; neues `lora_gateway.py`-Script am Empfänger (empfängt Paket → POST an `/api/timing/…`)
+- ❌ **Einschränkungen:** EU-Duty-Cycle 1 % auf 868 MHz — bei typischen Timing-Events (< 100 Starts/Tag) problemlos einzuhalten
+- ❌ **Reichweite:** 1–5 km in offenem Gelände, ausreichend für alle üblichen Seifenkistenstrecken
+
+### 11b. Zwischenzeiten (Split-Times) per LoRa
+- ❌ **Konzept:** Beliebig viele Zwischenzeitstationen entlang der Strecke — jede ein weiterer Arduino + RA-02 + DS3231 (~34 €/Station)
+- ❌ **Protokoll:** Erweiterung des LoRa-Pakets um `cp` (Checkpoint-Nummer) und `type` (`start` / `split` / `finish`): `{"type":"split","unix":...,"lane":"A","cp":1}`
+- ❌ **Zeitsync:** Gateway-Broadcast erreicht alle Stationen gleichzeitig → Zwischenzeiten = `unix_cpN - unix_start`, keine weitere Infrastruktur nötig
+- ❌ **Software:** Sketch-Erweiterung um `cp`-Konstante; Gateway routet nach `type`+`cp`+`lane`; neuer Backend-Endpunkt `/api/timing/split`; Anzeige der Sektorzeiten in RaceControl
+
+---
+
 ## Offene Punkte – Zusammenfassung
 
 | Priorität | Thema | Aufwand |
