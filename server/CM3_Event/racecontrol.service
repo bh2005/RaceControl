@@ -1,0 +1,24 @@
+[Unit]
+Description=RaceControl Pro – Veranstaltungsserver
+Documentation=https://github.com/bh2005/RaceControl
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/racecontrol/backend
+ExecStart=/home/pi/racecontrol/venv/bin/uvicorn main:app --host 0.0.0.0 --port 1980 --workers 1 --log-level warning
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=120
+StartLimitBurst=10
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+# Optionale Überschreibungen (Standard: relativ zu /home/pi/racecontrol/):
+# Environment=DATA_DIR=/home/pi/racecontrol
+# Environment=ASSETS_DIR=/home/pi/racecontrol/assets
+
+[Install]
+WantedBy=multi-user.target

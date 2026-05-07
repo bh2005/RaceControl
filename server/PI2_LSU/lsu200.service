@@ -1,0 +1,21 @@
+[Unit]
+Description=RaceControl Pro – ELV LSU200 Timing Client
+Documentation=https://github.com/bh2005/RaceControl
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/lsu200
+ExecStart=/usr/bin/python3 /home/pi/lsu200/lsu200_linux_client.py
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=120
+StartLimitBurst=10
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
