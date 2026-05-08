@@ -126,9 +126,17 @@
             <span :class="lsConnected ? 'text-green-700 font-semibold' : 'text-gray-400'">
               {{ lsConnected ? 'Lichtschranke verbunden' : 'Lichtschranke nicht verbunden' }}
             </span>
-            <Transition name="fade">
-              <span v-if="lsFlash" class="ml-auto text-green-600 font-bold">⚡ Zeit eingetragen</span>
-            </Transition>
+            <div class="ml-auto flex items-center gap-3">
+              <Transition name="fade">
+                <span v-if="lsFlash" class="text-green-600 font-bold">
+                  {{ autoSaveLs ? '⚡ Zeit eingetragen' : '⚡ Zeit bereit – speichern!' }}
+                </span>
+              </Transition>
+              <label class="flex items-center gap-1.5 cursor-pointer select-none text-gray-500 hover:text-gray-700">
+                <input type="checkbox" v-model="autoSaveLs" class="rounded accent-blue-600">
+                Auto-Speichern
+              </label>
+            </div>
           </div>
 
           <!-- Zeitfeld -->
@@ -320,6 +328,10 @@ const lsConnected = ref(false)
 const lsFlash     = ref(false)
 let   lsFlashTimer = null
 
+const LS_AUTO_SAVE_KEY = 'rc_training_auto_save'
+const autoSaveLs = ref(localStorage.getItem(LS_AUTO_SAVE_KEY) !== 'false')
+watch(autoSaveLs, v => localStorage.setItem(LS_AUTO_SAVE_KEY, String(v)))
+
 const timeInput = ref(null)
 
 // ── Computed ──────────────────────────────────────────────────────────────────
@@ -489,7 +501,7 @@ useRealtimeUpdate((msg) => {
       lsFlash.value = true
       clearTimeout(lsFlashTimer)
       lsFlashTimer = setTimeout(() => { lsFlash.value = false }, 3000)
-      saveRun('lichtschranke')
+      if (autoSaveLs.value) saveRun('lichtschranke')
     }
   }
   if (msg.type === 'training_run' && msg.session_id === selectedSessionId.value) {
