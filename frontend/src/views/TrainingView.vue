@@ -191,7 +191,7 @@
 
           <!-- Speichern -->
           <button
-            @click="saveRun"
+            @click="saveRun()"
             :disabled="!currentTrainee || selectedSession.status !== 'active'"
             class="w-full btn-primary py-3 text-base font-bold disabled:opacity-40 disabled:cursor-not-allowed"
           >
