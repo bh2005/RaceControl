@@ -1,7 +1,7 @@
 # RaceControl Pro – Handbuch
 
 **MSC Braach e.V. im ADAC**  
-Stand: Mai 2026 · Version 0.9.0
+Stand: Mai 2026 · Version 0.9.2
 
 ---
 
@@ -177,6 +177,27 @@ Online-Voranmeldung  →  Nennbüro Check-in  →  Abnahme  →  Starterliste
 3. Druckdialog des Browsers bestätigen
 
 > **Hinweis Elternunterschrift:** Bei minderjährigen Fahrern muss ein Erziehungsberechtigter in der Unterschriftenspalte unterschreiben. Die Liste ist als Veranstaltungsunterlage aufzubewahren.
+
+### Mannschaftsnennung
+
+Mannschaften werden im Modus **„🏁 Mannschaft"** erfasst (Toggle-Buttons oben in der Nennbüro-Ansicht).
+
+**Mannschaft anlegen:**
+1. Modus **„🏁 Mannschaft"** wählen
+2. Teamname und Verein eintragen
+3. **„+ Mannschaft anlegen"** klicken
+
+**Fahrer hinzufügen:**
+1. Im Feld „Fahrer suchen …" den Namen oder die Startnummer eingeben
+2. Den gewünschten Teilnehmer aus der Trefferliste wählen
+3. **„Hinzufügen"** klicken (bis zu 4 Fahrer je Mannschaft)
+
+**Fahrer entfernen:**
+- In der Mitgliederliste auf **„Entfernen"** klicken
+
+**Wertungsregel:** Von den 4 benannten Fahrern zählen die **3 besten Einzelpunkte**. Die Punkte basieren auf der Platzierung in der Gesamtwertung (KS2000-Tabelle: Platz 1 = 40 Pkt., Platz 2 = 37 Pkt., …).
+
+Die **Mannschaftswertung** ist auf der Auswertungsseite (`/auswertung`) als erste Tabelle sichtbar und kann über den Schiedsrichterbereich als separates Blatt gedruckt werden.
 
 ---
 

@@ -238,6 +238,21 @@
                   </label>
                 </div>
               </div>
+              <div>
+                <label class="text-xs text-gray-500 font-semibold block mb-1">
+                  Punktetabelle (JSON, für Mannschaftswertung)
+                  <button type="button" @click="fillKS2000Points"
+                    class="ml-2 text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 font-bold px-2 py-0.5 rounded transition">
+                    KS2000 einfügen
+                  </button>
+                </label>
+                <textarea v-model="reglementForm.points_formula" rows="2"
+                  placeholder='{"1": 40, "2": 37, "3": 35, ...}'
+                  class="input font-mono text-xs resize-y"></textarea>
+                <div class="text-xs text-gray-400 mt-0.5">
+                  Platz→Punkte als JSON. Ab letztem Eintrag erhalten alle weiteren Fahrer diesen Wert.
+                </div>
+              </div>
             </div>
             <div class="flex gap-2 mt-4">
               <button @click="saveReglement" :disabled="!reglementForm.name"
@@ -1598,9 +1613,14 @@ function selectReglement(r) {
 function openNewReglement() {
   activeReglement.value = null
   showReglementForm.value = true
-  reglementForm.value = { name: '', scoring_type: 'sum_all', runs_per_class: 2, has_training: true }
+  reglementForm.value = { name: '', scoring_type: 'sum_all', runs_per_class: 2, has_training: true, points_formula: null }
   reglementError.value = ''
   penaltyRows.value = []
+}
+
+function fillKS2000Points() {
+  const ks2000 = {"1":40,"2":37,"3":35,"4":33,"5":31,"6":30,"7":29,"8":28,"9":27,"10":26,"11":25,"12":24,"13":23,"14":22,"15":21,"16":20,"17":19,"18":18,"19":17,"20":16,"21":15,"22":14,"23":13,"24":12,"25":11,"26":10,"27":9,"28":8,"29":7,"30":6,"31":5,"32":4,"33":3,"34":2,"35":1}
+  reglementForm.value.points_formula = JSON.stringify(ks2000)
 }
 
 function cancelNewReglement() {

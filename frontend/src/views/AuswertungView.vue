@@ -25,6 +25,43 @@
 
     <template v-else-if="stats">
 
+      <!-- Mannschaftswertung -->
+      <section v-if="teamStandings.length" class="card p-0 overflow-hidden">
+        <div class="px-4 py-3 bg-purple-700 text-white font-bold flex items-center gap-2">
+          <span>🏁</span> Mannschaftswertung
+        </div>
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+            <tr>
+              <th class="px-4 py-2 text-left">Pl.</th>
+              <th class="px-4 py-2 text-left">Mannschaft</th>
+              <th class="px-4 py-2 text-left">Verein</th>
+              <th class="px-4 py-2 text-left">Fahrer</th>
+              <th class="px-4 py-2 text-right">Punkte</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(team, i) in teamStandings" :key="team.team_id"
+                class="border-t border-gray-100 hover:bg-purple-50 transition">
+              <td class="px-4 py-2.5 font-black text-gray-700">{{ i + 1 }}</td>
+              <td class="px-4 py-2.5 font-semibold text-gray-900">{{ team.team_name }}</td>
+              <td class="px-4 py-2.5 text-gray-500">{{ team.club || '–' }}</td>
+              <td class="px-4 py-2.5 text-xs text-gray-600">
+                <span v-for="(m, mi) in team.members" :key="m.participant_id">
+                  <span :class="mi < 3 ? 'font-semibold' : 'opacity-50'">
+                    {{ m.name }} ({{ m.class_name }}, {{ m.points }} P.)
+                  </span>
+                  <span v-if="mi < team.members.length - 1"> · </span>
+                </span>
+              </td>
+              <td class="px-4 py-2.5 text-right font-black text-purple-700 text-lg">
+                {{ team.total_points }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
       <!-- Schnellste Einzellaufzeit pro Klasse -->
       <section class="card p-0 overflow-hidden">
         <div class="px-4 py-3 bg-msc-blue text-white font-bold flex items-center gap-2">
@@ -130,6 +167,7 @@ const store  = useEventStore()
 const events = ref([])
 const selectedEventId = ref(null)
 const stats  = ref(null)
+const teamStandings = ref([])
 const loading = ref(false)
 
 function fmtTime(sec) {
@@ -143,9 +181,14 @@ async function load() {
   if (!selectedEventId.value) return
   loading.value = true
   stats.value = null
+  teamStandings.value = []
   try {
-    const { data } = await api.get(`/events/${selectedEventId.value}/statistics`)
-    stats.value = data
+    const [statsRes, teamsRes] = await Promise.all([
+      api.get(`/events/${selectedEventId.value}/statistics`),
+      api.get(`/events/${selectedEventId.value}/teams/standings`).catch(() => ({ data: [] })),
+    ])
+    stats.value = statsRes.data
+    teamStandings.value = teamsRes.data
   } finally {
     loading.value = false
   }

@@ -18,8 +18,12 @@ export async function printErgebnisliste(api, event, classes) {
   }
 
   const runMap = {}
+  const trainMap = {}   // { class_id: { start_number: total_time } }
   for (const r of runRes.data) {
-    if (r.run_number === 0) continue
+    if (r.run_number === 0) {
+      ;(trainMap[r.class_id] ??= {})[r.start_number] = r.total_time
+      continue
+    }
     ;(runMap[r.class_id] ??= {})[r.start_number] ??= {}
     runMap[r.class_id][r.start_number][r.run_number] = r
   }
@@ -54,12 +58,15 @@ export async function printErgebnisliste(api, event, classes) {
   const classesHtml = classes
     .filter(cls => byClass[cls.id]?.length)
     .map(cls => {
-      const rows   = byClass[cls.id]
-      const leader = rows.find(r => r.total_time != null)
-      const cRuns  = runMap[cls.id] || {}
-      const isOk   = cls.run_status === 'official'
-      const badge  = `<span class="badge ${isOk ? 'b-ok' : 'b-pre'}">${isOk ? 'OFFIZIELL' : 'VORLÄUFIG'}</span>`
-      const deadline = cls.end_time
+      const rows      = byClass[cls.id]
+      const leader    = rows.find(r => r.total_time != null)
+      const cRuns     = runMap[cls.id] || {}
+      const cTrain    = trainMap[cls.id] || {}
+      const hasPoints = rows.some(r => r.points > 0)
+      const hasTrain  = Object.keys(cTrain).length > 0
+      const isOk      = cls.run_status === 'official'
+      const badge     = `<span class="badge ${isOk ? 'b-ok' : 'b-pre'}">${isOk ? 'OFFIZIELL' : 'VORLÄUFIG'}</span>`
+      const deadline  = cls.end_time
         ? new Date(new Date(cls.end_time).getTime() + PROTEST_WINDOW_MIN * 60_000)
             .toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr'
         : '–'
@@ -71,6 +78,12 @@ export async function printErgebnisliste(api, event, classes) {
         const diff      = (!hasTime || !leader?.total_time || row.total_time === leader.total_time)
           ? '–'
           : '+' + (row.total_time - leader.total_time).toFixed(2)
+        const trainTd   = hasTrain
+          ? `<td class="tr">${fmtTot(cTrain[row.start_number] ?? row.training_time)}</td>`
+          : ''
+        const pointsTd  = hasPoints
+          ? `<td class="tc bold">${row.points ?? ''}</td>`
+          : ''
 
         const runTdHtml = Array.from({ length: maxRun }, (_, ri) => {
           const [z, s, g] = runCells(runs[ri + 1])
@@ -84,11 +97,16 @@ export async function printErgebnisliste(api, event, classes) {
           <td><strong>${esc(row.last_name)}</strong>, ${esc(row.first_name)}</td>
           <td class="tc">${birthYear}</td>
           <td>${esc(row.club || '–')}</td>
+          ${hasTrain ? trainTd : ''}
           ${runTdHtml}
           <td class="tr bold">${fmtTot(row.total_time)}</td>
           <td class="tr">${diff}</td>
+          ${pointsTd}
         </tr>`
       }).join('')
+
+      const trainHeader  = hasTrain  ? `<th rowspan="2" class="tr" style="width:14mm">Training</th>` : ''
+      const pointsHeader = hasPoints ? `<th rowspan="2" class="tc" style="width:12mm">Punkte</th>` : ''
 
       return `<div class="cls-section">
         <div class="cls-header">${esc(cls.name)} ${badge}</div>
@@ -100,9 +118,11 @@ export async function printErgebnisliste(api, event, classes) {
               <th rowspan="2">Name, Vorname</th>
               <th rowspan="2" style="width:22px">Jg.</th>
               <th rowspan="2" style="width:26mm">Verein</th>
+              ${trainHeader}
               ${runGroupHeaders}
               <th rowspan="2" class="tr" style="width:16mm">Summe</th>
               <th rowspan="2" class="tr" style="width:14mm">Diff.</th>
+              ${pointsHeader}
             </tr>
             <tr>${runSubHeaders}</tr>
           </thead>
@@ -375,4 +395,78 @@ export async function printUrkunden(api, event, classes, template) {
 </head><body>${pages.join('\n')}</body></html>`)
   w.document.close()
   setTimeout(() => w.print(), 500)
+}
+
+
+export async function printMannschaftswertung(api, event) {
+  const [teamRes, setRes] = await Promise.all([
+    api.get(`/events/${event.id}/teams/standings`),
+    api.get('/settings/'),
+  ])
+  const settings = setRes.data
+  const teams    = teamRes.data
+
+  const now       = new Date()
+  const printDate = now.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
+  if (!teams.length) { alert('Keine Mannschaften angelegt'); return }
+
+  const rowsHtml = teams.map((team, i) => {
+    const memberRows = team.members
+      .sort((a, b) => b.points - a.points)
+      .map((m, mi) => `<tr style="${mi >= 3 ? 'opacity:.5' : ''}">
+        <td>${mi + 1}.</td>
+        <td>${esc(m.name)}</td>
+        <td>${esc(m.class_name || '–')}</td>
+        <td style="text-align:center">${m.rank ?? '–'}</td>
+        <td style="text-align:right;font-weight:bold">${m.points}</td>
+      </tr>`).join('')
+    return `<tr style="background:${i === 0 ? '#fffce6' : i === 1 ? '#f5f5f5' : i === 2 ? '#fdf2e6' : '#fff'}">
+      <td style="font-weight:bold;font-size:14pt;text-align:center">${i + 1}</td>
+      <td>
+        <strong>${esc(team.team_name)}</strong>
+        ${team.club ? `<div style="font-size:8pt;color:#666">${esc(team.club)}</div>` : ''}
+      </td>
+      <td colspan="2">
+        <table style="width:100%;font-size:8pt;border:none">
+          <thead><tr style="color:#888">
+            <th style="text-align:left;width:12px"></th>
+            <th style="text-align:left">Fahrer</th>
+            <th style="text-align:left">Klasse</th>
+            <th style="text-align:center">Platz</th>
+            <th style="text-align:right">Punkte</th>
+          </tr></thead>
+          <tbody>${memberRows}</tbody>
+        </table>
+      </td>
+      <td style="text-align:right;font-size:16pt;font-weight:bold;color:#4a0e8f">
+        ${team.total_points}
+      </td>
+    </tr>`
+  }).join('')
+
+  const html = `
+    <style>@page { size: A4 portrait; margin: 1.2cm 1.5cm; }</style>
+    <header class="ev-header">
+      <h1>MANNSCHAFTSWERTUNG</h1>
+      <h2>${esc(event.name)} · ${event.date}</h2>
+      <div class="org">Veranstalter: ${esc(settings.organizer_name || '')}</div>
+    </header>
+    <table style="width:100%;border-collapse:collapse;font-size:9pt">
+      <thead>
+        <tr style="background:#4a0e8f;color:#fff">
+          <th style="padding:5px 8px;width:24px">Pl.</th>
+          <th style="padding:5px 8px;text-align:left">Mannschaft</th>
+          <th style="padding:5px 8px" colspan="2">Fahrerwertung (Beste 3 zählen)</th>
+          <th style="padding:5px 8px;text-align:right">Gesamt</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+    <p style="font-size:7pt;color:#999;margin-top:12px">
+      Wertung nach KS2000-Punktesystem · Von 4 genannten Fahrern werden die besten 3 gewertet
+    </p>
+    <footer>RaceControl Pro · ${esc(settings.organizer_name || '')} · Ausdruck: ${printDate}</footer>`
+
+  printOpen(`Mannschaftswertung – ${event.name}`, html)
 }

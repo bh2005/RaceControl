@@ -190,10 +190,28 @@ export async function printNennliste(api, event, classes, participants) {
 
   const printDate = new Date().toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
 
-  const classPages = classes.map((cls, idx) => {
-    const ps = participants
-      .filter(p => p.class_id === cls.id)
-      .sort((a, b) => (a.start_number ?? 9999) - (b.start_number ?? 9999) || a.last_name.localeCompare(b.last_name))
+  // Teilnehmer nach Klasse gruppieren (null → 0 = "Ohne Klasse")
+  const byClass = {}
+  for (const p of participants) {
+    const key = p.class_id ?? 0
+    ;(byClass[key] ??= []).push(p)
+  }
+
+  // Klassen die tatsächlich Teilnehmer haben; ggf. "Ohne Klasse" anhängen
+  const printClasses = [
+    ...classes,
+    ...(byClass[0]?.length ? [{ id: 0, name: 'Ohne Klasse / Klasse nicht zugewiesen' }] : []),
+  ].filter(cls => byClass[cls.id]?.length)
+
+  if (!printClasses.length) {
+    printClasses.push({ id: null, name: 'Alle Teilnehmer' })
+    byClass[null] = [...participants]
+  }
+
+  const classPages = printClasses.map((cls, idx) => {
+    const ps = (byClass[cls.id] ?? [])
+      .slice()
+      .sort((a, b) => (a.start_number ?? 9999) - (b.start_number ?? 9999) || a.last_name.localeCompare(b.last_name, 'de'))
 
     const rows = ps.map((p, i) => `
       <tr>
@@ -220,7 +238,7 @@ export async function printNennliste(api, event, classes, participants) {
             <div style="font-size:8pt;color:#999;margin-top:4px">Druck: ${printDate}</div>
           </div>
         </div>
-        <h2>${esc(cls.name)}</h2>
+        <h2>${esc(cls.name)} <span style="font-size:9pt;font-weight:normal;color:#666">(${ps.length} Teilnehmer)</span></h2>
         <table>
           <thead>
             <tr>
@@ -234,7 +252,7 @@ export async function printNennliste(api, event, classes, participants) {
               <th style="width:55mm">Unterschrift Fahrer/Erziehungsber.</th>
             </tr>
           </thead>
-          <tbody>${rows || '<tr><td colspan="8" style="text-align:center;color:#999">Keine Teilnehmer</td></tr>'}</tbody>
+          <tbody>${rows}</tbody>
         </table>
         <div class="footer">
           <p><strong>Versicherungshinweis:</strong> ${esc(cfg.insurance_notice || '')}</p>

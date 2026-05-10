@@ -4,6 +4,71 @@ RaceControl Pro  Changelog
 
 
 
+[0.9.2] - 2026-05-10
+---------------------
+Mannschaftswertung, KS2000-Punktesystem, Nennliste-Bugfix
+
+  Mannschaftswertung (neu)
+  + Nennbuero: neuer Modus "🏁 Mannschaft" (Toggle-Button), Mannschaften
+    anlegen (Name, Verein), bis zu 4 Fahrer per Namens-/Startnummer-Suche
+    zuordnen, Mitglieder entfernen
+  + Backend: Teams + TeamMembers Tabellen (bereits in 0.1.0 angelegt);
+    Router /api/events/{id}/teams mit CRUD + /standings-Endpunkt
+  + Auswertungsseite: Mannschaftswertung-Tabelle als erste Sektion
+    (Rang, Teamname, Verein, Mitglieder mit Einzelpunkten, Gesamtpunkte;
+    "Beste 3 von 4 zählen"-Regel; wird nur angezeigt wenn Teams vorhanden)
+  + Schiedsrichter: neuer Druckbutton "🏁 Mannschaftswertung" (lila);
+    printMannschaftswertung() - A4 hoch, Mitglieder nach Punkten sortiert,
+    Gesamtpunkte, "Beste 3 zählen"-Hinweis
+  + schemas.py: StandingRow um training_time (Optional[float]) und
+    points (int = 0) erweitert
+
+  KS2000-Punktesystem
+  + Reglements.points_formula: JSON-Feld fuer Platz-zu-Punkte-Mapping
+    ({"1":40,"2":37,"3":35,"4":33,...,"35":1})
+  + Backend results.py: _ks2000_points()-Hilfsfunktion; standings-Endpoint
+    reichert jede Zeile mit Punkten und Trainingszeit an; Punkte-Formel
+    wird per Klasse aus der Reglements-Tabelle gelesen; pid_map-Lookup
+    ueber (class_id, start_number) da view participant_id nicht direkt
+    exponiert
+  + AdminView: Punktetabelle-Textarea im Reglement-Formular;
+    "KS2000 einfügen"-Button befuellt JSON automatisch
+  + LivetimingView: gelbes Punkte-Badge pro Fahrerkarte wenn points > 0
+  + Ergebnisliste (printSchiedsrichter.js): "Punkte"-Spalte erscheint
+    automatisch wenn hasPoints=true; "Training"-Spalte erscheint wenn
+    hasTrain=true (run_number=0 Zeiten aus trainMap)
+
+  KS2000-Strafarten (ADAC-HTH-Jugendkart-Reglement 2026, Seite 27)
+  + seed.py: KS2000-Strafarten auf Reglement-Wortlaut aktualisiert
+    (Pylone umwerfen/verschieben P 3s, Pylonentor auslassen T 10s,
+    Schweizer Kreuz (Aufgabe) auslassen S 10s, Gasse auslassen G 15s,
+    Begrenzungslinie überschreiten / Klötzchen B 3s,
+    Falsche Fahrtrichtung nach Zieldurchfahrt F 10s,
+    Unkorrektes Verhalten gegenüber Veranstalter U 20s);
+    run_seed() idempotent: points_formula wird immer aktualisiert,
+    fehlende Strafarten werden ohne Duplikate ergaenzt
+  + DB_PATH in seed.py folgt jetzt DATA_DIR-Env-Var (wie database.py)
+  + migrate_ks2000_penalties.sql: SQL-Migrationsskript fuer bestehende
+    Installationen (UPDATE labels + INSERT missing + DELETE veraltete)
+
+  Bugfix: Nennliste drucken (printNennung.js)
+  ~ printNennliste: Teilnehmer mit class_id=null wurden stillschweigend
+    verworfen -> leere Ausgabe wenn keine Klasse zugewiesen
+  ~ Fix: Gruppierung per class_id ?? 0; Klassen ohne Teilnehmer werden
+    herausgefiltert; "Ohne Klasse"-Pseudoklasse wenn noetig; Fallback
+    "Alle Teilnehmer" wenn classes-Array leer; Teilnehmeranzahl im
+    Klassen-Heading
+
+  Dokumentation
+  ~ README.md: Version 0.9.2, Feature-Tabelle Nennbuero (Mannschaftsnennung)
+    und Auswertung (Mannschaftswertung) aktualisiert
+  ~ FEATURES.md: Version 0.9.2, neue Abschnitte Mannschaftsnennung,
+    Mannschaftswertung, Punkte-Spalte in Ergebnislisten, KS2000-Strafarten
+    und Punktetabelle in Reglementverwaltung, Punkte-Badge in Livetiming
+  ~ HANDBUCH.md: Version 0.9.2, neuer Abschnitt Mannschaftsnennung
+    (Anlegen, Fahrer zuordnen, Wertungsregel)
+
+
 [0.9.1] - 2026-05-07
 ---------------------
 Lichtschranken-Erweiterung: Arduino, ESP32, LoRa, GPS + Ordnerreorganisation

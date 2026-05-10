@@ -286,6 +286,10 @@
           class="w-full bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 rounded-lg transition flex items-center justify-center gap-1.5">
           🖨 Sprecherliste
         </button>
+        <button @click="printMannschaftswertung"
+          class="w-full bg-purple-700 hover:bg-purple-600 text-white text-xs font-bold py-2 rounded-lg transition flex items-center justify-center gap-1.5">
+          🏁 Mannschaftswertung
+        </button>
         <div class="border-t border-gray-700 pt-2 space-y-1.5">
           <div class="text-xs text-gray-500 font-semibold uppercase tracking-widest">Urkunden (Top 3)</div>
           <button @click="printUrkunden('club')"
@@ -350,7 +354,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import api from '../api/client'
 import { useEventStore } from '../stores/event'
-import { printErgebnisliste as _printErgebnisliste, printSprecherliste as _printSprecherliste, printUrkunden as _printUrkunden } from '../utils/printSchiedsrichter'
+import { printErgebnisliste as _printErgebnisliste, printSprecherliste as _printSprecherliste, printUrkunden as _printUrkunden, printMannschaftswertung as _printMannschaftswertung } from '../utils/printSchiedsrichter'
 
 const store = useEventStore()
 
@@ -571,6 +575,11 @@ async function exportCsv(classId = null) {
 function printErgebnisliste() {
   if (!store.activeEvent) return
   _printErgebnisliste(api, store.activeEvent, store.classes)
+}
+
+function printMannschaftswertung() {
+  if (!store.activeEvent) return
+  _printMannschaftswertung(api, store.activeEvent)
 }
 
 function printSprecherliste() {

@@ -163,6 +163,11 @@
           :class="mode === 'schedule' ? 'bg-orange-500 text-white' : 'bg-white text-orange-600 border border-orange-200 hover:bg-orange-50'">
           📋 Starterliste
         </button>
+        <button @click="mode = 'teams'; loadTeams()"
+          class="text-xs font-bold px-3 py-1.5 rounded-lg transition"
+          :class="mode === 'teams' ? 'bg-purple-600 text-white' : 'bg-white text-purple-700 border border-purple-200 hover:bg-purple-50'">
+          🏁 Mannschaft
+        </button>
         <span v-if="mode === 'numbers'" class="text-xs text-gray-400 ml-1">
           Nach Auslosung eintragen
         </span>
@@ -425,6 +430,103 @@
             </tbody>
           </table>
         </div>
+      </div>
+
+      <!-- ═══ MANNSCHAFTSWERTUNG ═══ -->
+      <div v-if="mode === 'teams'" class="space-y-4">
+
+        <!-- Neue Mannschaft anlegen -->
+        <div class="card p-4 space-y-3">
+          <h3 class="font-bold text-gray-700 text-sm uppercase tracking-widest">Neue Mannschaft</h3>
+          <div class="flex gap-2">
+            <input v-model="newTeamName" type="text" placeholder="Mannschaftsname z.B. MSC Braach I"
+              class="input flex-1">
+            <input v-model="newTeamClub" type="text" placeholder="Verein (optional)"
+              class="input w-40">
+            <button @click="createTeam"
+              :disabled="!newTeamName.trim()"
+              class="btn-primary px-4 disabled:opacity-40 whitespace-nowrap">
+              + Anlegen
+            </button>
+          </div>
+          <p v-if="teamError" class="text-xs text-red-600">{{ teamError }}</p>
+        </div>
+
+        <!-- Mannschaftsliste -->
+        <div v-if="teams.length === 0" class="card p-6 text-center text-sm text-gray-400">
+          Noch keine Mannschaften angelegt
+        </div>
+
+        <div v-for="team in teams" :key="team.id" class="card overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-100 bg-purple-50 flex items-center justify-between">
+            <div>
+              <span class="font-bold text-gray-800">{{ team.name }}</span>
+              <span v-if="team.club" class="text-xs text-gray-500 ml-2">{{ team.club }}</span>
+              <span class="ml-2 text-xs text-purple-600 font-semibold">
+                {{ (teamMembers[team.id] || []).length }}/4 Fahrer
+              </span>
+            </div>
+            <button @click="deleteTeam(team)"
+              class="text-xs text-red-400 hover:text-red-600 font-bold transition px-2 py-1 rounded hover:bg-red-50">
+              🗑 Löschen
+            </button>
+          </div>
+
+          <!-- Mitgliederliste -->
+          <div class="divide-y divide-gray-100">
+            <div v-for="m in teamMembers[team.id] || []" :key="m.id"
+                 class="flex items-center gap-3 px-4 py-2.5">
+              <div class="flex-1">
+                <span class="font-semibold text-sm text-gray-800">
+                  {{ participantName(m.participant_id) }}
+                </span>
+                <span class="text-xs text-gray-400 ml-2">
+                  {{ participantClass(m.participant_id) }}
+                </span>
+              </div>
+              <button @click="removeMember(team.id, m.id)"
+                class="text-xs text-red-400 hover:text-red-600 transition font-bold">✕</button>
+            </div>
+            <div v-if="(teamMembers[team.id] || []).length === 0"
+                 class="px-4 py-2 text-xs text-gray-400">
+              Noch keine Fahrer zugeordnet
+            </div>
+          </div>
+
+          <!-- Fahrer hinzufügen (nur wenn < 4 Mitglieder) -->
+          <div v-if="(teamMembers[team.id] || []).length < 4"
+               class="px-4 py-3 border-t border-gray-100 bg-gray-50">
+            <div class="flex gap-2">
+              <input
+                v-model="memberSearch[team.id]"
+                type="text"
+                placeholder="Name oder Startnr. suchen…"
+                class="input flex-1 text-xs py-1.5"
+              >
+            </div>
+            <div v-if="memberSearch[team.id]" class="mt-2 rounded-lg border border-gray-200 bg-white shadow-sm max-h-40 overflow-y-auto">
+              <div
+                v-for="p in searchParticipants(team.id, memberSearch[team.id])"
+                :key="p.id"
+                @click="addMember(team.id, p.id)"
+                class="px-3 py-2 text-xs hover:bg-purple-50 cursor-pointer flex items-center gap-2 border-b border-gray-100 last:border-0"
+              >
+                <span class="font-bold text-gray-500 w-8 shrink-0">#{{ p.start_number || '–' }}</span>
+                <span class="font-semibold text-gray-800">{{ p.first_name }} {{ p.last_name }}</span>
+                <span class="text-gray-400 ml-auto shrink-0">{{ p.class_name }}</span>
+              </div>
+              <div v-if="searchParticipants(team.id, memberSearch[team.id]).length === 0"
+                   class="px-3 py-2 text-xs text-gray-400 text-center">
+                Kein Teilnehmer gefunden
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-xs text-gray-400 text-center">
+          Eine Mannschaft besteht aus 4 Fahrern, die in verschiedenen Klassen starten können.
+          In die Wertung kommen die besten 3 nach KS2000-Punkten.
+        </p>
       </div>
 
     </section>
@@ -773,6 +875,94 @@ async function importScheduleCsv(evt) {
     const { data } = await api.post(`/events/${store.activeEvent.id}/schedule/bulk`, entries)
     schedule.value = data
   } catch (e) { alert(e.response?.data?.detail || 'Fehler beim CSV-Import') }
+}
+
+// ── Mannschaftswertung ────────────────────────────────────────────────────────
+const teams       = ref([])
+const teamMembers = reactive({})   // { teamId: [member] }
+const newTeamName = ref('')
+const newTeamClub = ref('')
+const teamError   = ref('')
+const memberSearch = reactive({})  // { teamId: searchString }
+
+async function loadTeams() {
+  if (!store.activeEvent) return
+  const { data } = await api.get(`/events/${store.activeEvent.id}/teams`)
+  teams.value = data
+  for (const t of data) {
+    const { data: members } = await api.get(`/events/${store.activeEvent.id}/teams/${t.id}/members`)
+    teamMembers[t.id] = members
+  }
+}
+
+async function createTeam() {
+  if (!store.activeEvent || !newTeamName.value.trim()) return
+  teamError.value = ''
+  try {
+    await api.post(`/events/${store.activeEvent.id}/teams`, {
+      name: newTeamName.value.trim(),
+      club: newTeamClub.value.trim() || null,
+    })
+    newTeamName.value = ''
+    newTeamClub.value = ''
+    await loadTeams()
+  } catch (e) {
+    teamError.value = e.response?.data?.detail || 'Fehler beim Anlegen'
+  }
+}
+
+async function deleteTeam(team) {
+  if (!store.activeEvent) return
+  if (!confirm(`Mannschaft „${team.name}" wirklich löschen?`)) return
+  await api.delete(`/events/${store.activeEvent.id}/teams/${team.id}`)
+  await loadTeams()
+}
+
+async function addMember(teamId, participantId) {
+  if (!store.activeEvent) return
+  try {
+    await api.post(`/events/${store.activeEvent.id}/teams/${teamId}/members`, { participant_id: participantId })
+    memberSearch[teamId] = ''
+    await loadTeams()
+  } catch (e) {
+    alert(e.response?.data?.detail || 'Fehler beim Hinzufügen')
+  }
+}
+
+async function removeMember(teamId, memberId) {
+  if (!store.activeEvent) return
+  await api.delete(`/events/${store.activeEvent.id}/teams/${teamId}/members/${memberId}`)
+  await loadTeams()
+}
+
+function participantName(pid) {
+  const p = participants.value.find(pp => pp.id === pid)
+  return p ? `${p.first_name} ${p.last_name}` : `#${pid}`
+}
+
+function participantClass(pid) {
+  const p = participants.value.find(pp => pp.id === pid)
+  if (!p) return ''
+  const cls = store.classes.find(c => c.id === p.class_id)
+  return cls ? (cls.short_name || cls.name) : ''
+}
+
+function searchParticipants(teamId, q) {
+  if (!q || q.length < 1) return []
+  const ql = q.toLowerCase()
+  const alreadyIn = new Set((teamMembers[teamId] || []).map(m => m.participant_id))
+  return participants.value
+    .filter(p => !alreadyIn.has(p.id))
+    .filter(p =>
+      p.first_name.toLowerCase().includes(ql) ||
+      p.last_name.toLowerCase().includes(ql) ||
+      String(p.start_number ?? '').includes(ql)
+    )
+    .slice(0, 10)
+    .map(p => {
+      const cls = store.classes.find(c => c.id === p.class_id)
+      return { ...p, class_name: cls ? (cls.short_name || cls.name) : '' }
+    })
 }
 
 onMounted(async () => {

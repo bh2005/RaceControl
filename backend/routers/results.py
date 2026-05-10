@@ -4,6 +4,7 @@ from fastapi.responses import StreamingResponse
 from typing import Annotated, Optional
 import csv
 import io
+import json
 import sqlite3
 
 from broadcast import manager
@@ -248,6 +249,19 @@ def run_results(
     return [dict(r) for r in db.execute(query, params).fetchall()]
 
 
+def _ks2000_points(points_formula: Optional[str], rank: int) -> int:
+    if not points_formula:
+        return 0
+    try:
+        table: dict = json.loads(points_formula)
+        if str(rank) in table:
+            return int(table[str(rank)])
+        max_rank = max(int(k) for k in table)
+        return int(table[str(max_rank)]) if rank > max_rank else 0
+    except Exception:
+        return 0
+
+
 @router.get("/standings", response_model=list[StandingRow])
 def standings(
     event_id: int,
@@ -260,7 +274,49 @@ def standings(
         query += " AND class_id = ?"
         params.append(class_id)
     query += " ORDER BY class_id, rank"
-    return [dict(r) for r in db.execute(query, params).fetchall()]
+    rows = [dict(r) for r in db.execute(query, params).fetchall()]
+
+    # Training times (run_number=0) per participant
+    training_rows = db.execute(
+        """SELECT participant_id,
+                  raw_time + COALESCE((
+                      SELECT SUM(pd.seconds * rp.count)
+                      FROM RunPenalties rp
+                      JOIN PenaltyDefinitions pd ON pd.id = rp.penalty_definition_id
+                      WHERE rp.result_id = rr.id
+                  ), 0.0) AS training_time
+           FROM RaceResults rr
+           WHERE event_id = ? AND run_number = 0 AND status = 'valid' AND raw_time IS NOT NULL""",
+        (event_id,),
+    ).fetchall()
+    training_map = {r["participant_id"]: r["training_time"] for r in training_rows}
+
+    # Points formula per class (via reglement)
+    class_ids = list({r["class_id"] for r in rows})
+    formula_map: dict[int, Optional[str]] = {}
+    for cid in class_ids:
+        reg = db.execute(
+            """SELECT r.points_formula FROM Reglements r
+               JOIN Classes c ON c.reglement_id = r.id
+               WHERE c.id = ?""",
+            (cid,),
+        ).fetchone()
+        formula_map[cid] = reg["points_formula"] if reg else None
+
+    # Enrich rows with participant_id for training_map lookup
+    participant_rows = db.execute(
+        """SELECT p.id AS participant_id, p.start_number, p.class_id
+           FROM Participants p WHERE p.event_id = ?""",
+        (event_id,),
+    ).fetchall()
+    pid_map = {(r["class_id"], r["start_number"]): r["participant_id"] for r in participant_rows}
+
+    for row in rows:
+        pid = pid_map.get((row["class_id"], row["start_number"]))
+        row["training_time"] = training_map.get(pid) if pid else None
+        row["points"] = _ks2000_points(formula_map.get(row["class_id"]), row["rank"])
+
+    return rows
 
 
 @router.get("/statistics")

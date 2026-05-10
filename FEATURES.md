@@ -1,6 +1,6 @@
 # RaceControl Pro – Funktionsübersicht
 
-Stand: Mai 2026 · Version 0.9.0
+Stand: Mai 2026 · Version 0.9.2
 
 ---
 
@@ -21,6 +21,7 @@ Stand: Mai 2026 · Version 0.9.0
 - Wechsel zwischen Klassen und Läufen
 - Tabellarische Darstellung mit Rang, Startnummer, Name, Verein, Zeit, Strafen
 - Lauf-Detailzeilen pro Fahrer: Rohzeit + Strafzeit für jeden Lauf (z.B. `Lauf 1  56.13 +12.0s = 68.13`); Strafzeit immer sichtbar (grau bei 0.0 s)
+- **Punkte-Badge** (gelb): zeigt KS2000-Punkte pro Fahrer wenn das Reglement eine Punktetabelle hat (z. B. „40 Pkt." für Platz 1)
 
 ### Dokumente `/dokumente`
 - Öffentlich zugängliche Seite für Reglemente, Formulare und Vorlagen
@@ -68,8 +69,16 @@ Stand: Mai 2026 · Version 0.9.0
 ### Statistiken
 - Übersicht: Gesamt, Ohne Startnummer, Freigegeben, Startklar, Nenngeld offen, Helm ausstehend
 
+### Mannschaftsnennung
+- Modus „🏁 Mannschaft" im Nennbüro (Toggle-Button in der Moduswahl)
+- Mannschaften anlegen: Name und Verein, je Veranstaltung
+- Bis zu 4 Fahrer je Mannschaft: Suche nach Name oder Startnummer aus den gemeldeten Teilnehmern
+- Mitglieder hinzufügen und entfernen; angemeldete Klasse und Startnummer werden angezeigt
+- Wertungsgrundlage: die **3 besten Einzelpunkte** aus bis zu 4 Fahrern
+- Mannschaftswertung drucken: separater Druckbutton „🏁 Mannschaftswertung" in der Schiedsrichteransicht
+
 ### Drucken
-- Nennliste drucken (alle Klassen, je eine Seite)
+- Nennliste drucken (alle Klassen, je eine Seite); Klassen ohne Teilnehmer werden übersprungen; Klassen mit `class_id = null` erscheinen unter „Ohne Klasse / Klasse nicht zugewiesen"
 - Spalten: Lfd. Nr. / Startnr. / Name / Verein / Jahrgang / Nenngeld / Helm / Unterschrift
 - Enthält Versicherungshinweis und Einverständniserklärung für Erziehungsberechtigte
 - Konfigurierbare Texte (Veranstalter, Adresse, Versicherungstext, Einverständniserklärung)
@@ -138,6 +147,9 @@ Stand: Mai 2026 · Version 0.9.0
 
 ### Drucken & Export
 - Ergebnisliste drucken: A4 quer, ADAC-Format, Laufdetails, Jahrgang, Summe, Differenz, Einspruchfrist-Zeitstempel, Unterschriftszeile
+  - **Trainings-Spalte** erscheint automatisch, wenn die Klasse eine Trainingsphase hat
+  - **Punkte-Spalte** erscheint automatisch, wenn das zugewiesene Reglement eine Punktetabelle (`points_formula`) enthält (z. B. KS2000: Platz 1 = 40 Pkt., Platz 2 = 37 Pkt., …)
+- **Mannschaftswertung drucken**: Button „🏁 Mannschaftswertung" (lila) im Schiedsrichter-Druckbereich; A4 hoch, Teamname, Mitglieder mit Punkten sortiert, Gesamtpunkte, „Beste 3 zählen"-Hinweis
 - Sprecherliste drucken: A4 hoch, alle Teilnehmer mit Startnummer, Name, Verein, Jahrgang, Notiz-Spalte
 - **CSV/Excel-Export**: Button „📥 CSV / Excel" im Drucken-Panel; exportiert die gewählte Klasse oder alle Klassen als CSV-Datei (UTF-8 BOM, Semikolon-getrennt); öffnet direkt in Excel ohne Konvertierung
 
@@ -177,6 +189,7 @@ Stand: Mai 2026 · Version 0.9.0
 
 - Zugänglich für alle angemeldeten Rollen (im „Mehr"-Dropdown)
 - Veranstaltungs-Selektor (Standard: aktive Veranstaltung)
+- **Mannschaftswertung** — Tabelle oben auf der Seite: Rang · Teamname · Verein · Mitglieder (Punkte je Fahrer) · Gesamtpunkte; „Beste 3 von 4 zählen"-Hinweis; nur sichtbar wenn Mannschaften angelegt sind
 - **Schnellste Wertungsläufe pro Klasse** — Tabelle: Klasse · # · Name · Verein · Lauf · Bestzeit
 - **Schnellste Dame** — Kachel mit Zeit, Name, Klasse, Verein (nur wenn Geschlecht = 'w' hinterlegt)
 - **Schnellster Herr** — Kachel mit Zeit, Name, Klasse, Verein (nur wenn Geschlecht = 'm' hinterlegt)
@@ -246,6 +259,16 @@ Stand: Mai 2026 · Version 0.9.0
 - Reglemente mit Scoring-Typ (sum_all, best_of, sum_minus_worst)
 - Anzahl Läufe, Training ja/nein
 - Straf-Definitionen pro Reglement (Label, Sekunden, Tastaturkürzel)
+- **Punktetabelle (`points_formula`)**: JSON-Mapping Platz → Punkte; im Admin-Bereich pflegbar mit „KS2000 einfügen"-Schnellbutton (Platz 1=40, 2=37, 3=35 … 35=1)
+- KS2000-Strafarten (ADAC-HTH-Jugendkart-Reglement 2026, Seite 27):
+  - Pylone umwerfen/verschieben · P · 3 s
+  - Pylonentor auslassen · T · 10 s
+  - Schweizer Kreuz (Aufgabe) auslassen · S · 10 s
+  - Gasse auslassen · G · 15 s
+  - Begrenzungslinie überschreiten / Klötzchen · B · 3 s
+  - Falsche Fahrtrichtung nach Zieldurchfahrt · F · 10 s
+  - Unkorrektes Verhalten gegenüber Veranstalter · U · 20 s
+  - Auslassen von 3+ Aufgaben → Wertungsausschluss (DSQ, keine Zeitstrafe)
 
 ---
 

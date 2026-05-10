@@ -11,7 +11,10 @@ import sys
 
 from auth import hash_password
 
-DB_PATH = pathlib.Path(__file__).parent.parent / "racecontrol.db"
+# DATA_DIR-Env übereinstimmend mit database.py
+import os as _os
+_ROOT   = pathlib.Path(__file__).parent.parent
+DB_PATH = pathlib.Path(_os.environ.get("DATA_DIR", str(_ROOT))) / "racecontrol.db"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -110,20 +113,23 @@ REGLEMENTS = [
         ],
     },
     {
+        # Quelle: ADAC-HTH-Jugendkart-Reglement-2026.pdf, Seite 27 – „3b) KARTSLALOM 2000"
         "name": "KS2000 HTH 2026",
         "scoring_type": "sum_all",
         "points_formula": ks_points_formula(),
         "runs_per_class": 2,
         "has_training": 1,
         "penalties": [
-            {"label": "Pylone",                            "seconds": 3.0,  "shortcut_key": "P", "sort_order": 10},
-            {"label": "Pylonentor",                        "seconds": 10.0, "shortcut_key": "T", "sort_order": 20},
-            {"label": "Schweizer Kreuz – verfehlt",        "seconds": 10.0, "shortcut_key": "S", "sort_order": 30},
-            {"label": "Gasse – Pylone",                    "seconds": 3.0,  "shortcut_key": "G", "sort_order": 40},
-            {"label": "Gasse – nicht korrekt durchf.",     "seconds": 15.0, "shortcut_key": None, "sort_order": 41},
-            {"label": "Haltelinie – nicht angehalten",     "seconds": 3.0,  "shortcut_key": "H", "sort_order": 50},
-            {"label": "Falsches Anfahren / Fahrtrichtung", "seconds": 10.0, "shortcut_key": "F", "sort_order": 60},
-            {"label": "Unkorrektes Verhalten",             "seconds": 20.0, "shortcut_key": "U", "sort_order": 99},
+            # § Aufteilung der Fehlerpunkte (Seite 27)
+            {"label": "Pylone umwerfen/verschieben",                    "seconds":  3.0, "shortcut_key": "P", "sort_order": 10},
+            {"label": "Pylonentor auslassen",                           "seconds": 10.0, "shortcut_key": "T", "sort_order": 20},
+            {"label": "Schweizer Kreuz (Aufgabe) auslassen",            "seconds": 10.0, "shortcut_key": "S", "sort_order": 30},
+            {"label": "Gasse auslassen",                                "seconds": 15.0, "shortcut_key": "G", "sort_order": 40},
+            {"label": "Begrenzungslinie überschreiten / Klötzchen",     "seconds":  3.0, "shortcut_key": "B", "sort_order": 50},
+            # Begrenzungslinie = Halte- und Seitenlinien; auch Klötzchen verschieben = 3 FP
+            {"label": "Falsche Fahrtrichtung nach Zieldurchfahrt",      "seconds": 10.0, "shortcut_key": "F", "sort_order": 60},
+            {"label": "Unkorrektes Verhalten gegenüber Veranstalter",   "seconds": 20.0, "shortcut_key": "U", "sort_order": 99},
+            # Hinweis: Auslassen von 3+ Aufgaben → Wertungsausschluss (DSQ-Status, keine Zeitstrafe)
         ],
         "classes": [
             {"name": "KS2000 Kl. 1",  "short_name": "KS1",  "min_birth_year": 2016, "max_birth_year": 2019, "start_order": 0},
@@ -166,14 +172,39 @@ def run_seed():
             (uname, hash_password(uname), role, display),
         )
 
-    # Reglements + Strafen einfügen
+    # Reglements + Strafen einfügen / aktualisieren
     for reg in REGLEMENTS:
         existing = conn.execute(
             "SELECT id FROM Reglements WHERE name = ?", (reg["name"],)
         ).fetchone()
         if existing:
             reg_id = existing[0]
-            print(f"  Reglement '{reg['name']}' bereits vorhanden (id={reg_id})")
+            # Punkteformel immer aktualisieren (idempotent)
+            conn.execute(
+                "UPDATE Reglements SET points_formula = ? WHERE id = ?",
+                (reg["points_formula"], reg_id),
+            )
+            print(f"  Reglement '{reg['name']}' vorhanden (id={reg_id}) – points_formula aktualisiert")
+
+            # Strafarten: nur fehle Einträge ergänzen (nach label+reglement_id)
+            existing_labels = {
+                row[0] for row in conn.execute(
+                    "SELECT label FROM PenaltyDefinitions WHERE reglement_id = ?", (reg_id,)
+                ).fetchall()
+            }
+            added = 0
+            for pen in reg["penalties"]:
+                if pen["label"] not in existing_labels:
+                    conn.execute(
+                        """INSERT INTO PenaltyDefinitions
+                           (reglement_id, label, seconds, shortcut_key, sort_order)
+                           VALUES (?,?,?,?,?)""",
+                        (reg_id, pen["label"], pen["seconds"],
+                         pen.get("shortcut_key"), pen["sort_order"]),
+                    )
+                    added += 1
+            if added:
+                print(f"    → {added} neue Strafart(en) ergänzt")
         else:
             cur = conn.execute(
                 """INSERT INTO Reglements (name, scoring_type, points_formula, runs_per_class, has_training)
@@ -184,7 +215,7 @@ def run_seed():
             reg_id = cur.lastrowid
             print(f"  Reglement '{reg['name']}' angelegt (id={reg_id})")
 
-            for i, pen in enumerate(reg["penalties"]):
+            for pen in reg["penalties"]:
                 conn.execute(
                     """INSERT INTO PenaltyDefinitions
                        (reglement_id, label, seconds, shortcut_key, sort_order)

@@ -184,6 +184,9 @@
               <div v-else-if="row.valid_runs < (runsPerClass[cls.id] ?? DEFAULT_RUNS)" class="text-xs opacity-50 mt-0.5">
                 Lauf {{ row.valid_runs }}/{{ runsPerClass[cls.id] ?? DEFAULT_RUNS }} *
               </div>
+              <div v-if="row.points > 0" class="text-xs font-bold text-yellow-400 mt-0.5">
+                {{ row.points }} Pkt.
+              </div>
             </div>
           </li>
 

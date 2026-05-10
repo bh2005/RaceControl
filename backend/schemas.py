@@ -552,5 +552,7 @@ class StandingRow(BaseModel):
     valid_runs: int
     total_time: Optional[float]
     rank: int
+    training_time: Optional[float] = None
+    points: int = 0
 
     model_config = {"from_attributes": True}

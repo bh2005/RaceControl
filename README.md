@@ -5,7 +5,7 @@
 
   **Professionelle Kart-Slalom Veranstaltungssoftware**
 
-  ![Version](https://img.shields.io/badge/Version-0.9.1-cyan?style=flat-square)
+  ![Version](https://img.shields.io/badge/Version-0.9.2-cyan?style=flat-square)
   ![Backend](https://img.shields.io/badge/Backend-FastAPI%20%2B%20SQLite-009688?style=flat-square)
   ![Frontend](https://img.shields.io/badge/Frontend-Vue%203%20%2B%20Tailwind-4FC08D?style=flat-square)
   ![Platform](https://img.shields.io/badge/Platform-WLAN%20offline--first-orange?style=flat-square)
@@ -31,12 +31,12 @@ Das System läuft komplett **lokal auf einem Laptop**, braucht kein Internet und
 |---|---|
 | **Landingpage** | Veranstaltungsinfos, Live-Klassenstatus, Zwischenwertung, Sponsoren |
 | **Online-Nennung** | Selbstanmeldung per Tablet/Smartphone ohne Login, Duplikatcheck |
-| **Nennbüro** | Teilnehmerverwaltung, Abnahme (Nenngeld + Helm), Startnummernvergabe (pro Klasse ab 1, Auto-Nummerierung), Drucken; Sortierung nach Status → Klasse → Jahrgang |
+| **Nennbüro** | Teilnehmerverwaltung, Abnahme (Nenngeld + Helm), Startnummernvergabe (pro Klasse ab 1, Auto-Nummerierung), Drucken; Sortierung nach Status → Klasse → Jahrgang; **Mannschaftsnennung** (4 Fahrer je Team, beste 3 Punkte zählen) |
 | **Zeitnahme** | Zeiteingabe, Strafbuchung per Tastatur, DNS/DNF/DSQ, Fahrer vorziehen, Undo, automatische Lauf-Erkennung |
 | **Schiedsrichter** | Klassenstatus steuern, Einspruchfrist-Timer, Ergebnisse + Strafen korrigieren |
 | **Training** | Trainingsmodus fuer Jugendliche: Sessions verwalten, Zeiten erfassen (Lichtschranke auto-befuellt), Wertung, Straf-Schnelltasten |
 | **Livetiming** | Echtzeit-Ergebnisse für Zuschauer – Gesamtrang + Lauf-Detailzeilen, Trainingszeiten als Fallback |
-| **Auswertung** | Statistikseite pro Veranstaltung: Schnellster Wertungslauf je Klasse, Schnellste Dame, Schnellster Herr |
+| **Auswertung** | Statistikseite pro Veranstaltung: Schnellster Wertungslauf je Klasse, Schnellste Dame, Schnellster Herr, **Mannschaftswertung** (Gesamtpunkte je Team) |
 | **Sprecher** | 3-spaltiges Dashboard: aktueller Fahrer, Zeitanalyse (Was braucht er für P1/P3/P10?, Pylonen-Budget), Ereignis-Log (Streckenposten-Meldungen, Klassenänderungen, Ankündigungen) |
 | **Lichtschranke** | Arduino Nano / ESP32 (TM1637, MAX7219, LoRa 433 MHz, WiFi), Raspberry Pi (TM1637, MAX7219, LoRa-Gateway), ELV LSU200 per USB, ALGE Timy2/3 per RS232, u-blox 8 GPS-Timesync |
 | **Nachrichten** | Push-Nachrichten an alle Clients senden (Ankündigungen, Infos) |
