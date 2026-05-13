@@ -198,6 +198,11 @@
               <span class="font-semibold text-sm flex-1 truncate"
                     :class="row.start_number === currentDriver?.start_number ? 'text-cyan-300' : 'text-white'">
                 {{ row.first_name }} {{ row.last_name }}
+                <span v-if="!row.license_number"
+                      class="ml-1 text-xs font-semibold bg-gray-600/70 text-gray-400 px-1 rounded"
+                      title="Gaststarter – keine ADAC-Wertungspunkte">
+                  G
+                </span>
               </span>
               <span class="font-black tabnum text-sm" :class="i === 0 ? 'text-yellow-300' : 'text-white'">
                 {{ row.total_time?.toFixed(2) ?? '–' }}

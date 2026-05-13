@@ -143,10 +143,15 @@
               {{ i + 1 }}
             </div>
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 flex-wrap">
                 <span class="font-black text-xl">#{{ row.start_number }}</span>
                 <span class="font-bold text-lg truncate">
                   {{ row.first_name }} {{ row.last_name }}
+                </span>
+                <span v-if="!row._training && !row.license_number"
+                      class="text-xs font-semibold bg-gray-600/70 text-gray-300 px-1.5 py-0.5 rounded shrink-0"
+                      title="Gaststarter – keine ADAC-Wertungspunkte">
+                  G
                 </span>
               </div>
               <div class="text-sm opacity-70 mb-1">{{ row.club || 'n.N.' }}</div>
@@ -186,6 +191,10 @@
               </div>
               <div v-if="row.points > 0" class="text-xs font-bold text-yellow-400 mt-0.5">
                 {{ row.points }} Pkt.
+              </div>
+              <div v-else-if="!row._training && !row.license_number"
+                   class="text-xs text-gray-500 mt-0.5">
+                Gaststarter
               </div>
             </div>
           </li>

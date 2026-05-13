@@ -303,18 +303,23 @@ def standings(
         ).fetchone()
         formula_map[cid] = reg["points_formula"] if reg else None
 
-    # Enrich rows with participant_id for training_map lookup
+    # Enrich rows with participant data (training time, license, points)
     participant_rows = db.execute(
-        """SELECT p.id AS participant_id, p.start_number, p.class_id
+        """SELECT p.id AS participant_id, p.start_number, p.class_id, p.license_number
            FROM Participants p WHERE p.event_id = ?""",
         (event_id,),
     ).fetchall()
-    pid_map = {(r["class_id"], r["start_number"]): r["participant_id"] for r in participant_rows}
+    pid_map     = {(r["class_id"], r["start_number"]): r["participant_id"]  for r in participant_rows}
+    license_map = {(r["class_id"], r["start_number"]): r["license_number"]  for r in participant_rows}
 
     for row in rows:
-        pid = pid_map.get((row["class_id"], row["start_number"]))
-        row["training_time"] = training_map.get(pid) if pid else None
-        row["points"] = _ks2000_points(formula_map.get(row["class_id"]), row["rank"])
+        key = (row["class_id"], row["start_number"])
+        pid     = pid_map.get(key)
+        license = license_map.get(key)
+        row["training_time"]  = training_map.get(pid) if pid else None
+        row["license_number"] = license
+        # Gaststarter (kein license_number) erscheinen in der Wertung, bekommen aber keine ADAC-Punkte
+        row["points"] = _ks2000_points(formula_map.get(row["class_id"]), row["rank"]) if license else 0
 
     return rows
 

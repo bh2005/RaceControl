@@ -553,6 +553,7 @@ class StandingRow(BaseModel):
     total_time: Optional[float]
     rank: int
     training_time: Optional[float] = None
+    license_number: Optional[str] = None
     points: int = 0
 
     model_config = {"from_attributes": True}
