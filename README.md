@@ -5,7 +5,7 @@
 
   **Professionelle Kart-Slalom Veranstaltungssoftware**
 
-  ![Version](https://img.shields.io/badge/Version-0.9.2-cyan?style=flat-square)
+  ![Version](https://img.shields.io/badge/Version-0.9.3-cyan?style=flat-square)
   ![Backend](https://img.shields.io/badge/Backend-FastAPI%20%2B%20SQLite-009688?style=flat-square)
   ![Frontend](https://img.shields.io/badge/Frontend-Vue%203%20%2B%20Tailwind-4FC08D?style=flat-square)
   ![Platform](https://img.shields.io/badge/Platform-WLAN%20offline--first-orange?style=flat-square)
@@ -35,10 +35,10 @@ Das System läuft komplett **lokal auf einem Laptop**, braucht kein Internet und
 | **Zeitnahme** | Zeiteingabe, Strafbuchung per Tastatur, DNS/DNF/DSQ, Fahrer vorziehen, Undo, automatische Lauf-Erkennung |
 | **Schiedsrichter** | Klassenstatus steuern, Einspruchfrist-Timer, Ergebnisse + Strafen korrigieren |
 | **Training** | Trainingsmodus fuer Jugendliche: Sessions verwalten, Zeiten erfassen (Lichtschranke auto-befuellt), Wertung, Straf-Schnelltasten |
-| **Livetiming** | Echtzeit-Ergebnisse für Zuschauer – Gesamtrang + Lauf-Detailzeilen, Trainingszeiten als Fallback |
+| **Livetiming** | Echtzeit-Ergebnisse für Zuschauer – Gesamtrang + Lauf-Detailzeilen, Trainingszeiten als Fallback; **Gaststarter** mit „G"-Badge gekennzeichnet, erhalten keine ADAC-Punkte |
 | **Auswertung** | Statistikseite pro Veranstaltung: Schnellster Wertungslauf je Klasse, Schnellste Dame, Schnellster Herr, **Mannschaftswertung** (Gesamtpunkte je Team) |
 | **Sprecher** | 3-spaltiges Dashboard: aktueller Fahrer, Zeitanalyse (Was braucht er für P1/P3/P10?, Pylonen-Budget), Ereignis-Log (Streckenposten-Meldungen, Klassenänderungen, Ankündigungen) |
-| **Lichtschranke** | Arduino Nano / ESP32 (TM1637, MAX7219, LoRa 433 MHz, WiFi), Raspberry Pi (TM1637, MAX7219, LoRa-Gateway), ELV LSU200 per USB, ALGE Timy2/3 per RS232, u-blox 8 GPS-Timesync |
+| **Lichtschranke** | Arduino Nano / ESP32 (TM1637, MAX7219, LoRa 433 MHz, WiFi, **Bluetooth SPP**), Raspberry Pi (TM1637, MAX7219, LoRa-Gateway), ELV LSU200 per USB, ALGE Timy2/3 per RS232, u-blox 8 GPS-Timesync |
 | **Nachrichten** | Push-Nachrichten an alle Clients senden (Ankündigungen, Infos) |
 | **Streckenposten** | Eigene Rolle `marshal`; Fehlerpunkte per Eingabefeld sofort an Zeitnahme + Sprecher melden |
 | **Dokumente** | Öffentliche Seite für Reglemente, Vorlagen & Formulare aus dem `assets/`-Ordner |
@@ -135,7 +135,8 @@ RaceControl/
 │   ├── ESP32/                          # ESP32 Sketche (PlatformIO)
 │   │   ├── esp32_tm1637_lichtschranke/     # TM1637 + optional WiFi-Reporting
 │   │   ├── esp32_max7219_lichtschranke/    # MAX7219 + optional WiFi-Reporting
-│   │   └── esp32_lora_wifi_sender/         # WiFi primär + LoRa-Fallback, DIP-Schalter
+│   │   ├── esp32_lora_wifi_sender/         # WiFi primär + LoRa-Fallback, DIP-Schalter
+│   │   └── esp32_bluetooth_lichtschranke/  # Bluetooth SPP – kein WLAN/Router nötig
 │   ├── RasPi/                          # Raspberry Pi Clients + Bauanleitungen
 │   │   ├── racecontrol_client.py           # Produktions-Client (TM1637-Display)
 │   │   ├── racecontrol_client_max7219.py   # Produktions-Client (MAX7219-Display)

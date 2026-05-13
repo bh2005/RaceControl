@@ -1,7 +1,7 @@
 # RaceControl Pro – Handbuch
 
 **MSC Braach e.V. im ADAC**  
-Stand: Mai 2026 · Version 0.9.2
+Stand: Mai 2026 · Version 0.9.3
 
 ---
 
@@ -448,6 +448,9 @@ Eingehende Streckenposten-Meldungen erscheinen in der Zeitnahme als **gelbes Pan
 - Zeigt Ergebnisse aller Klassen in Echtzeit
 - Klassen über Tabs wählbar; Gesamtwertung mit Rang, Startnummer, Name, Verein, Gesamtzeit
 - Lauf-Detailzeilen unter jedem Fahrer: Rohzeit + Strafzeit pro Lauf (z.B. `Lauf 1  56.13 +12.0s = 68.13`)
+- **Gaststarter-Kennzeichnung:** Fahrer ohne ADAC-Lizenznummer erhalten ein graues **„G"**-Badge neben dem Namen sowie den Hinweis „Gaststarter" statt der Punkte-Anzeige. Gaststarter erscheinen vollständig in der Ergebnisliste mit korrektem Rang, erhalten aber keine ADAC-Wertungspunkte (Regelwerk-konform).
+
+> **Lizenznummer eintragen:** Im Nennbüro oder bei der Online-Nennung das Feld „Lizenznummer" befüllen. Bleibt es leer, gilt der Fahrer automatisch als Gaststarter.
 
 ---
 
@@ -589,6 +592,68 @@ MIN_TIME       = 3.0     # Messungen unter 3 s werden verworfen
 > Den API-Key im Admin-Bereich (System-Tab → Karte „⏱ Lichtschranken-API-Key") kopieren und hier eintragen.
 
 > Bei erkannter Verbindung erscheint der grüne Lichtschranken-Indikator in der Zeitnahme.
+
+---
+
+### ESP32 Bluetooth (kein WLAN erforderlich)
+
+Wenn am Kurs **kein WLAN-Netz** vorhanden ist und die Schranke in Bluetooth-Reichweite (~20 m) des Laptops steht, kann der ESP32 direkt per **Classic Bluetooth SPP** verbunden werden.
+
+**Sketch:** `lichtschranken/ESP32/esp32_bluetooth_lichtschranke/`
+
+**DIP-Schalter** (gleiche Belegung wie WiFi/LoRa-Variante):
+
+| Schalter | OFF | ON |
+|---|---|---|
+| SW1 | Spur A | Spur B |
+| SW2 | CP-Bit 0 = 0 | CP-Bit 0 = 1 |
+| SW3 | CP-Bit 1 = 0 | CP-Bit 1 = 1 |
+
+Der BT-Gerätename wird automatisch gesetzt: `RC-BT-A-0`, `RC-BT-B-3` etc.
+
+**Laptop einmalig einrichten (Linux):**
+```bash
+bluetoothctl
+  power on
+  scan on        # warten bis "RC-BT-A-0" erscheint → MAC notieren
+  pair AA:BB:CC:DD:EE:FF
+  trust AA:BB:CC:DD:EE:FF
+  exit
+
+sudo rfcomm bind 0 AA:BB:CC:DD:EE:FF
+```
+
+**serial_logger.py starten:**
+```bash
+python lichtschranken/serial_logger.py /dev/rfcomm0
+```
+
+Kein Code-Änderung nötig — `/dev/rfcomm0` verhält sich wie ein normaler USB-Serial-Port.
+
+Detaillierte Anleitung inkl. systemd-Autostart und Mehrgerätebetrieb:
+`lichtschranken/ESP32/SZENARIO_BLUETOOTH.md`
+
+---
+
+### Netzwerk-Setup (http://racecontrol)
+
+Damit alle WLAN-Geräte `http://racecontrol` statt der IP-Adresse verwenden können,
+müssen einmalig zwei Scripts ausgeführt werden:
+
+**1. Auf dem OpenWrt-Router:**
+```bash
+scp server/set_infra_openwrt.sh root@192.168.1.1:/tmp/
+ssh root@192.168.1.1 "sh /tmp/set_infra_openwrt.sh"
+```
+Setzt DNS `racecontrol → Laptop-IP` für alle Geräte im Netz. Einstellung überlebt Neustart.
+
+**2. Auf dem Laptop:**
+```bash
+sudo bash server/set_infra_laptop.sh
+```
+Richtet iptables Port 80 → 1980 ein (persistiert via `iptables-persistent` oder systemd-Unit).
+
+Nach Abschluss ist `http://racecontrol` von jedem Smartphone, Tablet und PC im WLAN erreichbar.
 
 ---
 

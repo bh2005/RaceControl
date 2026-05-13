@@ -23,6 +23,7 @@ Alle Lichtschranken-Clients und Sketche befinden sich im Ordner `lichtschranken/
 | **K** | ESP32 | USB / WiFi | MAX7219 | Standalone/WiFi | `lichtschranken/ESP32/` |
 | **L** | ESP32 + RA-02 + DS3231 | WiFi primär / LoRa Fallback | — | WiFi/LoRa | `lichtschranken/ESP32/` |
 | **M** | u-blox 8 GPS | USB | — | Laptop/RPi | `lichtschranken/GPS/` |
+| **N** | ESP32 | Bluetooth SPP | — | direkt am Laptop | `lichtschranken/ESP32/` |
 
 ### Entscheidungsbaum
 
@@ -39,7 +40,8 @@ Raspberry Pi vorhanden?
 Selbst aufbauen (Microcontroller)?
 ├─ Standalone-Zeitmessung   →  G (TM1637) oder H (MAX7219)
 ├─ Kabellos, Arduino Nano   →  Variante I (LoRa + RTC)
-└─ Kabellos, ESP32          →  Variante L (WiFi → LoRa Fallback)
+├─ Kabellos, ESP32          →  Variante L (WiFi → LoRa Fallback)
+└─ Kein WLAN, ESP32 ~20 m   →  Variante N (Bluetooth SPP)
 
 Genaue GPS-Zeit als Referenz?
 └─ u-blox 8 GPS             →  Variante M (Timesync ans Backend)
@@ -364,6 +366,76 @@ DIP-Schalter konfigurieren Spur und Checkpoint-Typ.
 2. Kein WiFi      → LoRa-Timesync vom Gateway → DS3231 setzen
 3. Kein Sync      → unix=0 → Gateway verwendet Empfangszeitpunkt
 ```
+
+---
+
+## Variante N – ESP32 Bluetooth SPP (kein WLAN)
+
+**Sketch:** `lichtschranken/ESP32/esp32_bluetooth_lichtschranke/`  
+**Szenario-Doku:** `lichtschranken/ESP32/SZENARIO_BLUETOOTH.md`
+
+Kein Router, kein Access Point — der ESP32 verbindet sich direkt per Classic Bluetooth (SPP) mit dem Laptop.
+Auf dem Laptop erscheint er als `/dev/rfcomm0` (Linux) oder COM-Port (Windows).
+`serial_logger.py` läuft **ohne Änderung** weiter.
+
+### DIP-Schalter (identisch mit Variante L)
+
+| Schalter | OFF | ON |
+|---|---|---|
+| SW1 | Spur A | Spur B |
+| SW2 | CP-Bit 0 = 0 | CP-Bit 0 = 1 |
+| SW3 | CP-Bit 1 = 0 | CP-Bit 1 = 1 |
+
+**BT-Name** wird automatisch aus Spur + Checkpoint gesetzt: `RC-BT-A-0`, `RC-BT-B-3` etc.
+
+### Laptop-Setup (einmalig, Linux)
+
+```bash
+# 1. Pairen
+bluetoothctl
+  power on
+  scan on          # MAC von "RC-BT-A-0" notieren
+  pair AA:BB:CC:DD:EE:FF
+  trust AA:BB:CC:DD:EE:FF
+  exit
+
+# 2. Virtuellen COM-Port anlegen
+sudo rfcomm bind 0 AA:BB:CC:DD:EE:FF
+
+# 3. Logger starten
+python lichtschranken/serial_logger.py /dev/rfcomm0
+```
+
+### Autostart (systemd)
+
+```ini
+# /etc/systemd/system/rfcomm-lichtschranke.service
+[Unit]
+Description=rfcomm bind RaceControl-BT
+After=bluetooth.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/rfcomm bind 0 AA:BB:CC:DD:EE:FF
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload && sudo systemctl enable rfcomm-lichtschranke.service
+```
+
+### Mehrere Schranken
+
+| Schranke | BT-Name | rfcomm | Port |
+|---|---|---|---|
+| Start Spur A | RC-BT-A-0 | 0 | /dev/rfcomm0 |
+| Ziel Spur A | RC-BT-A-3 | 1 | /dev/rfcomm1 |
+| Start Spur B | RC-BT-B-0 | 2 | /dev/rfcomm2 |
+
+`serial_logger.py` je einmal pro Port starten.
 
 ---
 

@@ -1,6 +1,6 @@
 # RaceControl Pro – Funktionsübersicht
 
-Stand: Mai 2026 · Version 0.9.2
+Stand: Mai 2026 · Version 0.9.3
 
 ---
 
@@ -22,6 +22,7 @@ Stand: Mai 2026 · Version 0.9.2
 - Tabellarische Darstellung mit Rang, Startnummer, Name, Verein, Zeit, Strafen
 - Lauf-Detailzeilen pro Fahrer: Rohzeit + Strafzeit für jeden Lauf (z.B. `Lauf 1  56.13 +12.0s = 68.13`); Strafzeit immer sichtbar (grau bei 0.0 s)
 - **Punkte-Badge** (gelb): zeigt KS2000-Punkte pro Fahrer wenn das Reglement eine Punktetabelle hat (z. B. „40 Pkt." für Platz 1)
+- **Gaststarter-Badge** (grau „G"): Fahrer ohne ADAC-Lizenznummer sind mit einem „G"-Badge neben dem Namen gekennzeichnet; erhalten Rang und Ergebnis, aber `points=0` (keine ADAC-Wertungspunkte — Regelwerk-konform)
 
 ### Dokumente `/dokumente`
 - Öffentlich zugängliche Seite für Reglemente, Formulare und Vorlagen
@@ -308,6 +309,17 @@ Stand: Mai 2026 · Version 0.9.2
 - Konfiguration: `SERIAL_PORT` (None = auto-detect), `BACKEND_WS`, `MIN_TIME`, `TIMING_API_KEY`
 - Abhängigkeiten: `pyserial`, `websocket-client`
 - COM-Port ermitteln: Gerätemanager → Anschlüsse (COM & LPT)
+
+### ESP32 Bluetooth SPP (`lichtschranken/ESP32/esp32_bluetooth_lichtschranke/`)
+
+- **Einsatz:** Kein WLAN am Kurs, 1–2 Schranken in ~20 m Reichweite des Laptops
+- Classic Bluetooth SPP — ESP32 erscheint als `/dev/rfcomm0` (Linux) oder COM-Port (Windows)
+- `serial_logger.py` läuft ohne Code-Änderung weiter
+- DIP-Schalter identisch mit Variante L: SW1=Spur A/B, SW2+SW3=Checkpoint-Nummer (0–3)
+- BT-Gerätename automatisch aus DIP-Schaltern generiert (`RC-BT-A-0` etc.)
+- ISR mit Debouncing (200 ms), LED-Heartbeat, USB-Serial parallel (Debug/Fallback)
+- JSON-Protokoll identisch mit WiFi/LoRa-Sender (`type/unix/lane/cp/ms`)
+- Szenario-Doku: `lichtschranken/ESP32/SZENARIO_BLUETOOTH.md`
 
 ### ALGE Timy (`tools/alge_timy_client.py` / `tools/alge_multi_timy_client.py`)
 

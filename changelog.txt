@@ -4,6 +4,42 @@ RaceControl Pro  Changelog
 
 
 
+[0.9.3] - 2026-05-13
+---------------------
+Gaststarter-Kennzeichnung, ESP32-Bluetooth-Lichtschranke, Netzwerk-Infrastruktur-Scripts
+
+  Gaststarter ohne ADAC-Punkte (Regelwerk-Konformität)
+  + Backend results.py: Gaststarter (kein license_number) erscheinen weiterhin
+    in der Wertung mit korrektem Rang, erhalten aber points=0 statt
+    KS2000-Punkte — entspricht ADAC-Regelwerk (nur Lizenznehmer erhalten Punkte)
+  + schemas.py: StandingRow um license_number (Optional[str]) erweitert
+  + LivetimingView: graues "G"-Badge neben dem Namen + "Gaststarter"-Label
+    statt Punkte-Anzeige bei Fahrern ohne Lizenznummer
+  + SpeakerView: "G"-Badge in der Ranglisten-Leiste bei Gastsartern
+
+  ESP32 Bluetooth SPP Lichtschranke (neu – Variante N)
+  + Neues PlatformIO-Projekt: lichtschranken/ESP32/esp32_bluetooth_lichtschranke/
+  + Kein WLAN/Router nötig: ESP32 verbindet sich direkt per Classic Bluetooth
+    (SPP) mit dem Laptop — erscheint als /dev/rfcomm0 (Linux) oder COM-Port
+    (Windows); serial_logger.py läuft ohne Code-Änderung
+  + DIP-Schalter: gleiche Belegung wie Variante L (SW1=Spur, SW2+SW3=CP)
+  + BT-Name automatisch aus DIP-Schaltern: "RC-BT-A-0", "RC-BT-B-3" etc.
+  + ISR mit Debouncing, LED-Heartbeat (langsam=kein Client, kurz=Trigger)
+  + JSON-Format identisch mit WiFi/LoRa-Sender (type/unix/lane/cp/ms)
+  + USB-Serial parallel aktiv (Debug / Fallback bei Kabelanschluss)
+  + Szenario-Dokumentation: lichtschranken/ESP32/SZENARIO_BLUETOOTH.md
+    (Laptop-Setup rfcomm, systemd-Unit, Mehrgerätebetrieb, Entscheidungshilfe)
+
+  Netzwerk-Infrastruktur Scripts
+  + server/set_infra_openwrt.sh: DNS-Eintrag jetzt per "uci add_list
+    dhcp.@dnsmasq[0].address=" statt konfdir-Datei — funktioniert auf
+    allen OpenWrt-Versionen zuverlässig, überlebt Neustart (uci commit)
+  + server/set_infra_laptop.sh: iptables Port 80→1980 per PREROUTING,
+    persistiert via iptables-persistent oder systemd-Unit
+  + http://racecontrol erreichbar für alle WLAN/LAN-Geräte nach Script-Ausführung
+
+---
+
 [0.9.2] - 2026-05-10
 ---------------------
 Mannschaftswertung, KS2000-Punktesystem, Nennliste-Bugfix
