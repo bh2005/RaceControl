@@ -123,7 +123,7 @@ void sendeErgebnis(unsigned long dauerMs) {
   float sekunden = dauerMs / 1000.0f;
   char  body[80];
   snprintf(body, sizeof(body),
-    "{\"raw_time\":%.3f,\"source\":\"arduino_max7219\"}", sekunden);
+    "{\"raw_time\":%.3f,\"source\":\"esp32_max7219\"}", sekunden);
 
   digitalWrite(PIN_LED, HIGH);
   HTTPClient http;

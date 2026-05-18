@@ -142,7 +142,8 @@ ESP32 DevKit
 │ GPIO5   ── MAX7219 CS  (LOAD)       │
 │ GPIO32–26 ── DIP SW1–SW4            │
 │ GPIO2   ── Status-LED               │
-│ 5V      ── MAX7219 VCC + LS VCC     │
+│ 3.3V    ── MAX7219 VCC               │  ⚠️ NICHT 5V — ESP32 Logik nur 3,3V!
+│ 5V      ── LS VCC                   │
 │ GND     ── MAX7219 GND + LS GND     │
 └─────────────────────────────────────┘
 ```
